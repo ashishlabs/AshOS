@@ -63,7 +63,11 @@ by `maxParallel`, per-node retries with backoff, skip-on-failed-dependency,
 optional rollback). `kernel/dag.ts` is the one executor shared by both
 `planner/executor.ts` and `workflow/workflow-engine.ts` — changes to
 retry/parallelism/skip semantics belong there, not duplicated in either
-caller.
+caller. `Kernel`'s constructor also subscribes the `Logger` to every
+non-`log` bus event and mirrors it as an info-level entry, so `ash logs` /
+the dashboard's Logs page show live system activity without each subsystem
+calling the logger directly — don't add a manual `logger.info()` call next
+to an `eventBus.emit()` for the same fact, that double-logs it.
 
 **`providers/`** defines the `AIProvider` interface
 (`chat`/`stream`/`embeddings`/`functionCalling`/`maxContext`/`supportsVision`)

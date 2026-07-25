@@ -64,4 +64,53 @@ describe("AshOS API", () => {
     const body = (await res.json()) as any;
     expect(body.tasks.length).toBeGreaterThan(0);
   });
+
+  it("POST /chat/stream streams chunks as plain text", async () => {
+    const res = await fetch(`${baseUrl}/chat/stream`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ messages: [{ role: "user", content: "stream this" }] })
+    });
+    const text = await res.text();
+    expect(text).toContain("stream this");
+  });
+
+  it("POST /memory then GET /memory round-trips a record", async () => {
+    await fetch(`${baseUrl}/memory`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ scope: "session", key: "note-1", value: "remember this", tags: ["demo"] })
+    });
+    const res = await fetch(`${baseUrl}/memory?scope=session`);
+    const body = (await res.json()) as any;
+    expect(body.some((r: any) => r.key === "note-1")).toBe(true);
+  });
+
+  it("POST /memory/forget removes a record", async () => {
+    await fetch(`${baseUrl}/memory`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ scope: "session", key: "note-2", value: "temp" })
+    });
+    await fetch(`${baseUrl}/memory/forget`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ scope: "session", key: "note-2" })
+    });
+    const res = await fetch(`${baseUrl}/memory?scope=session`);
+    const body = (await res.json()) as any;
+    expect(body.some((r: any) => r.key === "note-2")).toBe(false);
+  });
+
+  it("GET /events supports prefix filtering", async () => {
+    await fetch(`${baseUrl}/plan`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ goal: "trigger an event" })
+    });
+    const res = await fetch(`${baseUrl}/events?prefix=memory:`);
+    const body = (await res.json()) as any;
+    expect(Array.isArray(body)).toBe(true);
+    expect(body.every((e: any) => e.name.startsWith("memory:"))).toBe(true);
+  });
 });

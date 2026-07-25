@@ -17,6 +17,22 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     }
   });
 
+  app.post("/chat/stream", async (req, res) => {
+    res.setHeader("content-type", "text/plain; charset=utf-8");
+    res.setHeader("cache-control", "no-cache");
+    res.setHeader("transfer-encoding", "chunked");
+    try {
+      const provider = ashos.providers.active();
+      for await (const chunk of provider.stream(req.body.messages, req.body.options)) {
+        if (chunk.delta) res.write(chunk.delta);
+      }
+      res.end();
+    } catch (error) {
+      res.write(`\n[error: ${(error as Error).message}]`);
+      res.end();
+    }
+  });
+
   app.post("/plan", async (req, res) => {
     try {
       const graph = await ashos.plan(req.body.goal);
@@ -60,9 +76,31 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     res.json(ashos.kernel.eventBus.getHistory().filter((e) => e.name.startsWith("task:")));
   });
 
+  app.get("/events", (req, res) => {
+    const prefix = req.query.prefix as string | undefined;
+    const history = ashos.kernel.eventBus.getHistory();
+    res.json(prefix ? history.filter((e) => e.name.startsWith(prefix)) : history);
+  });
+
   app.get("/memory", (req, res) => {
     const scope = req.query.scope as never;
     res.json(ashos.memory.query({ scope, tag: req.query.tag as string, text: req.query.text as string }));
+  });
+
+  app.post("/memory", async (req, res) => {
+    try {
+      const { scope, key, value, tags } = req.body;
+      const record = await ashos.memory.remember(scope, key, value, { tags });
+      res.json(record);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  app.post("/memory/forget", (req, res) => {
+    const { scope, key } = req.body;
+    ashos.memory.forget(scope, key);
+    res.json({ ok: true });
   });
 
   app.get("/logs", (_req, res) => {

@@ -10,7 +10,7 @@ body {
 }
 
 .app {
-  max-width: 840px;
+  max-width: 880px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
 }
@@ -27,6 +27,7 @@ header h1 {
 
 nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin: 1.5rem 0;
   border-bottom: 1px solid #21262d;
@@ -71,13 +72,14 @@ section li {
   color: #f85149;
 }
 
-.plan-form {
+.row-form {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1rem;
 }
 
-.plan-form input {
+.row-form input,
+.row-form select {
   flex: 1;
   padding: 0.5rem 0.75rem;
   border-radius: 6px;
@@ -86,11 +88,164 @@ section li {
   color: #e6edf3;
 }
 
-.plan-form button {
+.row-form button,
+section > .row-form button {
   padding: 0.5rem 1rem;
   border-radius: 6px;
   border: 1px solid #1f6feb;
   background: #1f6feb;
   color: white;
   cursor: pointer;
+  white-space: nowrap;
+}
+
+.row-form button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #30363d;
+  background: #161b22;
+  color: #e6edf3;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+  resize: vertical;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: #58a6ff;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.activity {
+  list-style: none;
+  padding: 0;
+}
+
+.activity li {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #21262d;
+  padding: 0.35rem 0;
+  font-size: 0.9rem;
+}
+
+.event-name {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  color: #58a6ff;
+}
+
+.event-time {
+  color: #8b949e;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  margin-right: 0.4rem;
+}
+
+.status-success {
+  background: #1a4a2e;
+  color: #3fb950;
+}
+
+.status-failed {
+  background: #4a1a1a;
+  color: #f85149;
+}
+
+.status-skipped {
+  background: #3a3a1a;
+  color: #d29922;
+}
+
+.log-list {
+  list-style: none;
+  padding: 0;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.82rem;
+}
+
+.log-list li {
+  display: flex;
+  gap: 0.6rem;
+  border-bottom: 1px solid #21262d;
+  padding: 0.3rem 0;
+}
+
+.log-time {
+  color: #8b949e;
+  flex-shrink: 0;
+}
+
+.log-level {
+  flex-shrink: 0;
+  width: 3.5rem;
+}
+
+.log-error .log-level {
+  color: #f85149;
+}
+
+.log-warn .log-level {
+  color: #d29922;
+}
+
+.log-info .log-level {
+  color: #58a6ff;
+}
+
+.log-debug .log-level {
+  color: #8b949e;
+}
+
+.chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-height: 420px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  padding-right: 0.25rem;
+}
+
+.bubble {
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  max-width: 80%;
+  white-space: pre-wrap;
+}
+
+.bubble strong {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: #8b949e;
+  margin-bottom: 0.15rem;
+}
+
+.bubble-user {
+  align-self: flex-end;
+  background: #1f6feb;
+}
+
+.bubble-assistant {
+  align-self: flex-start;
+  background: #161b22;
+  border: 1px solid #30363d;
 }

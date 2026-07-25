@@ -37,6 +37,15 @@ export class Kernel {
     this.plugins = new PluginManager(this.eventBus);
     this.agentRouter = new AgentRouter();
     this.contextManager = new ContextManager(this.root);
+
+    // Mirror every bus event into the logger so `ash logs` / the dashboard's
+    // Logs page reflect live system activity without every subsystem having
+    // to call the logger directly. Skip "log" itself to avoid recursion.
+    this.eventBus.on("*", (event) => {
+      if (event.name === "log") return;
+      const summary = event.payload && typeof event.payload === "object" ? JSON.stringify(event.payload) : String(event.payload);
+      this.logger.info(`${event.name} ${summary}`);
+    });
   }
 
   updateConfig(patch: Partial<AshOSConfig>): AshOSConfig {
