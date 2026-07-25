@@ -53,9 +53,11 @@ docs/       architecture, plugin, provider, API, CLI, roadmap docs
 ```
 
 See [`docs/architecture.md`](docs/architecture.md) for the full picture,
-[`docs/roadmap.md`](docs/roadmap.md) for what's shipped vs. planned, and
-[`docs/plugin-development.md`](docs/plugin-development.md) to add your own
-provider/tool/agent.
+[`docs/PRD.md`](docs/PRD.md) for product vision/requirements/status,
+[`docs/roadmap.md`](docs/roadmap.md) for what's shipped vs. planned,
+[`docs/test-report.md`](docs/test-report.md) for the latest test results and
+known gaps, and [`docs/plugin-development.md`](docs/plugin-development.md)
+to add your own provider/tool/agent.
 
 ## Switching providers
 

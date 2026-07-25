@@ -21,12 +21,17 @@ export class ContextManager {
 
   detectProject(): ProjectContext {
     let dir = this.cwd;
+    let found = false;
     while (dir !== path.parse(dir).root) {
       if (fs.existsSync(path.join(dir, "package.json")) || fs.existsSync(path.join(dir, ".git"))) {
+        found = true;
         break;
       }
       dir = path.dirname(dir);
     }
+    // No project markers anywhere up to the filesystem root — fall back to
+    // the starting directory instead of returning "/" (whose basename is "").
+    if (!found) dir = this.cwd;
 
     const packageJsonPath = path.join(dir, "package.json");
     let name = path.basename(dir);

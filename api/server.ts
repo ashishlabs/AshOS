@@ -1,14 +1,42 @@
 import "dotenv/config";
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import { AshOS } from "../sdk/ashos";
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function requireMessages(req: Request, res: Response, next: NextFunction): void {
+  if (!Array.isArray(req.body?.messages) || req.body.messages.length === 0) {
+    res.status(400).json({ error: "'messages' must be a non-empty array" });
+    return;
+  }
+  next();
+}
+
+function requireGoal(req: Request, res: Response, next: NextFunction): void {
+  if (!isNonEmptyString(req.body?.goal)) {
+    res.status(400).json({ error: "'goal' must be a non-empty string" });
+    return;
+  }
+  next();
+}
+
+function requireWorkflow(req: Request, res: Response, next: NextFunction): void {
+  if (!isNonEmptyString(req.body?.name) || !Array.isArray(req.body?.steps)) {
+    res.status(400).json({ error: "workflow definition must have a 'name' string and a 'steps' array" });
+    return;
+  }
+  next();
+}
 
 export function createServer(ashos: AshOS = new AshOS()): Express {
   const app = express();
   app.use(cors());
   app.use(express.json());
 
-  app.post("/chat", async (req, res) => {
+  app.post("/chat", requireMessages, async (req, res) => {
     try {
       const result = await ashos.chat(req.body.messages, req.body.options);
       res.json(result);
@@ -17,7 +45,7 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     }
   });
 
-  app.post("/chat/stream", async (req, res) => {
+  app.post("/chat/stream", requireMessages, async (req, res) => {
     res.setHeader("content-type", "text/plain; charset=utf-8");
     res.setHeader("cache-control", "no-cache");
     res.setHeader("transfer-encoding", "chunked");
@@ -33,7 +61,7 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     }
   });
 
-  app.post("/plan", async (req, res) => {
+  app.post("/plan", requireGoal, async (req, res) => {
     try {
       const graph = await ashos.plan(req.body.goal);
       res.json(graph);
@@ -42,7 +70,7 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     }
   });
 
-  app.post("/execute", async (req, res) => {
+  app.post("/execute", requireGoal, async (req, res) => {
     try {
       const { graph, results } = await ashos.run(req.body.goal);
       res.json({ graph, results: Object.fromEntries(results) });
@@ -51,7 +79,7 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     }
   });
 
-  app.post("/workflow", async (req, res) => {
+  app.post("/workflow", requireWorkflow, async (req, res) => {
     try {
       const results = await ashos.runWorkflow(req.body);
       res.json({ results: Object.fromEntries(results) });
@@ -87,7 +115,21 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     res.json(ashos.memory.query({ scope, tag: req.query.tag as string, text: req.query.text as string }));
   });
 
-  app.post("/memory", async (req, res) => {
+  const MEMORY_SCOPES = new Set(["short-term", "session", "project", "global"]);
+
+  function requireScopeAndKey(req: Request, res: Response, next: NextFunction): void {
+    if (!MEMORY_SCOPES.has(req.body?.scope)) {
+      res.status(400).json({ error: `'scope' must be one of ${[...MEMORY_SCOPES].join(", ")}` });
+      return;
+    }
+    if (!isNonEmptyString(req.body?.key)) {
+      res.status(400).json({ error: "'key' must be a non-empty string" });
+      return;
+    }
+    next();
+  }
+
+  app.post("/memory", requireScopeAndKey, async (req, res) => {
     try {
       const { scope, key, value, tags } = req.body;
       const record = await ashos.memory.remember(scope, key, value, { tags });
@@ -97,7 +139,7 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     }
   });
 
-  app.post("/memory/forget", (req, res) => {
+  app.post("/memory/forget", requireScopeAndKey, (req, res) => {
     const { scope, key } = req.body;
     ashos.memory.forget(scope, key);
     res.json({ ok: true });

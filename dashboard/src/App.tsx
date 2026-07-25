@@ -91,14 +91,21 @@ function DashboardTab() {
   );
 }
 
+function LoadError({ error }: { error: string | null }) {
+  if (!error) return null;
+  return <p className="error">Could not load from the AshOS API: {error}. Is `npm run api` running?</p>;
+}
+
 function ProvidersTab() {
   const [providers, setProviders] = useState<ProvidersInfo | null>(null);
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    api.providers().then(setProviders).catch(() => {});
+    api.providers().then(setProviders).catch((e) => setError(e.message));
   }, []);
   return (
     <section>
       <h2>Providers</h2>
+      <LoadError error={error} />
       {providers && (
         <ul>
           {providers.available.map((p) => (
@@ -112,12 +119,14 @@ function ProvidersTab() {
 
 function AgentsTab() {
   const [agents, setAgents] = useState<AgentInfo[]>([]);
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    api.agents().then(setAgents).catch(() => {});
+    api.agents().then(setAgents).catch((e) => setError(e.message));
   }, []);
   return (
     <section>
       <h2>Agents</h2>
+      <LoadError error={error} />
       <ul>
         {agents.map((a) => (
           <li key={a.name}>
@@ -131,12 +140,14 @@ function AgentsTab() {
 
 function ToolsTab() {
   const [tools, setTools] = useState<ToolInfo[]>([]);
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    api.tools().then(setTools).catch(() => {});
+    api.tools().then(setTools).catch((e) => setError(e.message));
   }, []);
   return (
     <section>
       <h2>Tools</h2>
+      <LoadError error={error} />
       <ul>
         {tools.map((t) => (
           <li key={t.name}>
@@ -152,12 +163,16 @@ function PlanTab() {
   const [goal, setGoal] = useState("");
   const [graph, setGraph] = useState<TaskGraph | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const submit = async () => {
     if (!goal.trim()) return;
+    setError(null);
     setLoading(true);
     try {
       setGraph(await api.plan(goal));
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -172,6 +187,7 @@ function PlanTab() {
           {loading ? "Planning..." : "Plan"}
         </button>
       </div>
+      <LoadError error={error} />
       {graph && (
         <ol>
           {graph.tasks.map((t) => (
@@ -259,8 +275,16 @@ function MemoryTab() {
   const [records, setRecords] = useState<MemoryRecord[]>([]);
   const [key, setKey] = useState("");
   const [value, setValue] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  const load = () => api.memoryList(scope).then(setRecords).catch(() => setRecords([]));
+  const load = () =>
+    api
+      .memoryList(scope)
+      .then((r) => {
+        setRecords(r);
+        setError(null);
+      })
+      .catch((e) => setError(e.message));
 
   useEffect(() => {
     load();
@@ -269,15 +293,23 @@ function MemoryTab() {
 
   const remember = async () => {
     if (!key.trim()) return;
-    await api.memoryRemember(scope, key, value);
-    setKey("");
-    setValue("");
-    load();
+    try {
+      await api.memoryRemember(scope, key, value);
+      setKey("");
+      setValue("");
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    }
   };
 
   const forget = async (k: string) => {
-    await api.memoryForget(scope, k);
-    load();
+    try {
+      await api.memoryForget(scope, k);
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    }
   };
 
   return (
@@ -299,7 +331,8 @@ function MemoryTab() {
         <button onClick={remember}>Remember</button>
       </div>
 
-      {records.length === 0 && <p className="desc">No records in "{scope}" memory yet.</p>}
+      <LoadError error={error} />
+      {records.length === 0 && !error && <p className="desc">No records in "{scope}" memory yet.</p>}
       <ul>
         {records.map((r) => (
           <li key={r.id}>
@@ -316,9 +349,17 @@ function MemoryTab() {
 
 function LogsTab() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const load = () => api.logs().then((l) => setLogs([...l].reverse())).catch(() => {});
+    const load = () =>
+      api
+        .logs()
+        .then((l) => {
+          setLogs([...l].reverse());
+          setError(null);
+        })
+        .catch((e) => setError(e.message));
     load();
     const interval = setInterval(load, 3000);
     return () => clearInterval(interval);
@@ -327,7 +368,8 @@ function LogsTab() {
   return (
     <section>
       <h2>Logs</h2>
-      {logs.length === 0 && <p className="desc">No log entries yet for the running API process.</p>}
+      <LoadError error={error} />
+      {logs.length === 0 && !error && <p className="desc">No log entries yet for the running API process.</p>}
       <ul className="log-list">
         {logs.map((l, i) => (
           <li key={i} className={`log-${l.level}`}>
@@ -345,6 +387,7 @@ function ChatTab() {
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -358,6 +401,7 @@ function ChatTab() {
     const next = [...history, { role: "user" as const, content: text }, { role: "assistant" as const, content: "" }];
     setHistory(next);
     setSending(true);
+    setError(null);
     try {
       await api.chatStream(
         next.slice(0, -1),
@@ -369,6 +413,8 @@ function ChatTab() {
           });
         }
       );
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setSending(false);
     }
@@ -377,6 +423,7 @@ function ChatTab() {
   return (
     <section>
       <h2>Chat</h2>
+      <LoadError error={error} />
       <div className="chat-log">
         {history.length === 0 && <p className="desc">Say hello to the active provider.</p>}
         {history.map((m, i) => (
