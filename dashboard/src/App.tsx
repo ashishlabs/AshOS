@@ -1,5 +1,32 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  Bot,
+  Brain,
+  Cpu,
+  GitBranch,
+  LayoutDashboard,
+  ListTodo,
+  Moon,
+  ScrollText,
+  Send,
+  Sparkles,
+  Sun,
+  Trash2,
+  Wrench
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
+import {
   api,
   type AgentInfo,
   type AshOSEvent,
@@ -16,37 +43,146 @@ import {
 
 type Tab = "dashboard" | "providers" | "agents" | "tools" | "plan" | "workflow" | "memory" | "logs" | "chat";
 
-const TABS: Tab[] = ["dashboard", "providers", "agents", "tools", "plan", "workflow", "memory", "logs", "chat"];
+const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "providers", label: "Providers", icon: Cpu },
+  { id: "agents", label: "Agents", icon: Bot },
+  { id: "tools", label: "Tools", icon: Wrench },
+  { id: "plan", label: "Plan", icon: ListTodo },
+  { id: "workflow", label: "Workflow", icon: GitBranch },
+  { id: "memory", label: "Memory", icon: Brain },
+  { id: "logs", label: "Logs", icon: ScrollText },
+  { id: "chat", label: "Chat", icon: Send }
+];
+
+function useTheme() {
+  const [dark, setDark] = useState(() => {
+    if (typeof localStorage === "undefined") return true;
+    return localStorage.getItem("ashos-theme") !== "light";
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    localStorage.setItem("ashos-theme", dark ? "dark" : "light");
+  }, [dark]);
+
+  return { dark, toggle: () => setDark((d) => !d) };
+}
+
+function ThemeToggle({ dark, onToggle }: { dark: boolean; onToggle: () => void }) {
+  return (
+    <Button variant="outline" size="icon" onClick={onToggle} aria-label="Toggle theme">
+      {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </Button>
+  );
+}
+
+function StatusPill() {
+  const [health, setHealth] = useState<Health | null>(null);
+  const [ok, setOk] = useState(true);
+
+  useEffect(() => {
+    const load = () => api.health().then(setHealth).then(() => setOk(true)).catch(() => setOk(false));
+    load();
+    const interval = setInterval(load, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="hidden items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs sm:flex">
+      <span className={cn("h-2 w-2 rounded-full", ok ? "bg-success" : "bg-destructive")} />
+      {ok && health ? (
+        <span className="text-muted-foreground">
+          provider <span className="font-medium text-foreground">{health.provider}</span>
+        </span>
+      ) : (
+        <span className="text-destructive">API unreachable</span>
+      )}
+    </div>
+  );
+}
 
 export function App() {
   const [tab, setTab] = useState<Tab>("dashboard");
+  const { dark, toggle } = useTheme();
 
   return (
-    <div className="app">
-      <header>
-        <h1>AshOS</h1>
-        <p className="subtitle">AI Operating System for Developers</p>
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+              <Sparkles className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-sm font-semibold leading-tight">AshOS</h1>
+              <p className="text-xs leading-tight text-muted-foreground">AI Operating System for Developers</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <StatusPill />
+            <ThemeToggle dark={dark} onToggle={toggle} />
+          </div>
+        </div>
       </header>
-      <nav>
-        {TABS.map((t) => (
-          <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>
-            {t}
-          </button>
-        ))}
-      </nav>
-      <main>
-        {tab === "dashboard" && <DashboardTab />}
-        {tab === "providers" && <ProvidersTab />}
-        {tab === "agents" && <AgentsTab />}
-        {tab === "tools" && <ToolsTab />}
-        {tab === "plan" && <PlanTab />}
-        {tab === "workflow" && <WorkflowTab />}
-        {tab === "memory" && <MemoryTab />}
-        {tab === "logs" && <LogsTab />}
-        {tab === "chat" && <ChatTab />}
+
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
+          <TabsList className="h-auto flex-wrap justify-start">
+            {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
+              <TabsTrigger key={id} value={id} className="gap-1.5">
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <TabsContent value="dashboard">
+            <DashboardTab />
+          </TabsContent>
+          <TabsContent value="providers">
+            <ProvidersTab />
+          </TabsContent>
+          <TabsContent value="agents">
+            <AgentsTab />
+          </TabsContent>
+          <TabsContent value="tools">
+            <ToolsTab />
+          </TabsContent>
+          <TabsContent value="plan">
+            <PlanTab />
+          </TabsContent>
+          <TabsContent value="workflow">
+            <WorkflowTab />
+          </TabsContent>
+          <TabsContent value="memory">
+            <MemoryTab />
+          </TabsContent>
+          <TabsContent value="logs">
+            <LogsTab />
+          </TabsContent>
+          <TabsContent value="chat">
+            <ChatTab />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
+}
+
+function LoadError({ error }: { error: string | null }) {
+  if (!error) return null;
+  return (
+    <Alert variant="destructive" className="mb-4">
+      <AlertDescription>
+        Could not load from the AshOS API: {error}. Is <code className="font-mono">npm run api</code> running?
+      </AlertDescription>
+    </Alert>
+  );
+}
+
+function EmptyState({ children }: { children: React.ReactNode }) {
+  return <p className="py-6 text-center text-sm text-muted-foreground">{children}</p>;
 }
 
 function DashboardTab() {
@@ -67,33 +203,53 @@ function DashboardTab() {
   }, []);
 
   return (
-    <section>
-      <h2>Status</h2>
-      {error && <p className="error">Could not reach AshOS API: {error}. Start it with `npm run api`.</p>}
-      {health && (
-        <ul>
-          <li>Kernel: {health.ok ? "healthy" : "unhealthy"}</li>
-          <li>Active provider: {health.provider}</li>
-        </ul>
-      )}
+    <div className="grid gap-4 sm:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>Status</CardTitle>
+          <CardDescription>Kernel health and the active AI provider.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <LoadError error={error} />
+          {health ? (
+            <>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Kernel</span>
+                <Badge variant={health.ok ? "success" : "destructive"}>{health.ok ? "healthy" : "unhealthy"}</Badge>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Active provider</span>
+                <Badge variant="secondary">{health.provider}</Badge>
+              </div>
+            </>
+          ) : (
+            !error && <Skeleton className="h-16 w-full" />
+          )}
+        </CardContent>
+      </Card>
 
-      <h2>Recent activity</h2>
-      {events.length === 0 && <p className="desc">No events yet — plan a goal, run a workflow, or chat to generate some.</p>}
-      <ul className="activity">
-        {events.map((e, i) => (
-          <li key={i}>
-            <span className="event-name">{e.name}</span>
-            <span className="event-time">{new Date(e.timestamp).toLocaleTimeString()}</span>
-          </li>
-        ))}
-      </ul>
-    </section>
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent activity</CardTitle>
+          <CardDescription>Live feed from the kernel event bus.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {events.length === 0 ? (
+            <EmptyState>No events yet — plan a goal, run a workflow, or chat to generate some.</EmptyState>
+          ) : (
+            <ul className="divide-y">
+              {events.map((e, i) => (
+                <li key={i} className="flex items-center justify-between py-2 text-sm">
+                  <span className="font-mono text-xs text-primary">{e.name}</span>
+                  <span className="text-xs text-muted-foreground">{new Date(e.timestamp).toLocaleTimeString()}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
-}
-
-function LoadError({ error }: { error: string | null }) {
-  if (!error) return null;
-  return <p className="error">Could not load from the AshOS API: {error}. Is `npm run api` running?</p>;
 }
 
 function ProvidersTab() {
@@ -103,17 +259,26 @@ function ProvidersTab() {
     api.providers().then(setProviders).catch((e) => setError(e.message));
   }, []);
   return (
-    <section>
-      <h2>Providers</h2>
-      <LoadError error={error} />
-      {providers && (
-        <ul>
-          {providers.available.map((p) => (
-            <li key={p}>{p === providers.active ? `* ${p} (active)` : p}</li>
-          ))}
-        </ul>
-      )}
-    </section>
+    <Card>
+      <CardHeader>
+        <CardTitle>Providers</CardTitle>
+        <CardDescription>Every AI backend implements the same interface — switching is a config change.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <LoadError error={error} />
+        {!providers && !error && <Skeleton className="h-24 w-full" />}
+        {providers && (
+          <ul className="divide-y">
+            {providers.available.map((p) => (
+              <li key={p} className="flex items-center justify-between py-2.5 text-sm">
+                <span className="font-medium">{p}</span>
+                {p === providers.active && <Badge>active</Badge>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -124,17 +289,31 @@ function AgentsTab() {
     api.agents().then(setAgents).catch((e) => setError(e.message));
   }, []);
   return (
-    <section>
-      <h2>Agents</h2>
-      <LoadError error={error} />
-      <ul>
-        {agents.map((a) => (
-          <li key={a.name}>
-            <strong>{a.name}</strong> — {a.description} <em>[{a.capabilities.join(", ")}]</em>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <Card>
+      <CardHeader>
+        <CardTitle>Agents</CardTitle>
+        <CardDescription>Independent workers, routed to a task by capability tag.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <LoadError error={error} />
+        {agents.length === 0 && !error && <Skeleton className="h-24 w-full" />}
+        <ul className="divide-y">
+          {agents.map((a) => (
+            <li key={a.name} className="space-y-1.5 py-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold">{a.name}</span>
+                {a.capabilities.map((c) => (
+                  <Badge key={c} variant="outline">
+                    {c}
+                  </Badge>
+                ))}
+              </div>
+              <p className="text-sm text-muted-foreground">{a.description}</p>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -145,17 +324,31 @@ function ToolsTab() {
     api.tools().then(setTools).catch((e) => setError(e.message));
   }, []);
   return (
-    <section>
-      <h2>Tools</h2>
-      <LoadError error={error} />
-      <ul>
-        {tools.map((t) => (
-          <li key={t.name}>
-            <strong>{t.name}</strong> — {t.description} <em>[{t.actions.join(", ")}]</em>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <Card>
+      <CardHeader>
+        <CardTitle>Tools</CardTitle>
+        <CardDescription>Discoverable capabilities agents and workflows can call.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <LoadError error={error} />
+        {tools.length === 0 && !error && <Skeleton className="h-24 w-full" />}
+        <ul className="divide-y">
+          {tools.map((t) => (
+            <li key={t.name} className="space-y-1.5 py-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold">{t.name}</span>
+                {t.actions.map((a) => (
+                  <Badge key={a} variant="outline">
+                    {a}
+                  </Badge>
+                ))}
+              </div>
+              <p className="text-sm text-muted-foreground">{t.description}</p>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -179,27 +372,45 @@ function PlanTab() {
   };
 
   return (
-    <section>
-      <h2>Plan a goal</h2>
-      <div className="row-form">
-        <input value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="e.g. Add dark mode toggle to the settings page" />
-        <button onClick={submit} disabled={loading}>
-          {loading ? "Planning..." : "Plan"}
-        </button>
-      </div>
-      <LoadError error={error} />
-      {graph && (
-        <ol>
-          {graph.tasks.map((t) => (
-            <li key={t.id}>
-              <strong>[{t.capability}]</strong> {t.title}
-              {t.dependsOn?.length ? <span className="deps"> (after: {t.dependsOn.join(", ")})</span> : null}
-              <div className="desc">{t.description}</div>
-            </li>
-          ))}
-        </ol>
-      )}
-    </section>
+    <Card>
+      <CardHeader>
+        <CardTitle>Plan a goal</CardTitle>
+        <CardDescription>Decompose a natural-language goal into a dependency-graph of tasks.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex gap-2">
+          <Input
+            value={goal}
+            onChange={(e) => setGoal(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submit()}
+            placeholder="e.g. Add dark mode toggle to the settings page"
+          />
+          <Button onClick={submit} disabled={loading}>
+            {loading ? "Planning…" : "Plan"}
+          </Button>
+        </div>
+        <LoadError error={error} />
+        {graph && (
+          <ol className="space-y-3">
+            {graph.tasks.map((t, i) => (
+              <li key={t.id} className="rounded-lg border p-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-xs font-medium">
+                    {i + 1}
+                  </span>
+                  <Badge variant="secondary">{t.capability}</Badge>
+                  <span className="text-sm font-medium">{t.title}</span>
+                </div>
+                {t.dependsOn?.length ? (
+                  <p className="mt-1 pl-7 text-xs text-muted-foreground">after: {t.dependsOn.join(", ")}</p>
+                ) : null}
+                <p className="mt-1 pl-7 text-sm text-muted-foreground">{t.description}</p>
+              </li>
+            ))}
+          </ol>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -214,6 +425,12 @@ const DEFAULT_WORKFLOW = JSON.stringify(
   null,
   2
 );
+
+const STATUS_VARIANT: Record<string, "success" | "destructive" | "warning"> = {
+  success: "success",
+  failed: "destructive",
+  skipped: "warning"
+};
 
 function WorkflowTab() {
   const [source, setSource] = useState(DEFAULT_WORKFLOW);
@@ -243,28 +460,35 @@ function WorkflowTab() {
   };
 
   return (
-    <section>
-      <h2>Run a workflow</h2>
-      <p className="desc">Paste a workflow definition (see examples/workflows/) or edit the default below.</p>
-      <textarea rows={10} value={source} onChange={(e) => setSource(e.target.value)} />
-      <div className="row-form">
-        <button onClick={run} disabled={loading}>
-          {loading ? "Running..." : "Run workflow"}
-        </button>
-      </div>
-      {error && <p className="error">{error}</p>}
-      {results && (
-        <ul>
-          {Object.values(results).map((r) => (
-            <li key={r.id}>
-              <span className={`status-badge status-${r.status}`}>{r.status}</span> <strong>{r.id}</strong>
-              {r.error && <div className="error">{r.error}</div>}
-              {r.output != null && <div className="desc">{String(r.output)}</div>}
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+    <Card>
+      <CardHeader>
+        <CardTitle>Run a workflow</CardTitle>
+        <CardDescription>
+          Paste a workflow definition (see <code className="font-mono">examples/workflows/</code>) or edit the default below.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Textarea rows={10} value={source} onChange={(e) => setSource(e.target.value)} />
+        <Button onClick={run} disabled={loading}>
+          {loading ? "Running…" : "Run workflow"}
+        </Button>
+        <LoadError error={error} />
+        {results && (
+          <ul className="space-y-2">
+            {Object.values(results).map((r) => (
+              <li key={r.id} className="rounded-lg border p-3">
+                <div className="flex items-center gap-2">
+                  <Badge variant={STATUS_VARIANT[r.status] ?? "outline"}>{r.status}</Badge>
+                  <span className="text-sm font-medium">{r.id}</span>
+                </div>
+                {r.error && <p className="mt-1 text-sm text-destructive">{r.error}</p>}
+                {r.output != null && <p className="mt-1 text-sm text-muted-foreground">{String(r.output)}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -313,37 +537,52 @@ function MemoryTab() {
   };
 
   return (
-    <section>
-      <h2>Memory</h2>
-      <div className="row-form">
-        <select value={scope} onChange={(e) => setScope(e.target.value as MemoryScope)}>
-          {SCOPES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-      </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Memory</CardTitle>
+        <CardDescription>Short-term, session, project, and global scopes with semantic recall.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Select value={scope} onValueChange={(v) => setScope(v as MemoryScope)}>
+          <SelectTrigger className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SCOPES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-      <div className="row-form">
-        <input value={key} onChange={(e) => setKey(e.target.value)} placeholder="key" />
-        <input value={value} onChange={(e) => setValue(e.target.value)} placeholder="value" />
-        <button onClick={remember}>Remember</button>
-      </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input value={key} onChange={(e) => setKey(e.target.value)} placeholder="key" />
+          <Input value={value} onChange={(e) => setValue(e.target.value)} placeholder="value" />
+          <Button onClick={remember} className="shrink-0">
+            Remember
+          </Button>
+        </div>
 
-      <LoadError error={error} />
-      {records.length === 0 && !error && <p className="desc">No records in "{scope}" memory yet.</p>}
-      <ul>
-        {records.map((r) => (
-          <li key={r.id}>
-            <strong>{r.key}</strong> = {JSON.stringify(r.value)}
-            <button className="link-button" onClick={() => forget(r.key)}>
-              forget
-            </button>
-          </li>
-        ))}
-      </ul>
-    </section>
+        <LoadError error={error} />
+        {records.length === 0 && !error ? (
+          <EmptyState>No records in "{scope}" memory yet.</EmptyState>
+        ) : (
+          <ul className="divide-y">
+            {records.map((r) => (
+              <li key={r.id} className="flex items-center justify-between gap-2 py-2.5 text-sm">
+                <span>
+                  <span className="font-medium">{r.key}</span> = {JSON.stringify(r.value)}
+                </span>
+                <Button variant="ghost" size="icon" onClick={() => forget(r.key)} aria-label={`Forget ${r.key}`}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -365,21 +604,38 @@ function LogsTab() {
     return () => clearInterval(interval);
   }, []);
 
+  const levelVariant: Record<LogEntry["level"], "destructive" | "warning" | "secondary" | "outline"> = {
+    error: "destructive",
+    warn: "warning",
+    info: "secondary",
+    debug: "outline"
+  };
+
   return (
-    <section>
-      <h2>Logs</h2>
-      <LoadError error={error} />
-      {logs.length === 0 && !error && <p className="desc">No log entries yet for the running API process.</p>}
-      <ul className="log-list">
-        {logs.map((l, i) => (
-          <li key={i} className={`log-${l.level}`}>
-            <span className="log-time">{new Date(l.timestamp).toLocaleTimeString()}</span>
-            <span className="log-level">{l.level.toUpperCase()}</span>
-            <span>{l.message}</span>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <Card>
+      <CardHeader>
+        <CardTitle>Logs</CardTitle>
+        <CardDescription>Every event bus emission is mirrored here in real time.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <LoadError error={error} />
+        {logs.length === 0 && !error ? (
+          <EmptyState>No log entries yet for the running API process.</EmptyState>
+        ) : (
+          <ul className="max-h-[28rem] space-y-1.5 overflow-y-auto font-mono text-xs">
+            {logs.map((l, i) => (
+              <li key={i} className="flex items-start gap-2 border-b py-1.5">
+                <span className="shrink-0 text-muted-foreground">{new Date(l.timestamp).toLocaleTimeString()}</span>
+                <Badge variant={levelVariant[l.level]} className="shrink-0 px-1.5 py-0 text-[10px]">
+                  {l.level}
+                </Badge>
+                <span className="break-all">{l.message}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -403,16 +659,13 @@ function ChatTab() {
     setSending(true);
     setError(null);
     try {
-      await api.chatStream(
-        next.slice(0, -1),
-        (delta) => {
-          setHistory((h) => {
-            const copy = [...h];
-            copy[copy.length - 1] = { role: "assistant", content: copy[copy.length - 1].content + delta };
-            return copy;
-          });
-        }
-      );
+      await api.chatStream(next.slice(0, -1), (delta) => {
+        setHistory((h) => {
+          const copy = [...h];
+          copy[copy.length - 1] = { role: "assistant", content: copy[copy.length - 1].content + delta };
+          return copy;
+        });
+      });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -421,30 +674,45 @@ function ChatTab() {
   };
 
   return (
-    <section>
-      <h2>Chat</h2>
-      <LoadError error={error} />
-      <div className="chat-log">
-        {history.length === 0 && <p className="desc">Say hello to the active provider.</p>}
-        {history.map((m, i) => (
-          <div key={i} className={`bubble bubble-${m.role}`}>
-            <strong>{m.role === "user" ? "you" : "ash"}</strong>
-            <div>{m.content}</div>
-          </div>
-        ))}
-        <div ref={bottomRef} />
-      </div>
-      <div className="row-form">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder="Type a message..."
-        />
-        <button onClick={send} disabled={sending}>
-          {sending ? "..." : "Send"}
-        </button>
-      </div>
-    </section>
+    <Card>
+      <CardHeader>
+        <CardTitle>Chat</CardTitle>
+        <CardDescription>Talk to the active provider directly.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <LoadError error={error} />
+        <div className="flex max-h-[26rem] min-h-[10rem] flex-col gap-3 overflow-y-auto rounded-lg border bg-muted/30 p-4">
+          {history.length === 0 && <EmptyState>Say hello to the active provider.</EmptyState>}
+          {history.map((m, i) => (
+            <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
+              <div
+                className={cn(
+                  "max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
+                  m.role === "user" ? "bg-primary text-primary-foreground" : "border bg-card"
+                )}
+              >
+                <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide opacity-70">
+                  {m.role === "user" ? "you" : "ash"}
+                </p>
+                {m.content}
+              </div>
+            </div>
+          ))}
+          <div ref={bottomRef} />
+        </div>
+        <div className="flex gap-2">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && send()}
+            placeholder="Type a message..."
+          />
+          <Button onClick={send} disabled={sending} className="shrink-0">
+            <Send className="h-4 w-4" />
+            {sending ? "…" : "Send"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

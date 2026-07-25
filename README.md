@@ -47,7 +47,7 @@ sdk/        AshOS facade wiring everything together for embedding
 cli/        `ash` command
 api/        REST API (express)
 plugins/    reference plugins (git, shell) + plugin dev guide
-dashboard/  minimal Vite + React UI
+dashboard/  Vite + React + Tailwind v4 + shadcn/ui-style dashboard
 examples/   example workflow definitions
 docs/       architecture, plugin, provider, API, CLI, roadmap docs
 ```
