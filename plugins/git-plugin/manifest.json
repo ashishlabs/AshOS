@@ -1,0 +1,6 @@
+{
+  "name": "git",
+  "version": "0.1.0",
+  "description": "Registers the git tool and git agent",
+  "provides": ["tool:git", "agent:git"]
+}

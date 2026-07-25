@@ -1,0 +1,6 @@
+{
+  "name": "shell",
+  "version": "0.1.0",
+  "description": "Registers the shell tool and testing agent",
+  "provides": ["tool:shell", "agent:testing"]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "youtube-pipeline",
+  "description": "Illustrative workflow from the AshOS architecture spec: repo -> analysis -> script -> storyboard -> images -> voice -> video -> upload. The video/voice/image steps below reference agent capabilities that ship as plugins (see docs/roadmap.md) rather than the core package.",
+  "steps": [
+    { "id": "analyse", "uses": "agent:research", "params": { "description": "Analyse the target GitHub repository" } },
+    { "id": "script", "uses": "agent:code", "dependsOn": ["analyse"], "params": { "description": "Generate a video script from the analysis" } },
+    { "id": "storyboard", "uses": "agent:storyboard", "dependsOn": ["script"], "params": { "description": "Turn the script into a storyboard" } },
+    { "id": "images", "uses": "agent:vision", "dependsOn": ["storyboard"], "params": { "description": "Generate images per storyboard frame" } },
+    { "id": "voice", "uses": "agent:voice", "dependsOn": ["script"], "params": { "description": "Synthesize narration audio" } },
+    { "id": "video", "uses": "agent:video", "dependsOn": ["images", "voice"], "params": { "description": "Compose final video with ffmpeg" } },
+    { "id": "upload", "uses": "agent:youtube", "dependsOn": ["video"], "params": { "description": "Upload the finished video" } }
+  ]
+}

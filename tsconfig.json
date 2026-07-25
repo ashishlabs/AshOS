@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "outDir": "dist",
+    "rootDir": ".",
+    "declaration": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowJs": false,
+    "sourceMap": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "kernel/**/*.ts",
+    "providers/**/*.ts",
+    "tools/**/*.ts",
+    "memory/**/*.ts",
+    "agents/**/*.ts",
+    "planner/**/*.ts",
+    "workflow/**/*.ts",
+    "scheduler/**/*.ts",
+    "cli/**/*.ts",
+    "api/**/*.ts",
+    "sdk/**/*.ts",
+    "tests/**/*.ts",
+    "plugins/**/*.ts"
+  ],
+  "exclude": ["dashboard", "node_modules", "dist"]
+}

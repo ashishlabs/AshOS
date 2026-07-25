@@ -1,0 +1,25 @@
+services:
+  ashos-api:
+    build: .
+    ports:
+      - "4700:4700"
+    environment:
+      - ASHOS_PROVIDER=${ASHOS_PROVIDER:-mock}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - ashos-data:/app/.ashos
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+
+volumes:
+  ashos-data:
+  ollama-data:

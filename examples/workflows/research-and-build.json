@@ -1,0 +1,10 @@
+{
+  "name": "research-and-build",
+  "description": "Research a topic, write the implementation, verify it, and report status.",
+  "steps": [
+    { "id": "research", "uses": "agent:research", "params": { "description": "Research best practices for the feature" } },
+    { "id": "implement", "uses": "agent:code", "dependsOn": ["research"], "params": { "description": "Implement the feature", "file": "./generated/feature.ts" } },
+    { "id": "test", "uses": "agent:test", "dependsOn": ["implement"], "params": { "command": "npm test" } },
+    { "id": "status", "uses": "tool:git", "dependsOn": ["test"], "action": "status", "params": {} }
+  ]
+}
