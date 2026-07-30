@@ -175,4 +175,87 @@ describe("AshOS API", () => {
     expect(Array.isArray(body)).toBe(true);
     expect(body.every((e: any) => e.name.startsWith("memory:"))).toBe(true);
   });
+
+  it("GET /evolution/mutations lists the built-in reversible mutations", async () => {
+    const res = await fetch(`${baseUrl}/evolution/mutations`);
+    const body = (await res.json()) as any[];
+    expect(body.map((m) => m.id).sort()).toEqual(
+      ["prompt-rewrite", "retry-count-adjust", "temperature-adjust", "workflow-reorder"].sort()
+    );
+  });
+
+  it("GET /evolution/benchmarks lists the built-in benchmarks", async () => {
+    const res = await fetch(`${baseUrl}/evolution/benchmarks`);
+    const body = (await res.json()) as any[];
+    expect(body.map((b) => b.id).sort()).toEqual(["code-gen-is-palindrome", "reasoning-ci-setup-plan"]);
+  });
+
+  it("GET /evolution/config reflects the default research provider config", async () => {
+    const res = await fetch(`${baseUrl}/evolution/config`);
+    const body = (await res.json()) as any;
+    expect(body.researchProvider).toBe("lmstudio");
+    expect(body.autoMerge).toBe(false);
+    expect(body.requireTests).toBe(true);
+  });
+
+  it("PATCH /evolution/config merges the given fields and persists them", async () => {
+    const res = await fetch(`${baseUrl}/evolution/config`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ maxExperiments: 3 })
+    });
+    const body = (await res.json()) as any;
+    expect(body.maxExperiments).toBe(3);
+    expect(body.researchProvider).toBe("lmstudio");
+
+    const after = (await (await fetch(`${baseUrl}/evolution/config`)).json()) as any;
+    expect(after.maxExperiments).toBe(3);
+  });
+
+  it("GET /evolution/stats and /evolution/leaderboard start empty", async () => {
+    const stats = (await (await fetch(`${baseUrl}/evolution/stats`)).json()) as any;
+    expect(stats).toEqual({ total: 0, accepted: 0, rejected: 0, errors: 0, acceptanceRate: 0 });
+
+    const leaderboard = (await (await fetch(`${baseUrl}/evolution/leaderboard`)).json()) as any;
+    expect(leaderboard).toEqual([]);
+  });
+
+  it("GET /evolution/experiments/:id 404s for an unknown experiment", async () => {
+    const res = await fetch(`${baseUrl}/evolution/experiments/does-not-exist`);
+    expect(res.status).toBe(404);
+  });
+
+  it("POST /evolution/run starts a background cycle, rejects a second concurrent run, and the result becomes queryable", async () => {
+    // Fire both requests back-to-back without awaiting the first response in
+    // between: the background experiment can fail (e.g. "not a git
+    // repository") and reset the in-flight flag within a few milliseconds,
+    // so awaiting a full request/response round trip before sending the
+    // second request leaves too wide a window and makes this racy.
+    const [first, second] = await Promise.all([
+      fetch(`${baseUrl}/evolution/run`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ maxExperiments: 1, parallelExperiments: 1 })
+      }),
+      fetch(`${baseUrl}/evolution/run`, { method: "POST" })
+    ]);
+    // The two requests race, so either one may reach the server first — only
+    // one of them should be accepted (202) and the other rejected (409).
+    const statuses = [first.status, second.status].sort();
+    expect(statuses).toEqual([202, 409]);
+    const started = first.status === 202 ? first : second;
+    expect(((await started.json()) as any).started).toBe(true);
+
+    // The API root isn't a git repo, so the experiment errors out inside the
+    // pipeline (no crash) — this proves the async cycle is wired end to end
+    // and its result is queryable, without needing a real repo/build here.
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    const statusRes = (await (await fetch(`${baseUrl}/evolution/status`)).json()) as any;
+    expect(statusRes.running).toBe(false);
+
+    const experiments = (await (await fetch(`${baseUrl}/evolution/experiments`)).json()) as any;
+    expect(experiments.length).toBeGreaterThan(0);
+    expect(experiments[0].status).toBe("error");
+  }, 10000);
 });

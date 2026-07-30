@@ -11,6 +11,7 @@ import { registerRunCommand } from "./commands/run";
 import { registerChatCommand } from "./commands/chat";
 import { registerMemoryCommand } from "./commands/memory";
 import { registerLogsCommand } from "./commands/logs";
+import { registerEvolveCommand } from "./commands/evolve";
 
 const program = new Command();
 program.name("ash").description("AshOS — AI Operating System for Developers").version("0.1.0");
@@ -25,5 +26,6 @@ registerRunCommand(program);
 registerChatCommand(program);
 registerMemoryCommand(program);
 registerLogsCommand(program);
+registerEvolveCommand(program);
 
 program.parseAsync(process.argv);

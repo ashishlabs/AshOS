@@ -1,14 +1,29 @@
 import fs from "node:fs";
 import path from "node:path";
 
+export interface EvolutionConfig {
+  /** Provider name (as registered in ProviderRegistry) used to generate hypotheses, e.g. "lmstudio". */
+  researchProvider: string;
+  /** Model name passed through to the research provider. Never hardcoded — read from here only. */
+  researchModel: string;
+  maxExperiments: number;
+  parallelExperiments: number;
+  /** Seconds. */
+  benchmarkTimeout: number;
+  autoMerge: boolean;
+  requireTests: boolean;
+}
+
 export interface AshOSConfig {
-  provider: "anthropic" | "openai" | "ollama" | "mock";
+  provider: "anthropic" | "openai" | "ollama" | "lmstudio" | "mock";
   providers: {
     anthropic?: { apiKey?: string; model?: string };
     openai?: { apiKey?: string; model?: string };
     ollama?: { baseUrl?: string; model?: string };
+    lmstudio?: { baseUrl?: string; apiKey?: string; model?: string };
   };
   plugins: string[];
+  evolution: EvolutionConfig;
   createdAt: string;
 }
 
@@ -29,9 +44,23 @@ export function defaultConfig(): AshOSConfig {
     providers: {
       anthropic: { apiKey: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-5" },
       openai: { apiKey: process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL ?? "gpt-4o-mini" },
-      ollama: { baseUrl: process.env.OLLAMA_BASE_URL ?? "http://localhost:11434", model: process.env.OLLAMA_MODEL ?? "llama3.1" }
+      ollama: { baseUrl: process.env.OLLAMA_BASE_URL ?? "http://localhost:11434", model: process.env.OLLAMA_MODEL ?? "llama3.1" },
+      lmstudio: {
+        baseUrl: process.env.LMSTUDIO_BASE_URL ?? process.env.OPENAI_BASE_URL ?? "http://localhost:1234/v1",
+        apiKey: process.env.LMSTUDIO_API_KEY ?? "lm-studio",
+        model: process.env.LMSTUDIO_MODEL ?? ""
+      }
     },
     plugins: [],
+    evolution: {
+      researchProvider: process.env.ASHOS_RESEARCH_PROVIDER ?? "lmstudio",
+      researchModel: process.env.ASHOS_RESEARCH_MODEL ?? "google/gemma-4-12b-qat",
+      maxExperiments: 20,
+      parallelExperiments: 2,
+      benchmarkTimeout: 300,
+      autoMerge: false,
+      requireTests: true
+    },
     createdAt: new Date().toISOString()
   };
 }

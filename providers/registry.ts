@@ -3,6 +3,7 @@ import { MockProvider } from "./mock-provider";
 import { AnthropicProvider } from "./anthropic-provider";
 import { OpenAIProvider } from "./openai-provider";
 import { OllamaProvider } from "./ollama-provider";
+import { LMStudioProvider } from "./lmstudio-provider";
 import type { AshOSConfig } from "../kernel/config";
 
 /**
@@ -39,6 +40,15 @@ export class ProviderRegistry {
         new OllamaProvider({
           baseUrl: config.providers.ollama?.baseUrl,
           model: config.providers.ollama?.model
+        })
+    );
+    this.factories.set(
+      "lmstudio",
+      () =>
+        new LMStudioProvider({
+          baseUrl: config.providers.lmstudio?.baseUrl,
+          apiKey: config.providers.lmstudio?.apiKey,
+          model: config.providers.lmstudio?.model
         })
     );
   }

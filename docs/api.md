@@ -21,4 +21,21 @@ Start it with `npm run api`.
 | POST | `/memory/forget` | `{ scope, key }` | Deletes a memory record. |
 | GET | `/logs` | — | Recent structured log entries. Every event bus emission (except `log` itself) is mirrored into the logger by `Kernel`, so this doubles as a live activity log even if no subsystem calls the logger directly. |
 
+### Evolution Engine (`/evolution/*`)
+
+| Method | Path | Body | Description |
+|---|---|---|---|
+| POST | `/evolution/run` | `{ maxExperiments?, parallelExperiments?, benchmarkIds? }` | Fire-and-forget: starts a cycle in the background and returns `202 { started: true }` immediately, or `409` if a cycle is already running. |
+| GET | `/evolution/status` | — | `{ running, config }` — whether a cycle is in flight plus the active `EvolutionConfig`. |
+| GET | `/evolution/experiments?limit=` | — | Experiment history, newest first. |
+| GET | `/evolution/experiments/:id` | — | Full record for one experiment (hypothesis, metrics, logs, decision), or `404`. |
+| GET | `/evolution/leaderboard?limit=` | — | Top experiments by weighted overall score. |
+| GET | `/evolution/stats` | — | `{ total, accepted, rejected, errors, acceptanceRate }`. |
+| GET | `/evolution/mutations` | — | Registered mutations (`id`, `name`, `description`, `targetKind`). |
+| GET | `/evolution/benchmarks` | — | Registered benchmarks (`id`, `category`, `description`). |
+| GET | `/evolution/config` | — | Current `EvolutionConfig`. |
+| PATCH | `/evolution/config` | partial `EvolutionConfig` | Merges into and persists the evolution config. |
+
+See `docs/evolution.md` for the full pipeline (git-worktree isolation, benchmark/mutation contracts, experiment schema) that these routes expose.
+
 GraphQL, WebSocket, and MCP transports are on the roadmap (`docs/roadmap.md`) — the REST surface above is the current source of truth and is what the dashboard and CLI consume.

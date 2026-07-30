@@ -14,7 +14,18 @@ ash chat                                 Interactive chat session
 ash memory list [--scope <scope>]        Inspect memory records
 ash memory forget <scope> <key>          Delete a memory record
 ash logs                                 Show recent log entries
+ash evolve run [-m <n>] [-p <n>] [-b <ids>]   Run an evolution cycle (observe->mutate->benchmark->accept/reject)
+ash evolve status                        Show Evolution Engine config + history summary
+ash evolve list [-l <n>]                 List past experiments, newest first
+ash evolve show <id>                     Show full detail for one experiment
+ash evolve mutations                     List registered mutations
+ash evolve benchmarks                    List registered benchmarks
 ```
 
 Run `npm run cli -- <command>` during development, or `ash <command>`
 once installed globally after `npm run build && npm link`.
+
+`ash evolve exec --input <text>` also exists but is internal: the Evolution
+Engine spawns it inside a mutated git worktree to exercise that workspace's
+own `ashos.run()` pipeline during benchmarking — not meant for interactive
+use. See `docs/evolution.md` for the full `ash evolve` design.

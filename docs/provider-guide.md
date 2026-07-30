@@ -1,6 +1,6 @@
 # Provider Guide
 
-AshOS ships four providers out of the box, all implementing the same
+AshOS ships five providers out of the box, all implementing the same
 `AIProvider` interface (`providers/types.ts`):
 
 | Provider | Backend | Notes |
@@ -9,6 +9,7 @@ AshOS ships four providers out of the box, all implementing the same
 | `anthropic` | Anthropic Messages API | Requires `ANTHROPIC_API_KEY`. No embeddings endpoint. |
 | `openai` | OpenAI Chat Completions + Embeddings API | Requires `OPENAI_API_KEY`. |
 | `ollama` | Local Ollama server | Requires `OLLAMA_BASE_URL` (default `http://localhost:11434`) and a pulled model. Also compatible with LM Studio's Ollama-style API. |
+| `lmstudio` | Local LM Studio server (OpenAI-compatible) | Defaults to `http://localhost:1234/v1`; model comes from `providers.lmstudio.model` in config (never hardcoded) — used as the default Evolution Engine research provider, see `docs/evolution.md`. |
 
 ## Switching providers
 

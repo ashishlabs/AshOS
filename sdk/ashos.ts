@@ -15,6 +15,7 @@ import { Planner } from "../planner/planner";
 import { TaskExecutor } from "../planner/executor";
 import { WorkflowEngine } from "../workflow/workflow-engine";
 import { Scheduler } from "../scheduler/scheduler";
+import { EvolutionModule } from "../evolution/evolution-module";
 import type { AgentContext } from "../agents/types";
 import type { WorkflowDefinition } from "../workflow/types";
 import type { TaskGraph } from "../planner/types";
@@ -38,6 +39,7 @@ export class AshOS {
   readonly tools: ToolRegistry;
   readonly agents: AgentRegistry;
   readonly scheduler: Scheduler;
+  readonly evolution: EvolutionModule;
 
   constructor(opts: AshOSOptions = {}) {
     this.kernel = new Kernel({ root: opts.root });
@@ -56,6 +58,8 @@ export class AshOS {
     this.agents.register(new ResearchAgent());
     this.agents.register(new GitAgent());
     this.agents.register(new TestingAgent());
+
+    this.evolution = new EvolutionModule({ kernel: this.kernel, providers: this.providers, scheduler: this.scheduler });
   }
 
   private agentContext(): AgentContext {
@@ -97,7 +101,8 @@ export class AshOS {
       kernel: this.kernel,
       tools: this.tools,
       agents: this.agents,
-      providers: this.providers
+      providers: this.providers,
+      evolution: { mutations: this.evolution.mutations, benchmarks: this.evolution.benchmarks }
     });
     for (const name of loaded) this.kernel.eventBus.emit("plugin:installed", { name });
     return loaded;

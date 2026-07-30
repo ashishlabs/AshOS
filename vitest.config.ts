@@ -15,6 +15,7 @@ export default defineConfig({
       "sdk/**/*.test.ts",
       "api/**/*.test.ts",
       "cli/**/*.test.ts",
+      "evolution/**/*.test.ts",
       "tests/**/*.test.ts"
     ],
     coverage: {
@@ -31,7 +32,8 @@ export default defineConfig({
         "scheduler/**/*.ts",
         "sdk/**/*.ts",
         "api/**/*.ts",
-        "cli/**/*.ts"
+        "cli/**/*.ts",
+        "evolution/**/*.ts"
       ],
       exclude: ["**/*.test.ts", "**/types.ts"]
     }

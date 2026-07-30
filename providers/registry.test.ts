@@ -16,6 +16,12 @@ describe("ProviderRegistry", () => {
     expect(registry.get("mock")).toBe(registry.get("mock"));
   });
 
+  it("registers lmstudio alongside the other built-in providers", () => {
+    const registry = new ProviderRegistry(defaultConfig());
+    expect(registry.list()).toEqual(expect.arrayContaining(["mock", "anthropic", "openai", "ollama", "lmstudio"]));
+    expect(registry.get("lmstudio").name()).toBe("lmstudio");
+  });
+
   it("throws for unknown providers", () => {
     const registry = new ProviderRegistry(defaultConfig());
     expect(() => registry.get("does-not-exist")).toThrow(/unknown provider/);

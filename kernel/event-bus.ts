@@ -18,6 +18,11 @@ export type AshOSEventName =
   | "workflow:started"
   | "workflow:finished"
   | "scheduler:job-fired"
+  | "evolution:cycle-started"
+  | "evolution:cycle-finished"
+  | "evolution:experiment-started"
+  | "evolution:experiment-finished"
+  | "evolution:experiment-failed"
   | "log";
 
 export interface AshOSEvent<T = unknown> {

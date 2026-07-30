@@ -30,7 +30,8 @@
     "api/**/*.ts",
     "sdk/**/*.ts",
     "tests/**/*.ts",
-    "plugins/**/*.ts"
+    "plugins/**/*.ts",
+    "evolution/**/*.ts"
   ],
   "exclude": ["dashboard", "node_modules", "dist"]
 }

@@ -45,6 +45,8 @@ export default plugin;
 - `host.tools` — a `ToolRegistry` to add new `Tool` implementations to
 - `host.agents` — an `AgentRegistry` to add new `Agent` implementations to
 - `host.providers` — a `ProviderRegistry` to register new `AIProvider` factories
+- `host.evolution` — `{ mutations, benchmarks }` registries for the Evolution
+  Engine; see `evolution/plugins/evolution-extras/` and `docs/evolution.md`
 
 ## Writing a Tool
 
