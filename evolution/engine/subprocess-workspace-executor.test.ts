@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { linkNodeModules, SubprocessWorkspaceExecutor } from "./subprocess-workspace-executor";
+import { linkNodeModules, parseTestSummary, SubprocessWorkspaceExecutor } from "./subprocess-workspace-executor";
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
 
@@ -99,6 +99,40 @@ describe("SubprocessWorkspaceExecutor (real subprocesses, no fakes)", () => {
     const executor = new SubprocessWorkspaceExecutor(REPO_ROOT);
     const result = await executor.test(workspaceRoot, 20_000);
     expect(result.passed).toBe(6);
+    expect(result.failed).toBe(2);
+  });
+
+  it("parseTestSummary reads the final 'Tests' line, not the 'Test Files' line or a per-file breakdown", () => {
+    // Shape of real vitest output when one file has failures: a per-file
+    // line reporting that file's own failed count, then a `Test Files`
+    // summary, then the actual `Tests` summary last. All three contain a
+    // "\d+ failed"/"\d+ passed" substring — only the last one is correct.
+    const realisticLog = [
+      " ✓ kernel/dag.test.ts (5 tests) 12ms",
+      " ❯ evolution/mutation/mutations.test.ts (7 tests | 2 failed) 9ms",
+      "",
+      " Test Files  1 failed | 28 passed (29)",
+      "      Tests  2 failed | 164 passed (166)"
+    ].join("\n");
+
+    expect(parseTestSummary(realisticLog)).toEqual({ passed: 164, failed: 2 });
+  });
+
+  it("test() parses a realistic multi-file vitest log correctly (regression: previously picked up the wrong line)", async () => {
+    fs.writeFileSync(
+      path.join(workspaceRoot, "package.json"),
+      JSON.stringify({
+        name: "x",
+        scripts: {
+          typecheck: 'node -e "process.exit(0)"',
+          test:
+            'node -e "console.log(\' \\u2717 some.test.ts (7 tests | 2 failed) 9ms\'); console.log(\' Test Files  1 failed | 28 passed (29)\'); console.log(\'      Tests  2 failed | 164 passed (166)\'); process.exit(1)"'
+        }
+      })
+    );
+    const executor = new SubprocessWorkspaceExecutor(REPO_ROOT);
+    const result = await executor.test(workspaceRoot, 20_000);
+    expect(result.passed).toBe(164);
     expect(result.failed).toBe(2);
   });
 

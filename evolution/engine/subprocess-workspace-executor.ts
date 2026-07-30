@@ -37,6 +37,24 @@ export function linkNodeModules(repoRoot: string, worktreePath: string): void {
 }
 
 /**
+ * Extracts pass/fail counts from vitest's final `Tests  X failed | Y passed
+ * (Z)` summary line specifically. A naive "first `\d+ passed`/`\d+ failed`
+ * anywhere in the log" search (the original implementation) instead matches
+ * whichever comes first — the `Test Files` summary line above it, or a
+ * per-file breakdown like `❯ some.test.ts (2 failed)` — silently reporting
+ * the wrong counts whenever a real multi-file run has any failures.
+ */
+export function parseTestSummary(log: string): { passed: number; failed: number } {
+  const testsLine = log.match(/^\s*Tests\s+.+$/m)?.[0] ?? log;
+  const failedMatch = testsLine.match(/(\d+)\s+failed/);
+  const passedMatch = testsLine.match(/(\d+)\s+passed/);
+  return {
+    passed: passedMatch ? parseInt(passedMatch[1], 10) : 0,
+    failed: failedMatch ? parseInt(failedMatch[1], 10) : 0
+  };
+}
+
+/**
  * Real, process-spawning implementation of WorkspaceExecutor. `build()` and
  * `test()` shell out to the workspace's own npm scripts; `execute()` runs a
  * single input through the workspace's own CLI (`ash evolve exec`, added
@@ -58,13 +76,7 @@ export class SubprocessWorkspaceExecutor implements WorkspaceExecutor {
     linkNodeModules(this.repoRoot, worktreePath);
     const { stdout, stderr } = await run("npm", ["test"], worktreePath, timeoutMs);
     const log = stdout + stderr;
-    const failedMatch = log.match(/(\d+)\s+failed/);
-    const passedMatch = log.match(/(\d+)\s+passed/);
-    return {
-      passed: passedMatch ? parseInt(passedMatch[1], 10) : 0,
-      failed: failedMatch ? parseInt(failedMatch[1], 10) : 0,
-      log
-    };
+    return { ...parseTestSummary(log), log };
   }
 
   async execute(worktreePath: string, input: string, timeoutMs: number): Promise<string> {
