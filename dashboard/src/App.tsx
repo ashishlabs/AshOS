@@ -7,6 +7,7 @@ import {
   GitBranch,
   LayoutDashboard,
   ListTodo,
+  Menu,
   Moon,
   Play,
   ScrollText,
@@ -14,7 +15,8 @@ import {
   Sparkles,
   Sun,
   Trash2,
-  Wrench
+  Wrench,
+  X
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -22,7 +24,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -113,74 +114,131 @@ function StatusPill() {
   );
 }
 
+const TAB_PANELS: Record<Tab, React.ComponentType> = {
+  dashboard: DashboardTab,
+  providers: ProvidersTab,
+  agents: AgentsTab,
+  tools: ToolsTab,
+  plan: PlanTab,
+  workflow: WorkflowTab,
+  evolution: EvolutionTab,
+  memory: MemoryTab,
+  logs: LogsTab,
+  chat: ChatTab
+};
+
+function Logo({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[image:var(--gradient-brand)] shadow-[0_0_20px_-4px_var(--glow-primary)]">
+        <Sparkles className="h-4 w-4 text-primary-foreground" />
+      </div>
+      {!compact && (
+        <div>
+          <h1 className="text-sm font-bold leading-tight tracking-tight text-gradient">AshOS</h1>
+          <p className="text-xs leading-tight text-muted-foreground">AI Operating System for Developers</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Sidebar({
+  tab,
+  onSelect,
+  open,
+  onClose
+}: {
+  tab: Tab;
+  onSelect: (t: Tab) => void;
+  open: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <>
+      {open && <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden" onClick={onClose} aria-hidden="true" />}
+      <aside
+        className={cn(
+          "glass fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r transition-transform duration-300 ease-in-out md:sticky md:top-0 md:z-0 md:h-screen md:translate-x-0",
+          open ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="flex items-center justify-between px-4 py-4">
+          <Logo />
+          <Button variant="ghost" size="icon" className="md:hidden" onClick={onClose} aria-label="Close navigation">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
+          {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
+            const active = tab === id;
+            return (
+              <button
+                key={id}
+                onClick={() => {
+                  onSelect(id);
+                  onClose();
+                }}
+                className={cn(
+                  "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200",
+                  active
+                    ? "bg-[image:var(--gradient-brand)] text-primary-foreground shadow-[0_0_16px_-4px_var(--glow-primary)]"
+                    : "text-muted-foreground hover:bg-accent/10 hover:text-foreground"
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {label}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="border-t p-3 text-center text-[10px] text-muted-foreground">AshOS v0.1.0</div>
+      </aside>
+    </>
+  );
+}
+
 export function App() {
   const [tab, setTab] = useState<Tab>("dashboard");
+  const [navOpen, setNavOpen] = useState(false);
   const { dark, toggle } = useTheme();
+  const ActivePanel = TAB_PANELS[tab];
+  const activeLabel = NAV_ITEMS.find((n) => n.id === tab)?.label ?? "";
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="glass sticky top-0 z-10 border-b">
-        <div className="absolute inset-x-0 bottom-0 h-px bg-[image:var(--gradient-brand)] opacity-60" />
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-2.5">
-            <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-[image:var(--gradient-brand)] shadow-[0_0_20px_-4px_var(--glow-primary)]">
-              <Sparkles className="h-4 w-4 text-primary-foreground" />
+    <div className="flex min-h-screen bg-background">
+      <Sidebar tab={tab} onSelect={setTab} open={navOpen} onClose={() => setNavOpen(false)} />
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="glass sticky top-0 z-30 border-b">
+          <div className="absolute inset-x-0 bottom-0 h-px bg-[image:var(--gradient-brand)] opacity-60 md:hidden" />
+          <div className="flex items-center justify-between gap-2 px-4 py-3 sm:px-6">
+            <div className="flex items-center gap-2 min-w-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0 md:hidden"
+                onClick={() => setNavOpen(true)}
+                aria-label="Open navigation"
+              >
+                <Menu className="h-4 w-4" />
+              </Button>
+              <div className="md:hidden">
+                <Logo compact />
+              </div>
+              <h2 className="hidden truncate text-sm font-semibold text-foreground md:block">{activeLabel}</h2>
             </div>
-            <div>
-              <h1 className="text-sm font-bold leading-tight tracking-tight text-gradient">AshOS</h1>
-              <p className="text-xs leading-tight text-muted-foreground">AI Operating System for Developers</p>
+            <div className="flex items-center gap-2">
+              <StatusPill />
+              <ThemeToggle dark={dark} onToggle={toggle} />
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <StatusPill />
-            <ThemeToggle dark={dark} onToggle={toggle} />
-          </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-          <TabsList className="h-auto flex-wrap justify-start">
-            {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
-              <TabsTrigger key={id} value={id} className="gap-1.5">
-                <Icon className="h-3.5 w-3.5" />
-                {label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          <TabsContent value="dashboard">
-            <DashboardTab />
-          </TabsContent>
-          <TabsContent value="providers">
-            <ProvidersTab />
-          </TabsContent>
-          <TabsContent value="agents">
-            <AgentsTab />
-          </TabsContent>
-          <TabsContent value="tools">
-            <ToolsTab />
-          </TabsContent>
-          <TabsContent value="plan">
-            <PlanTab />
-          </TabsContent>
-          <TabsContent value="workflow">
-            <WorkflowTab />
-          </TabsContent>
-          <TabsContent value="evolution">
-            <EvolutionTab />
-          </TabsContent>
-          <TabsContent value="memory">
-            <MemoryTab />
-          </TabsContent>
-          <TabsContent value="logs">
-            <LogsTab />
-          </TabsContent>
-          <TabsContent value="chat">
-            <ChatTab />
-          </TabsContent>
-        </Tabs>
-      </main>
+        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-4 sm:px-6 sm:py-6">
+          <ActivePanel />
+        </main>
+      </div>
     </div>
   );
 }
@@ -393,14 +451,14 @@ function PlanTab() {
         <CardDescription>Decompose a natural-language goal into a dependency-graph of tasks.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Input
             value={goal}
             onChange={(e) => setGoal(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()}
             placeholder="e.g. Add dark mode toggle to the settings page"
           />
-          <Button onClick={submit} disabled={loading}>
+          <Button onClick={submit} disabled={loading} className="shrink-0">
             {loading ? "Planning…" : "Plan"}
           </Button>
         </div>
@@ -409,12 +467,12 @@ function PlanTab() {
           <ol className="space-y-3">
             {graph.tasks.map((t, i) => (
               <li key={t.id} className="rounded-lg border p-3">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-xs font-medium">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">
                     {i + 1}
                   </span>
                   <Badge variant="secondary">{t.capability}</Badge>
-                  <span className="text-sm font-medium">{t.title}</span>
+                  <span className="min-w-0 break-words text-sm font-medium">{t.title}</span>
                 </div>
                 {t.dependsOn?.length ? (
                   <p className="mt-1 pl-7 text-xs text-muted-foreground">after: {t.dependsOn.join(", ")}</p>
@@ -604,9 +662,9 @@ function EvolutionTab() {
           <CardContent className="space-y-3">
             {config && (
               <>
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-1 text-sm">
                   <span className="text-muted-foreground">Research provider</span>
-                  <Badge variant="secondary">
+                  <Badge variant="secondary" className="break-all text-right">
                     {config.researchProvider} · {config.researchModel}
                   </Badge>
                 </div>
@@ -805,10 +863,10 @@ function MemoryTab() {
           <ul className="divide-y">
             {records.map((r) => (
               <li key={r.id} className="flex items-center justify-between gap-2 py-2.5 text-sm">
-                <span>
+                <span className="min-w-0 flex-1 break-words">
                   <span className="font-medium">{r.key}</span> = {JSON.stringify(r.value)}
                 </span>
-                <Button variant="ghost" size="icon" onClick={() => forget(r.key)} aria-label={`Forget ${r.key}`}>
+                <Button variant="ghost" size="icon" className="shrink-0" onClick={() => forget(r.key)} aria-label={`Forget ${r.key}`}>
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </li>
@@ -921,7 +979,7 @@ function ChatTab() {
             <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
               <div
                 className={cn(
-                  "max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
+                  "max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words sm:max-w-[80%]",
                   m.role === "user" ? "bg-primary text-primary-foreground" : "border bg-card"
                 )}
               >
