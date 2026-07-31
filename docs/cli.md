@@ -20,6 +20,12 @@ ash evolve list [-l <n>]                 List past experiments, newest first
 ash evolve show <id>                     Show full detail for one experiment
 ash evolve mutations                     List registered mutations
 ash evolve benchmarks                    List registered benchmarks
+ash innovation discover [-d <domains>]   Run one discovery cycle (collect signals -> merge into opportunities)
+ash innovation list [-l <n>] [-s <stage>]  List opportunities, highest-scoring first
+ash innovation show <id>                 Show full detail for one opportunity
+ash innovation brief                     Generate today's Daily Innovation Brief
+ash innovation profile [-l <n>]          Show the learned Builder Profile
+ash innovation collectors                List registered collectors
 ```
 
 Run `npm run cli -- <command>` during development, or `ash <command>`

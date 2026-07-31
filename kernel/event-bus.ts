@@ -23,6 +23,12 @@ export type AshOSEventName =
   | "evolution:experiment-started"
   | "evolution:experiment-finished"
   | "evolution:experiment-failed"
+  | "innovation:cycle-started"
+  | "innovation:cycle-finished"
+  | "innovation:signal-captured"
+  | "innovation:opportunity-created"
+  | "innovation:opportunity-updated"
+  | "innovation:opportunity-status-changed"
   | "log";
 
 export interface AshOSEvent<T = unknown> {

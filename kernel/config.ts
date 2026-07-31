@@ -14,6 +14,21 @@ export interface EvolutionConfig {
   requireTests: boolean;
 }
 
+export interface InnovationConfig {
+  /** Provider name (as registered in ProviderRegistry) used for reasoning over signals, e.g. "lmstudio". */
+  researchProvider: string;
+  /** Model name passed through to the research provider. Never hardcoded — read from here only. */
+  researchModel: string;
+  /** Domains discovered each cycle, mapping 1:1 to the built-in intelligence agents. */
+  domains: IntelligenceDomain[];
+  /** Merge threshold (0-1): new signals within this tag-overlap distance of an existing opportunity are merged into it instead of creating a new one. */
+  mergeThreshold: number;
+  /** How many top opportunities the Daily Innovation Brief highlights. */
+  briefSize: number;
+}
+
+export type IntelligenceDomain = "market" | "github" | "community" | "research" | "workflow" | "competitor";
+
 export interface AshOSConfig {
   provider: "anthropic" | "openai" | "ollama" | "lmstudio" | "mock";
   providers: {
@@ -24,6 +39,7 @@ export interface AshOSConfig {
   };
   plugins: string[];
   evolution: EvolutionConfig;
+  innovation: InnovationConfig;
   createdAt: string;
 }
 
@@ -60,6 +76,13 @@ export function defaultConfig(): AshOSConfig {
       benchmarkTimeout: 300,
       autoMerge: false,
       requireTests: true
+    },
+    innovation: {
+      researchProvider: process.env.ASHOS_RESEARCH_PROVIDER ?? "lmstudio",
+      researchModel: process.env.ASHOS_RESEARCH_MODEL ?? "google/gemma-4-12b-qat",
+      domains: ["market", "github", "community", "research", "workflow", "competitor"],
+      mergeThreshold: 0.5,
+      briefSize: 5
     },
     createdAt: new Date().toISOString()
   };

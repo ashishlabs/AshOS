@@ -6,11 +6,16 @@ import { AgentRegistry } from "../agents/registry";
 import { ProviderRegistry } from "../providers/registry";
 import { MutationRegistry } from "../evolution/mutation/registry";
 import { BenchmarkRegistry } from "../evolution/benchmark/registry";
+import { CollectorRegistry } from "../innovation/collectors/registry";
 import { Kernel } from "./kernel";
 import { defaultConfig } from "./config";
 
 function evolutionHost() {
   return { mutations: new MutationRegistry(), benchmarks: new BenchmarkRegistry() };
+}
+
+function innovationHost() {
+  return { collectors: new CollectorRegistry() };
 }
 
 describe("PluginManager", () => {
@@ -26,7 +31,8 @@ describe("PluginManager", () => {
       tools,
       agents,
       providers,
-      evolution: evolutionHost()
+      evolution: evolutionHost(),
+      innovation: innovationHost()
     });
 
     expect(loaded).toContain("git");
@@ -42,7 +48,8 @@ describe("PluginManager", () => {
       tools: new ToolRegistry(),
       agents: new AgentRegistry(),
       providers: new ProviderRegistry(kernel.config),
-      evolution: evolutionHost()
+      evolution: evolutionHost(),
+      innovation: innovationHost()
     });
     expect(loaded).toEqual([]);
   });
@@ -57,7 +64,8 @@ describe("PluginManager", () => {
       tools: new ToolRegistry(),
       agents: new AgentRegistry(),
       providers: new ProviderRegistry(kernel.config),
-      evolution
+      evolution,
+      innovation: innovationHost()
     });
 
     expect(loaded).toContain("evolution-extras");

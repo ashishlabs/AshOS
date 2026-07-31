@@ -37,4 +37,12 @@ describe("AshOS SDK facade", () => {
     });
     expect(results.get("s1")?.status).toBe("success");
   });
+
+  it("wires the Innovation Intelligence module in, with its agents registered on the shared AgentRegistry", async () => {
+    const ashos = new AshOS({ root });
+    expect(ashos.agents.findByCapability("intelligence:market")).toBeDefined();
+
+    const { opportunities } = await ashos.innovation.runDiscoveryCycle(["market"]);
+    expect(opportunities.length).toBeGreaterThan(0);
+  });
 });

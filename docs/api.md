@@ -38,4 +38,21 @@ Start it with `npm run api`.
 
 See `docs/evolution.md` for the full pipeline (git-worktree isolation, benchmark/mutation contracts, experiment schema) that these routes expose.
 
+### Innovation Intelligence (`/innovation/*`)
+
+| Method | Path | Body | Description |
+|---|---|---|---|
+| POST | `/innovation/discover` | `{ domains? }` | Fire-and-forget: starts a discovery cycle in the background and returns `202 { started: true }` immediately, or `409` if one is already running. `domains` restricts the cycle to a subset (defaults to `config.innovation.domains`). |
+| GET | `/innovation/status` | — | `{ running, config }` — whether a cycle is in flight plus the active `InnovationConfig`. |
+| GET | `/innovation/opportunities?stage=&limit=` | — | Opportunities, highest-scoring first (or filtered by lifecycle stage). |
+| GET | `/innovation/opportunities/:id` | — | Full record for one opportunity (score, evidence signals, history), or `404`. |
+| GET | `/innovation/brief` | — | Generates today's Daily Innovation Brief on demand. |
+| GET | `/innovation/profile?limit=` | — | Top Builder Profile categories by learned weight. |
+| GET | `/innovation/collectors` | — | Registered collectors (`id`, `domain`, `description`). |
+| GET | `/innovation/graph` | — | Knowledge graph stats (`nodeCount`, `edgeCount`, `byKind`). |
+| GET | `/innovation/config` | — | Current `InnovationConfig`. |
+| PATCH | `/innovation/config` | partial `InnovationConfig` | Merges into and persists the innovation config. |
+
+See `docs/innovation.md` for the full pipeline (collectors, knowledge graph, opportunity merging/scoring, builder profile, daily brief) that these routes expose.
+
 GraphQL, WebSocket, and MCP transports are on the roadmap (`docs/roadmap.md`) — the REST surface above is the current source of truth and is what the dashboard and CLI consume.

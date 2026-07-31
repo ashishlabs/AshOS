@@ -258,4 +258,74 @@ describe("AshOS API", () => {
     expect(experiments.length).toBeGreaterThan(0);
     expect(experiments[0].status).toBe("error");
   }, 10000);
+
+  it("GET /innovation/collectors lists the default mock collectors", async () => {
+    const res = await fetch(`${baseUrl}/innovation/collectors`);
+    const body = (await res.json()) as any[];
+    expect(body.map((c) => c.id).sort()).toEqual(
+      ["mock-competitor", "mock-community", "mock-github", "mock-market", "mock-research", "mock-workflow"].sort()
+    );
+  });
+
+  it("GET /innovation/config reflects the default innovation config", async () => {
+    const res = await fetch(`${baseUrl}/innovation/config`);
+    const body = (await res.json()) as any;
+    expect(body.researchProvider).toBe("lmstudio");
+    expect(body.domains).toContain("market");
+  });
+
+  it("PATCH /innovation/config merges the given fields and persists them", async () => {
+    const res = await fetch(`${baseUrl}/innovation/config`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ briefSize: 3 })
+    });
+    const body = (await res.json()) as any;
+    expect(body.briefSize).toBe(3);
+
+    const after = (await (await fetch(`${baseUrl}/innovation/config`)).json()) as any;
+    expect(after.briefSize).toBe(3);
+  });
+
+  it("GET /innovation/opportunities starts empty and /innovation/brief works with nothing discovered", async () => {
+    const opportunities = (await (await fetch(`${baseUrl}/innovation/opportunities`)).json()) as any[];
+    expect(opportunities).toEqual([]);
+
+    const brief = (await (await fetch(`${baseUrl}/innovation/brief`)).json()) as any;
+    expect(brief.topOpportunities).toEqual([]);
+  });
+
+  it("GET /innovation/opportunities/:id 404s for an unknown opportunity", async () => {
+    const res = await fetch(`${baseUrl}/innovation/opportunities/does-not-exist`);
+    expect(res.status).toBe(404);
+  });
+
+  it("POST /innovation/discover starts a cycle (202) whose results become queryable once it settles", async () => {
+    // Unlike the Evolution Engine (which spawns real subprocesses and is
+    // genuinely slow enough to race against a second request), the mock
+    // intelligence agents complete a full cycle within a handful of
+    // microtasks — too fast to reliably observe the 409-while-running
+    // branch over a real HTTP round trip, so this only asserts the happy path.
+    const res = await fetch(`${baseUrl}/innovation/discover`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ domains: ["market"] })
+    });
+    expect(res.status).toBe(202);
+    expect(((await res.json()) as any).started).toBe(true);
+
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    const statusRes = (await (await fetch(`${baseUrl}/innovation/status`)).json()) as any;
+    expect(statusRes.running).toBe(false);
+
+    const opportunities = (await (await fetch(`${baseUrl}/innovation/opportunities`)).json()) as any[];
+    expect(opportunities.length).toBeGreaterThan(0);
+
+    const graphStats = (await (await fetch(`${baseUrl}/innovation/graph`)).json()) as any;
+    expect(graphStats.nodeCount).toBeGreaterThan(0);
+
+    const profile = (await (await fetch(`${baseUrl}/innovation/profile`)).json()) as any[];
+    expect(profile.length).toBeGreaterThan(0);
+  });
 });

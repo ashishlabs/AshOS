@@ -230,6 +230,77 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     res.json(updated);
   });
 
+  let innovationDiscoveryRunning = false;
+
+  app.post("/innovation/discover", (req, res) => {
+    if (innovationDiscoveryRunning) {
+      res.status(409).json({ error: "a discovery cycle is already running" });
+      return;
+    }
+    const domains = Array.isArray(req.body?.domains) ? req.body.domains : undefined;
+    innovationDiscoveryRunning = true;
+    ashos.innovation
+      .runDiscoveryCycle(domains)
+      .catch((error) => {
+        ashos.kernel.logger.error(`innovation discovery cycle failed: ${(error as Error).message}`);
+      })
+      .finally(() => {
+        innovationDiscoveryRunning = false;
+      });
+    res.status(202).json({ started: true });
+  });
+
+  app.get("/innovation/status", (_req, res) => {
+    res.json({ running: innovationDiscoveryRunning, config: ashos.kernel.config.innovation });
+  });
+
+  app.get("/innovation/opportunities", (req, res) => {
+    const stage = req.query.stage as never;
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+    const list = stage ? ashos.innovation.opportunities.byStage(stage) : ashos.innovation.opportunities.topOpportunities(limit ?? 1000);
+    res.json(limit ? list.slice(0, limit) : list);
+  });
+
+  app.get("/innovation/opportunities/:id", (req, res) => {
+    const opportunity = ashos.innovation.opportunities.get(req.params.id);
+    if (!opportunity) {
+      res.status(404).json({ error: `opportunity "${req.params.id}" not found` });
+      return;
+    }
+    res.json(opportunity);
+  });
+
+  app.get("/innovation/brief", async (_req, res) => {
+    try {
+      res.json(await ashos.innovation.generateBrief());
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  app.get("/innovation/profile", (req, res) => {
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 15;
+    res.json(ashos.innovation.profile.topCategories(limit));
+  });
+
+  app.get("/innovation/collectors", (_req, res) => {
+    res.json(ashos.innovation.collectors.list().map((c) => ({ id: c.id, domain: c.domain, description: c.description })));
+  });
+
+  app.get("/innovation/graph", (_req, res) => {
+    res.json(ashos.innovation.graph.stats());
+  });
+
+  app.get("/innovation/config", (_req, res) => {
+    res.json(ashos.kernel.config.innovation);
+  });
+
+  app.patch("/innovation/config", (req, res) => {
+    const updated = { ...ashos.kernel.config.innovation, ...(req.body ?? {}) };
+    ashos.kernel.updateConfig({ innovation: updated });
+    res.json(updated);
+  });
+
   return app;
 }
 

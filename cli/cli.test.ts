@@ -11,6 +11,7 @@ import { registerRunCommand } from "./commands/run";
 import { registerProviderCommand } from "./commands/provider";
 import { registerMemoryCommand } from "./commands/memory";
 import { registerEvolveCommand } from "./commands/evolve";
+import { registerInnovationCommand } from "./commands/innovation";
 import { isInitialized, configPath } from "../kernel/config";
 import { AshOS } from "../sdk/ashos";
 
@@ -216,5 +217,71 @@ describe("CLI commands", () => {
 
     const ashos = new AshOS({ root: cwd });
     expect(ashos.evolution.history.list()).toHaveLength(1);
+  });
+
+  it("innovation collectors lists one collector per default domain", async () => {
+    const program = freshProgram();
+    registerInnovationCommand(program);
+    await program.parseAsync(["node", "ash", "innovation", "collectors"]);
+
+    const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("mock-market");
+    expect(output).toContain("mock-github");
+  });
+
+  it("innovation list reports nothing discovered yet before any cycle runs", async () => {
+    const program = freshProgram();
+    registerInnovationCommand(program);
+    await program.parseAsync(["node", "ash", "innovation", "list"]);
+
+    const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("No opportunities discovered yet");
+  });
+
+  it("innovation discover then list surfaces the resulting opportunities", async () => {
+    const program = freshProgram();
+    registerInnovationCommand(program);
+    await program.parseAsync(["node", "ash", "innovation", "discover", "--domains", "market"]);
+
+    let output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Captured");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "innovation", "list"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("score=");
+  });
+
+  it("innovation show reports an error for an unknown opportunity id", async () => {
+    const program = freshProgram();
+    registerInnovationCommand(program);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await program.parseAsync(["node", "ash", "innovation", "show", "does-not-exist"]);
+
+    expect(errorSpy.mock.calls.join(" ")).toContain("not found");
+    expect(process.exitCode).toBe(1);
+    process.exitCode = 0;
+    errorSpy.mockRestore();
+  });
+
+  it("innovation brief works even with nothing discovered yet", async () => {
+    const program = freshProgram();
+    registerInnovationCommand(program);
+    await program.parseAsync(["node", "ash", "innovation", "brief"]);
+
+    const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Daily Innovation Brief");
+  });
+
+  it("innovation profile reflects tags observed during discovery", async () => {
+    const program = freshProgram();
+    registerInnovationCommand(program);
+    await program.parseAsync(["node", "ash", "innovation", "discover", "--domains", "market"]);
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "innovation", "profile"]);
+    const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("weight=");
   });
 });

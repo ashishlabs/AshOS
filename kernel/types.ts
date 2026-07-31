@@ -18,6 +18,10 @@ export interface PluginHost {
     mutations: import("../evolution/mutation/registry").MutationRegistry;
     benchmarks: import("../evolution/benchmark/registry").BenchmarkRegistry;
   };
+  /** Lets a plugin contribute Innovation Intelligence collectors (e.g. a real GitHub/Hacker News/arXiv source) the same way it contributes tools/agents. */
+  innovation: {
+    collectors: import("../innovation/collectors/registry").CollectorRegistry;
+  };
 }
 
 export interface Plugin {

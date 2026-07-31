@@ -47,6 +47,8 @@ export default plugin;
 - `host.providers` — a `ProviderRegistry` to register new `AIProvider` factories
 - `host.evolution` — `{ mutations, benchmarks }` registries for the Evolution
   Engine; see `evolution/plugins/evolution-extras/` and `docs/evolution.md`
+- `host.innovation` — `{ collectors }`, a `CollectorRegistry` for Innovation
+  Intelligence (e.g. a real GitHub/Hacker News/arXiv collector); see `docs/innovation.md`
 
 ## Writing a Tool
 
