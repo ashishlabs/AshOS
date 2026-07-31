@@ -16,6 +16,7 @@ import {
   Sparkles,
   Sun,
   Trash2,
+  TrendingUp,
   Wrench,
   X
 } from "lucide-react";
@@ -54,7 +55,7 @@ import {
   type WorkflowStepResultDTO
 } from "./api";
 
-type Tab = "dashboard" | "tools" | "plan" | "workflow" | "memory" | "logs" | "chat" | "evolution" | "innovation";
+type Tab = "dashboard" | "tools" | "plan" | "workflow" | "evolution" | "innovation" | "trending" | "memory" | "logs" | "chat";
 
 const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -63,6 +64,7 @@ const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "workflow", label: "Workflow", icon: GitBranch },
   { id: "evolution", label: "Evolution", icon: Dna },
   { id: "innovation", label: "Innovation", icon: Lightbulb },
+  { id: "trending", label: "Trending", icon: TrendingUp },
   { id: "memory", label: "Memory", icon: Brain },
   { id: "logs", label: "Logs", icon: ScrollText },
   { id: "chat", label: "Chat", icon: Send }
@@ -127,6 +129,7 @@ const TAB_PANELS: Record<Tab, React.ComponentType> = {
   workflow: WorkflowTab,
   evolution: EvolutionTab,
   innovation: InnovationTab,
+  trending: TrendingTab,
   memory: MemoryTab,
   logs: LogsTab,
   chat: ChatTab
@@ -281,60 +284,56 @@ function DashboardTab() {
   }, []);
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Status</CardTitle>
-            <CardDescription>Kernel health and the active AI provider.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <LoadError error={error} />
-            {health ? (
-              <>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Kernel</span>
-                  <Badge variant={health.ok ? "success" : "destructive"}>{health.ok ? "healthy" : "unhealthy"}</Badge>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Active provider</span>
-                  <Badge variant="secondary">{health.provider}</Badge>
-                </div>
-              </>
-            ) : (
-              !error && <Skeleton className="h-16 w-full" />
-            )}
-          </CardContent>
-        </Card>
+    <div className="grid gap-4 sm:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>Status</CardTitle>
+          <CardDescription>Kernel health and the active AI provider.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <LoadError error={error} />
+          {health ? (
+            <>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Kernel</span>
+                <Badge variant={health.ok ? "success" : "destructive"}>{health.ok ? "healthy" : "unhealthy"}</Badge>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Active provider</span>
+                <Badge variant="secondary">{health.provider}</Badge>
+              </div>
+            </>
+          ) : (
+            !error && <Skeleton className="h-16 w-full" />
+          )}
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent activity</CardTitle>
-            <CardDescription>Live feed from the kernel event bus.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {events.length === 0 ? (
-              <EmptyState>No events yet — plan a goal, run a workflow, or chat to generate some.</EmptyState>
-            ) : (
-              <ul className="divide-y">
-                {events.map((e, i) => (
-                  <li key={i} className="flex items-center justify-between py-2 text-sm">
-                    <span className="font-mono text-xs text-primary">{e.name}</span>
-                    <span className="text-xs text-muted-foreground">{new Date(e.timestamp).toLocaleTimeString()}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <TrendingReposCard />
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent activity</CardTitle>
+          <CardDescription>Live feed from the kernel event bus.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {events.length === 0 ? (
+            <EmptyState>No events yet — plan a goal, run a workflow, or chat to generate some.</EmptyState>
+          ) : (
+            <ul className="divide-y">
+              {events.map((e, i) => (
+                <li key={i} className="flex items-center justify-between py-2 text-sm">
+                  <span className="font-mono text-xs text-primary">{e.name}</span>
+                  <span className="text-xs text-muted-foreground">{new Date(e.timestamp).toLocaleTimeString()}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-function TrendingReposCard() {
+function TrendingTab() {
   const [result, setResult] = useState<TrendingReposResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
