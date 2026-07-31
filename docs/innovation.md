@@ -8,13 +8,12 @@ signals into ranked, scored **Opportunities**, learns which categories of
 product you tend to build, and can produce a Daily Innovation Brief
 summarizing what's most worth building next.
 
-It follows the same architectural pattern as the Evolution Engine
-(`docs/evolution.md`): everything is a registry (`CollectorRegistry`, same
-shape as `MutationRegistry`/`BenchmarkRegistry`), everything is
-provider-agnostic (the "research provider" used for narrative synthesis is
-just another entry in `ProviderRegistry`), everything is offline-by-default
-(deterministic mock collectors, same role `MockProvider` plays for chat),
-and nothing runs unless you explicitly ask it to (`ash innovation discover`,
+It follows the same architectural pattern as the rest of AshOS: everything
+is a registry (`CollectorRegistry`), everything is provider-agnostic (the
+"research provider" used for narrative synthesis is just another entry in
+`ProviderRegistry`), everything is offline-by-default (deterministic mock
+collectors, same role `MockProvider` plays for chat), and nothing runs
+unless you explicitly ask it to (`ash innovation discover`,
 `POST /innovation/discover`, or a scheduled job) — no auto-start-on-boot
 behavior.
 
@@ -53,16 +52,15 @@ DailyBriefGenerator  — rank + narrate, on demand
 ```
 
 Implemented as `InnovationModule.runDiscoveryCycle()`
-(`innovation/innovation-module.ts`), which mirrors
-`EvolutionEngine.runExperiment()`'s "every stage is an injected
-collaborator, orchestration only" shape.
+(`innovation/innovation-module.ts`), whose stages are each an injected
+collaborator — the function itself is orchestration only.
 
 ## Domains and Intelligence Agents
 
 Six domains from the design spec, each with one `IntelligenceAgent`
 (`innovation/agents/intelligence-agent.ts`) sharing a single implementation
-— they only differ in which domain's `Collector`s they run, the same way
-`ash evolve`'s mutations/benchmarks are data, not classes:
+— they only differ in which domain's `Collector`s they run, which are data,
+not classes:
 
 | Domain | Agent capability | Watches for |
 |---|---|---|
@@ -92,10 +90,9 @@ access or API keys, and the whole test suite runs offline).
 endpoints, arXiv API, ...) is implementing the same `Collector` interface
 and registering it under a different id via `CollectorRegistry.register` —
 either built-in (`InnovationModule`) or via a plugin
-(`host.innovation.collectors`, `kernel/types.ts`'s `PluginHost`, following
-the exact extension path `evolution/plugins/evolution-extras` demonstrates
-for mutations/benchmarks). No engine code changes needed. This repository
-ships only the mock collectors — see "What's not implemented" below.
+(`host.innovation.collectors`, `kernel/types.ts`'s `PluginHost`). No engine
+code changes needed. This repository ships only the mock collectors — see
+"What's not implemented" below.
 
 ## Unified Knowledge Graph
 
@@ -127,9 +124,8 @@ separate store, so a `Builder Workspace` view never needs a second lookup.
 ## Opportunity Score (15 dimensions)
 
 `ScoringEngine` (`innovation/opportunity/scoring.ts`) is pure,
-dependency-free heuristic logic — the same "Evaluator is pure logic"
-convention as `evolution/evaluation/evaluator.ts` — so it's cheap to unit
-test and retune without touching the engine that calls it. All 15
+dependency-free heuristic logic, so it's cheap to unit test and retune
+without touching the engine that calls it. All 15
 dimensions from the design doc are computed from the opportunity's
 signals (count, confidence, domain mix, signal kind) plus the Builder
 Profile (for `strategicAlignment`/`personalFit`):
@@ -191,9 +187,9 @@ still-useful one-line summary instead of erroring.
 }
 ```
 
-Exactly like the Evolution Engine's `researchProvider`, this is resolved
-through the same `ProviderRegistry` as everything else — Claude/OpenAI/
-Ollama/local models all work with zero changes to any innovation/* code.
+`researchProvider` is resolved through the same `ProviderRegistry` as
+everything else — Claude/OpenAI/Ollama/local models all work with zero
+changes to any innovation/* code.
 
 ## Dashboard
 
@@ -204,7 +200,7 @@ one-click "run discovery cycle" action, knowledge-base counters
 Builder Profile as weighted bars, the top-scoring opportunities with their
 lifecycle stage and tags, the registered collectors, and an on-demand Daily
 Innovation Brief. All of it reads from the REST endpoints below, polling
-every few seconds — same pattern as the Evolution tab.
+every few seconds.
 
 ## REST API
 

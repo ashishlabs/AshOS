@@ -12,7 +12,7 @@ export interface LMStudioProviderOptions {
  * OPENAI_BASE_URL=http://localhost:1234/v1, OPENAI_API_KEY=lm-studio).
  * Kept as its own named provider (rather than just reusing OpenAIProvider
  * with a custom baseUrl) so `ash provider list`/config surface "lmstudio"
- * distinctly and so the Evolution Engine's `researchProvider: "lmstudio"`
+ * distinctly and so the Innovation Intelligence `researchProvider: "lmstudio"`
  * config reads naturally — but the wire protocol is identical to OpenAI's,
  * and the model name is never hardcoded: it's whatever `model` resolves to
  * from config, e.g. "google/gemma-4-12b-qat".

@@ -11,7 +11,6 @@ import { registerRunCommand } from "./commands/run";
 import { registerChatCommand } from "./commands/chat";
 import { registerMemoryCommand } from "./commands/memory";
 import { registerLogsCommand } from "./commands/logs";
-import { registerEvolveCommand } from "./commands/evolve";
 import { registerInnovationCommand } from "./commands/innovation";
 
 const program = new Command();
@@ -27,7 +26,6 @@ registerRunCommand(program);
 registerChatCommand(program);
 registerMemoryCommand(program);
 registerLogsCommand(program);
-registerEvolveCommand(program);
 registerInnovationCommand(program);
 
 program.parseAsync(process.argv);

@@ -2,8 +2,8 @@
 
 **Status:** Living document. Version tracks the codebase informally — update
 this alongside major feature work rather than treating it as frozen at
-launch. Last updated 2026-07-28 against `claude/ashos-ai-operating-system-9fugjd`
-(adds the Evolution Engine, §6 FR-38–FR-46, and LM Studio as a provider).
+launch. Last updated 2026-07-31 against `claude/ashos-ai-operating-system-9fugjd`
+(removes the Evolution Engine).
 
 ## 1. Vision
 
@@ -115,23 +115,13 @@ Status legend: ✅ Shipped · 🚧 Partially shipped · ⏳ Planned (roadmap)
 | FR-29 | REST API covering chat/plan/execute/workflow/agents/providers/tools/tasks/events/memory/logs/health | ✅ | `api/server.ts`, `docs/api.md` |
 | FR-30 | Streaming chat over HTTP | ✅ (chunked, not SSE) | `POST /chat/stream` |
 | FR-31 | GraphQL / WebSocket / MCP transports | ⏳ | `docs/roadmap.md` |
-| FR-32 | Web dashboard: status, plan, workflow, evolution, innovation, trending, memory, logs, chat | ✅ | `dashboard/` (Providers/Agents/Tools tabs were dropped from the UI as unused surface — all three remain fully available via `ash provider`/`ash status` and `GET /providers`/`/agents`/`/tools`) |
-| FR-33 | Dashboard: analytics/observability (token usage, latency, success/failure rates) | 🚧 | Evolution tab has latency trend/acceptance-rate/leaderboard; no system-wide token-usage or chat/plan latency dashboards yet |
+| FR-32 | Web dashboard: status, plan, workflow, innovation, trending, memory, logs, chat | ✅ | `dashboard/` (Providers/Agents/Tools tabs were dropped from the UI as unused surface — all three remain fully available via `ash provider`/`ash status` and `GET /providers`/`/agents`/`/tools`) |
+| FR-33 | Dashboard: analytics/observability (token usage, latency, success/failure rates) | 🚧 | no system-wide token-usage or chat/plan latency dashboards yet |
 | FR-34 | SDK facade for embedding AshOS in other Node apps | ✅ | `sdk/ashos.ts` |
 | FR-35 | API request validation (reject malformed bodies with 4xx) | ✅ | added in this pass — see `docs/test-report.md` |
 | FR-36 | Secret encryption at rest (API keys in `.ashos/config.json`) | ⏳ | currently stored plaintext locally |
 | FR-37 | Multi-agent collaboration, distributed execution, team/shared memory | ⏳ | long-term vision only |
-| FR-38 | Evolution Engine loop: observe → hypothesize → mutate → build → test → benchmark → evaluate → accept/reject → store | ✅ | `evolution/engine/evolution-engine.ts`, `docs/evolution.md` |
-| FR-39 | Reversible mutation contract + built-ins (prompt rewrite, temperature, retry count, workflow reorder) | ✅ (4/~11 target kinds real) | `evolution/mutation/` |
-| FR-40 | Benchmark framework (input/expected/scoring fn/timeout/metadata) + built-ins | ✅ (3/10 categories real: code-gen, reasoning, documentation) | `evolution/benchmark/` |
-| FR-41 | Isolated git-worktree execution pipeline; `main`/base branch protected in code; `autoMerge` gated, defaults off | ✅ | `evolution/storage/git-workspace.ts` |
-| FR-42 | Weighted-score evaluator + accept/reject vs a running baseline | ✅ | `evolution/evaluation/evaluator.ts` |
-| FR-43 | Experiment history store (JSON, one file per experiment) + leaderboard/acceptance-rate queries | ✅ | `evolution/history/experiment-store.ts` |
-| FR-44 | LM Studio as the default research provider (OpenAI-compatible, local, model never hardcoded) | ✅ | `providers/lmstudio-provider.ts` |
-| FR-45 | Evolution REST API, dashboard tab, and `ash evolve` CLI | ✅ | `api/server.ts`, `dashboard/src/App.tsx`, `cli/commands/evolve.ts` |
-| FR-46 | Evolution mutations/benchmarks are plugin-extensible, same mechanism as tools/agents | ✅ | `kernel/types.ts` (`PluginHost.evolution`), `evolution/plugins/evolution-extras/` |
-| FR-47 | GPU/resource metrics for experiments (best-effort, no hard dependency on a GPU being present) | ✅ | `evolution/engine/resource-metrics.ts` |
-| FR-48 | Self-improving planner (Evolution Engine can propose/test planner-targeted mutations) | 🚧 | `retry-count-adjust` mutation targets the planner's executor; no dedicated planner-strategy mutation yet |
+| FR-44 | LM Studio as a provider (OpenAI-compatible, local, model never hardcoded) | ✅ | `providers/lmstudio-provider.ts` |
 
 ## 7. Long-term vision (unscoped)
 
@@ -181,25 +171,18 @@ first is currently measurable from the repo itself.
   on a shared DAG executor, memory with vector search, CLI, REST API, SDK,
   a working dashboard, plugin contract with reference plugins, CI, Docker,
   and a test suite (166+ tests — see `docs/test-report.md`).
-- **M0.5 — Evolution Engine (shipped, this repo).** Continuous, reversible
-  experimentation: observe → hypothesize (research provider, LM Studio +
-  Gemma by default) → mutate (isolated git worktree) → build → test →
-  benchmark → evaluate → accept/reject → store, exposed via CLI/API/
-  dashboard and plugin-extensible. See `docs/evolution.md` for the full
-  design and its own gap list.
 - **M1 — Hardening (next, suggested).** Close the gaps FR-35→FR-37 imply:
   encrypt secrets at rest, add a sandboxed tool execution mode, wire the
-  scheduler into CLI/API for arbitrary (non-evolution) jobs, resolve the
+  scheduler into CLI/API for arbitrary jobs, resolve the
   `AgentRouter`/`AgentRegistry` duplication noted in the test report, add
-  provider tests via fetch mocking, add dashboard component tests, fill
-  out the remaining Evolution benchmark categories/mutation kinds.
+  provider tests via fetch mocking, add dashboard component tests.
 - **M2 — Ecosystem.** Docker/FFmpeg/Playwright tool plugins, a real
   web-search tool (so the Research agent has grounding beyond model
   knowledge), a plugin registry for remote installs, GraphQL/WebSocket/MCP
   transports, additional research providers (Groq, OpenRouter, GGUF).
 - **M3 — Scale.** Distributed execution, team/shared memory, a real
   observability stack (token usage, latency, cost) spanning the whole
-  system (not just Evolution experiments), the visual workflow builder.
+  system, the visual workflow builder.
 
 ## 11. Open questions
 
@@ -225,6 +208,3 @@ first is currently measurable from the repo itself.
 - `docs/test-report.md` — latest test results, coverage, and findings.
 - `docs/plugin-development.md`, `docs/provider-guide.md`, `docs/api.md`,
   `docs/cli.md` — contracts referenced throughout §6.
-- `docs/evolution.md` — Evolution Engine design: benchmark/mutation/
-  evaluation contracts, git-worktree isolation, experiment schema, and its
-  own gap list (FR-38–FR-48, M0.5).

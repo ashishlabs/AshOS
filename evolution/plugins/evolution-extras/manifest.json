@@ -1,6 +1,0 @@
-{
-  "name": "evolution-extras",
-  "version": "0.1.0",
-  "description": "Reference plugin demonstrating how third-party mutations and benchmarks register with the Evolution Engine",
-  "provides": ["mutation:comment-strip", "benchmark:documentation-summary"]
-}

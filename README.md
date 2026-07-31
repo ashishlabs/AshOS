@@ -43,22 +43,15 @@ agents/     Agent interface + Generic, Code, Research, Git, Testing, GitHub Tren
 planner/    goal -> task graph (via the active provider) + parallel/retrying executor
 workflow/   JSON-defined workflow engine (same DAG executor as the planner)
 scheduler/  cron-based recurring jobs
-evolution/  Evolution Engine: observe -> hypothesize -> mutate -> benchmark -> accept/reject
+innovation/ Innovation Intelligence: collect signals -> knowledge graph -> merge into opportunities -> score -> Daily Brief
 sdk/        AshOS facade wiring everything together for embedding
 cli/        `ash` command
 api/        REST API (express)
 plugins/    reference plugins (git, shell) + plugin dev guide
 dashboard/  Vite + React + Tailwind v4 + shadcn/ui-style dashboard
 examples/   example workflow definitions
-docs/       architecture, plugin, provider, API, CLI, roadmap, evolution docs
+docs/       architecture, plugin, provider, API, CLI, roadmap, innovation docs
 ```
-
-AshOS can also improve itself: the **Evolution Engine** runs a continuous,
-reversible experimentation loop (observe -> hypothesize via a research
-provider, e.g. LM Studio + Gemma running locally -> mutate a prompt/agent/
-workflow in an isolated git worktree -> build -> test -> benchmark ->
-accept/reject -> store), never touching `main`. See
-[`docs/evolution.md`](docs/evolution.md) and `ash evolve --help`.
 
 See [`docs/architecture.md`](docs/architecture.md) for the full picture,
 [`docs/PRD.md`](docs/PRD.md) for product vision/requirements/status,
@@ -81,7 +74,7 @@ ash provider set anthropic   # or openai / ollama / mock
 
 See [`docs/cli.md`](docs/cli.md) for the full command reference
 (`init`, `doctor`, `status`, `provider`, `plugin`, `plan`, `run`, `chat`,
-`memory`, `logs`, `evolve`, `innovation`).
+`memory`, `logs`, `innovation`).
 
 ### Installing `ash` globally
 

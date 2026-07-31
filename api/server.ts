@@ -36,14 +36,6 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
   app.use(cors());
   app.use(express.json());
 
-  // Startup sweep: remove any evolution worktrees/branches orphaned by an
-  // unclean shutdown (crash, kill -9, reboot) before anything else can
-  // observe or race with them. Best-effort — a failure here shouldn't
-  // block the API from starting.
-  ashos.evolution.engine.pruneOrphanedExperiments().catch((error) => {
-    ashos.kernel.logger.error(`evolution startup prune failed: ${(error as Error).message}`);
-  });
-
   app.post("/chat", requireMessages, async (req, res) => {
     try {
       const result = await ashos.chat(req.body.messages, req.body.options);
@@ -172,83 +164,6 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
 
   app.get("/health", (_req, res) => {
     res.json({ ok: true, provider: ashos.providers.active().name() });
-  });
-
-  let evolutionRunning = false;
-
-  app.post("/evolution/run", (req, res) => {
-    if (evolutionRunning) {
-      res.status(409).json({ error: "an evolution cycle is already running" });
-      return;
-    }
-    const options = {
-      maxExperiments: typeof req.body?.maxExperiments === "number" ? req.body.maxExperiments : undefined,
-      parallelExperiments: typeof req.body?.parallelExperiments === "number" ? req.body.parallelExperiments : undefined,
-      benchmarkIds: Array.isArray(req.body?.benchmarkIds) ? req.body.benchmarkIds : undefined
-    };
-    evolutionRunning = true;
-    ashos.evolution.engine
-      .runCycle(options)
-      .catch((error) => {
-        ashos.kernel.logger.error(`evolution cycle failed: ${(error as Error).message}`);
-      })
-      .finally(() => {
-        evolutionRunning = false;
-      });
-    res.status(202).json({ started: true });
-  });
-
-  app.get("/evolution/status", (_req, res) => {
-    res.json({ running: evolutionRunning, config: ashos.kernel.config.evolution });
-  });
-
-  app.get("/evolution/experiments", (req, res) => {
-    const list = ashos.evolution.history.list();
-    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
-    res.json(limit ? list.slice(0, limit) : list);
-  });
-
-  app.get("/evolution/experiments/:id", (req, res) => {
-    const record = ashos.evolution.history.get(req.params.id);
-    if (!record) {
-      res.status(404).json({ error: `experiment "${req.params.id}" not found` });
-      return;
-    }
-    res.json(record);
-  });
-
-  app.get("/evolution/leaderboard", (req, res) => {
-    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
-    res.json(ashos.evolution.history.leaderboard(limit));
-  });
-
-  app.get("/evolution/stats", (_req, res) => {
-    const list = ashos.evolution.history.list();
-    res.json({
-      total: list.length,
-      accepted: list.filter((r) => r.result === "accepted").length,
-      rejected: list.filter((r) => r.result === "rejected").length,
-      errors: list.filter((r) => r.result === "error").length,
-      acceptanceRate: ashos.evolution.history.acceptanceRate()
-    });
-  });
-
-  app.get("/evolution/mutations", (_req, res) => {
-    res.json(ashos.evolution.mutations.list().map((m) => ({ id: m.id, name: m.name, description: m.description, targetKind: m.targetKind })));
-  });
-
-  app.get("/evolution/benchmarks", (_req, res) => {
-    res.json(ashos.evolution.benchmarks.list().map((b) => ({ id: b.id, category: b.category, description: b.description })));
-  });
-
-  app.get("/evolution/config", (_req, res) => {
-    res.json(ashos.kernel.config.evolution);
-  });
-
-  app.patch("/evolution/config", (req, res) => {
-    const updated = { ...ashos.kernel.config.evolution, ...(req.body ?? {}) };
-    ashos.kernel.updateConfig({ evolution: updated });
-    res.json(updated);
   });
 
   let innovationDiscoveryRunning = false;

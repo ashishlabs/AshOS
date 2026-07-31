@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Brain,
-  Dna,
   GitBranch,
   LayoutDashboard,
   Lightbulb,
@@ -37,9 +36,6 @@ import {
   type ChatMessage,
   type CollectorInfo,
   type DailyBrief,
-  type EvolutionConfig,
-  type EvolutionStats,
-  type ExperimentRecord,
   type Health,
   type IdeaLifecycleStage,
   type InnovationConfig,
@@ -53,13 +49,12 @@ import {
   type WorkflowStepResultDTO
 } from "./api";
 
-type Tab = "dashboard" | "plan" | "workflow" | "evolution" | "innovation" | "trending" | "memory" | "logs" | "chat";
+type Tab = "dashboard" | "plan" | "workflow" | "innovation" | "trending" | "memory" | "logs" | "chat";
 
 const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "plan", label: "Plan", icon: ListTodo },
   { id: "workflow", label: "Workflow", icon: GitBranch },
-  { id: "evolution", label: "Evolution", icon: Dna },
   { id: "innovation", label: "Innovation", icon: Lightbulb },
   { id: "trending", label: "Trending", icon: TrendingUp },
   { id: "memory", label: "Memory", icon: Brain },
@@ -123,7 +118,6 @@ const TAB_PANELS: Record<Tab, React.ComponentType> = {
   dashboard: DashboardTab,
   plan: PlanTab,
   workflow: WorkflowTab,
-  evolution: EvolutionTab,
   innovation: InnovationTab,
   trending: TrendingTab,
   memory: MemoryTab,
@@ -525,225 +519,6 @@ function WorkflowTab() {
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function LatencySparkline({ points }: { points: { id: string; latencyMs: number }[] }) {
-  if (points.length < 2) {
-    return <p className="py-6 text-center text-sm text-muted-foreground">Not enough completed experiments yet for a trend.</p>;
-  }
-
-  const width = 600;
-  const height = 64;
-  const padding = 6;
-  const values = points.map((p) => p.latencyMs);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-
-  const coords = points.map((p, i) => {
-    const x = padding + (i / (points.length - 1)) * (width - padding * 2);
-    const y = height - padding - ((p.latencyMs - min) / range) * (height - padding * 2);
-    return { x, y, ...p };
-  });
-  const path = coords.map((c, i) => `${i === 0 ? "M" : "L"}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(" ");
-
-  return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="h-16 w-full" preserveAspectRatio="none" role="img" aria-label="Latency over time">
-      <path d={path} className="fill-none stroke-primary" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-      {coords.map((c) => (
-        <circle key={c.id} cx={c.x} cy={c.y} r={3} className="fill-primary">
-          <title>{`${c.id}: ${c.latencyMs.toFixed(0)}ms`}</title>
-        </circle>
-      ))}
-    </svg>
-  );
-}
-
-const EVOLUTION_RESULT_VARIANT: Record<string, "success" | "destructive" | "warning" | "outline"> = {
-  accepted: "success",
-  rejected: "destructive",
-  error: "warning",
-  pending: "outline"
-};
-
-function EvolutionTab() {
-  const [config, setConfig] = useState<EvolutionConfig | null>(null);
-  const [running, setRunning] = useState(false);
-  const [stats, setStats] = useState<EvolutionStats | null>(null);
-  const [experiments, setExperiments] = useState<ExperimentRecord[]>([]);
-  const [leaderboard, setLeaderboard] = useState<ExperimentRecord[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [starting, setStarting] = useState(false);
-  const [runError, setRunError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const load = () =>
-      Promise.all([api.evolutionStatus(), api.evolutionStats(), api.evolutionExperiments(20), api.evolutionLeaderboard(5)])
-        .then(([status, s, exps, board]) => {
-          setConfig(status.config);
-          setRunning(status.running);
-          setStats(s);
-          setExperiments(exps);
-          setLeaderboard(board);
-          setError(null);
-        })
-        .catch((e) => setError(e.message));
-    load();
-    const interval = setInterval(load, 4000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const runOne = async () => {
-    setStarting(true);
-    setRunError(null);
-    try {
-      await api.evolutionRun({ maxExperiments: 1, parallelExperiments: 1 });
-      setRunning(true);
-    } catch (e) {
-      setRunError((e as Error).message);
-    } finally {
-      setStarting(false);
-    }
-  };
-
-  const latencyPoints = [...experiments]
-    .filter((e) => e.metrics)
-    .reverse()
-    .map((e) => ({ id: e.id, latencyMs: e.metrics!.latencyMs }));
-
-  return (
-    <div className="space-y-4">
-      <LoadError error={error} />
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Evolution Engine</CardTitle>
-            <CardDescription>Continuous, reversible experimentation — observe, hypothesize, mutate, benchmark, accept or reject.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {config && (
-              <>
-                <div className="flex flex-wrap items-center justify-between gap-1 text-sm">
-                  <span className="text-muted-foreground">Research provider</span>
-                  <Badge variant="secondary" className="break-all text-right">
-                    {config.researchProvider} · {config.researchModel}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Status</span>
-                  <Badge variant={running ? "warning" : "outline"}>{running ? "running" : "idle"}</Badge>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Auto-merge</span>
-                  <Badge variant={config.autoMerge ? "success" : "outline"}>{config.autoMerge ? "on" : "off"}</Badge>
-                </div>
-              </>
-            )}
-            <Button onClick={runOne} disabled={running || starting} className="w-full">
-              <Play className="h-4 w-4" />
-              {starting ? "Starting…" : running ? "Cycle running…" : "Run one experiment"}
-            </Button>
-            <LoadError error={runError} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>History summary</CardTitle>
-            <CardDescription>Across all experiments ever run.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {stats && (
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-lg border p-3">
-                  <p className="text-muted-foreground">Total</p>
-                  <p className="text-xl font-semibold">{stats.total}</p>
-                </div>
-                <div className="rounded-lg border p-3">
-                  <p className="text-muted-foreground">Acceptance rate</p>
-                  <p className="text-xl font-semibold">{(stats.acceptanceRate * 100).toFixed(0)}%</p>
-                </div>
-                <div className="rounded-lg border p-3">
-                  <p className="text-muted-foreground">Accepted / Rejected</p>
-                  <p className="text-xl font-semibold">
-                    <span className="text-success">{stats.accepted}</span> / <span className="text-destructive">{stats.rejected}</span>
-                  </p>
-                </div>
-                <div className="rounded-lg border p-3">
-                  <p className="text-muted-foreground">Errors</p>
-                  <p className="text-xl font-semibold">{stats.errors}</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Latency</CardTitle>
-          <CardDescription>Average benchmark latency per completed experiment, oldest to newest.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <LatencySparkline points={latencyPoints} />
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Leaderboard</CardTitle>
-            <CardDescription>Highest-scoring accepted experiments.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {leaderboard.length === 0 ? (
-              <EmptyState>No accepted experiments yet.</EmptyState>
-            ) : (
-              <ul className="space-y-2">
-                {leaderboard.map((r) => (
-                  <li key={r.id} className="rounded-lg border p-2.5 text-sm">
-                    <div className="flex items-center justify-between">
-                      <Badge variant="secondary">{r.mutationId}</Badge>
-                      <span className="font-mono text-xs">{r.metrics?.weightedOverallScore.toFixed(3)}</span>
-                    </div>
-                    <p className="mt-1 text-muted-foreground">{r.hypothesis.summary}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Timeline</CardTitle>
-            <CardDescription>Most recent experiments, newest first.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {experiments.length === 0 ? (
-              <EmptyState>No experiments recorded yet — click "Run one experiment" to start.</EmptyState>
-            ) : (
-              <ul className="max-h-80 space-y-2 overflow-y-auto">
-                {experiments.map((r) => (
-                  <li key={r.id} className="rounded-lg border p-2.5 text-sm">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={EVOLUTION_RESULT_VARIANT[r.result] ?? "outline"}>{r.result}</Badge>
-                        <span className="font-mono text-xs text-muted-foreground">{r.mutationId || "n/a"}</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleTimeString()}</span>
-                    </div>
-                    <p className="mt-1 text-muted-foreground">{r.reason ?? r.hypothesis.summary}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
   );
 }
 

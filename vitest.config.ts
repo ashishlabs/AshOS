@@ -15,7 +15,6 @@ export default defineConfig({
       "sdk/**/*.test.ts",
       "api/**/*.test.ts",
       "cli/**/*.test.ts",
-      "evolution/**/*.test.ts",
       "innovation/**/*.test.ts",
       "tests/**/*.test.ts"
     ],
@@ -34,7 +33,6 @@ export default defineConfig({
         "sdk/**/*.ts",
         "api/**/*.ts",
         "cli/**/*.ts",
-        "evolution/**/*.ts",
         "innovation/**/*.ts"
       ],
       exclude: ["**/*.test.ts", "**/types.ts"]

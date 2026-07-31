@@ -27,18 +27,16 @@ export interface DiscoveryCycleResult {
 }
 
 /**
- * Wires every innovation/* piece together, mirroring how EvolutionModule
- * wires evolution/* (see evolution/evolution-module.ts): pre-registers one
- * mock Collector + IntelligenceAgent per domain into the shared
- * `AgentRegistry` (so they're routable like any other agent, e.g. by the
- * Planner), and constructs the graph/store/engine collaborators. The one
- * orchestration entry point is `runDiscoveryCycle()`: run each domain's
- * agent -> collect Signals -> record them in the KnowledgeGraph -> merge
- * them into Opportunities via OpportunityEngine -> persist -> reinforce the
- * BuilderProfile. Nothing here runs unless `runDiscoveryCycle()` is called
- * (via `ash innovation discover`, `POST /innovation/discover`, or a
- * scheduled job) — no auto-start-on-boot behavior, same as the Evolution
- * Engine.
+ * Wires every innovation/* piece together: pre-registers one mock Collector
+ * + IntelligenceAgent per domain into the shared `AgentRegistry` (so they're
+ * routable like any other agent, e.g. by the Planner), and constructs the
+ * graph/store/engine collaborators. The one orchestration entry point is
+ * `runDiscoveryCycle()`: run each domain's agent -> collect Signals ->
+ * record them in the KnowledgeGraph -> merge them into Opportunities via
+ * OpportunityEngine -> persist -> reinforce the BuilderProfile. Nothing here
+ * runs unless `runDiscoveryCycle()` is called (via `ash innovation
+ * discover`, `POST /innovation/discover`, or a scheduled job) — no
+ * auto-start-on-boot behavior.
  */
 export class InnovationModule {
   readonly collectors = new CollectorRegistry();

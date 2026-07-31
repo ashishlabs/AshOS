@@ -5,9 +5,8 @@ import type { IdeaLifecycleStage, Opportunity } from "./types";
  * accumulates knowledge as it moves captured -> validated -> growing ->
  * researching -> planning -> building -> testing -> released, with
  * archived/revived as an escape hatch from (almost) any stage. Kept as pure
- * functions over `Opportunity` rather than a class — mirrors
- * `evolution/evaluation/evaluator.ts`'s "pure, dependency-free logic" style
- * so transition rules are trivial to unit test.
+ * functions over `Opportunity` rather than a class so transition rules are
+ * trivial to unit test.
  */
 export const LIFECYCLE_TRANSITIONS: Record<IdeaLifecycleStage, IdeaLifecycleStage[]> = {
   captured: ["validated", "archived"],

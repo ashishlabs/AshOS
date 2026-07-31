@@ -39,9 +39,8 @@ function bestProfileMatch(signals: Signal[], profile?: BuilderProfile): number {
  * Turns the raw evidence backing an opportunity (its signals, plus an
  * optional builder profile for personal-fit dimensions) into the 15-
  * dimension `OpportunityScore` from the design doc. Pure, dependency-free
- * heuristic logic (no LLM call) — same "Evaluator is pure logic" pattern as
- * `evolution/evaluation/evaluator.ts` — so it's cheap to unit test and to
- * retune without touching the engine that calls it. Scores continuously
+ * heuristic logic (no LLM call) so it's cheap to unit test and to retune
+ * without touching the engine that calls it. Scores continuously
  * update as new evidence arrives: call `score()` again with the full,
  * updated signal set every time an opportunity gains a signal.
  */

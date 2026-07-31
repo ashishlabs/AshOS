@@ -80,7 +80,7 @@ no SDK dependency), `ollama` (local server, also LM-Studio compatible), and
 `lmstudio` (raw OpenAI-compatible `fetch` against a local LM Studio server,
 default `http://localhost:1234/v1`; the model always comes from
 `config.providers.lmstudio.model` — never hardcode a model name — and it's
-the default research provider for the Evolution Engine, see `evolution/`
+the default research provider for Innovation Intelligence, see `innovation/`
 below). `ProviderRegistry` resolves the active one from `AshOSConfig.provider` /
 `ASHOS_PROVIDER` env and lazily caches instances; `registerFactory` lets
 plugins add new providers. Nothing outside `providers/` should import a
@@ -142,44 +142,6 @@ here are reference implementations of tools/agents that already ship
 registered by default in `sdk/ashos.ts` — see `docs/plugin-development.md`
 before adding a new one.
 
-**`evolution/`** is the Evolution Engine: continuous, reversible
-self-experimentation, wired up by `evolution/evolution-module.ts`
-(`EvolutionModule`, constructed as `AshOS.evolution` alongside the other
-facade members). The loop (`evolution/engine/evolution-engine.ts`,
-`EvolutionEngine.runExperiment`/`runCycle`) is: observe current state ->
-`Researcher` asks the configured research provider (`config.evolution.
-researchProvider`/`researchModel`, LM Studio + Gemma by default) for one
-`Hypothesis` (a mutation id + params) -> `GitWorkspaceManager`
-(`evolution/storage/git-workspace.ts`) creates an isolated `git worktree` on
-its own branch -> the chosen `Mutation` (`evolution/mutation/`, e.g.
-prompt-rewrite, temperature, retry-count) is applied reversibly in that
-worktree -> a `WorkspaceExecutor` (real: `SubprocessWorkspaceExecutor`,
-shells out to `npm run typecheck`/`test` and spawns the worktree's own
-`ash evolve exec` to run a `Benchmark` from `evolution/benchmark/` through
-that workspace's real `ashos.run()` pipeline) collects metrics -> an
-`Evaluator` (`evolution/evaluation/`) weighs them against a baseline and a
-hard-reject gate (build/test failure) -> `ExperimentHistory`
-(`evolution/history/`, JSON-file-per-record like `MemoryManager`) persists
-the result -> accepted experiments merge into the `evolution/accepted`
-integration branch, never `main` (`GitWorkspaceManager.assertNotProtected`
-enforces this in code, not just convention) -> rejected/errored experiments
-are rolled back (worktree + branch removed). `EvolutionEngine.
-pruneOrphanedExperiments()` is a separate crash-recovery sweep (not part of
-the per-experiment try/catch) for worktrees an unclean shutdown left behind
-with no `rollback()` ever having run — it cross-references
-`GitWorkspaceManager.listWorktreeIds()` against `ExperimentStore` and only
-removes IDs with no record or a `rejected`/`error` one, deliberately
-skipping an `accepted` experiment kept for manual review; it runs
-automatically before `ash evolve run` and on API server startup, and via
-`ash evolve prune` on demand. Extend it the same way as
-tools/agents: a `Mutation` or `Benchmark` is a plain object registered
-either in `evolution-module.ts` (built-in) or via a plugin's
-`host.evolution.mutations`/`host.evolution.benchmarks` (see
-`evolution/plugins/` for a reference plugin). Never make a mutation touch
-files outside the worktree it's given, and never have `GitWorkspaceManager`
-target `main`/the base branch. Full design and current gaps:
-`docs/evolution.md`.
-
 **`api/server.ts`** exports `createServer(ashos?)` (constructs a default
 `AshOS` if none given) so tests can inject a fresh instance against an
 ephemeral port instead of the module-level `if (require.main === module)`
@@ -204,12 +166,6 @@ listener block. Follow this pattern for any new route module.
   WebSocket/MCP transports, visual workflow builder, plugin registry
   installs, distributed execution). Check it before assuming a described
   capability from `docs/architecture.md` is missing by accident.
-- `AshOSConfig.evolution` is a required field (not optional) — `kernel/
+- `AshOSConfig.innovation` is a required field (not optional) — `kernel/
   config.ts`'s `defaultConfig()` always sets it, so don't add `?.` guards
   for it in new code.
-- Evolution Engine tests use real git operations against throwaway temp
-  repos and real subprocess spawning against a minimal fake workspace, not
-  mocks of `git`/`child_process` — follow that pattern (see `evolution/
-  storage/git-workspace.test.ts` and `evolution/engine/
-  subprocess-workspace-executor.test.ts`) rather than stubbing them out,
-  and never point a test at the live AshOS repo/branches.

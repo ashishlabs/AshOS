@@ -1,19 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 
-export interface EvolutionConfig {
-  /** Provider name (as registered in ProviderRegistry) used to generate hypotheses, e.g. "lmstudio". */
-  researchProvider: string;
-  /** Model name passed through to the research provider. Never hardcoded — read from here only. */
-  researchModel: string;
-  maxExperiments: number;
-  parallelExperiments: number;
-  /** Seconds. */
-  benchmarkTimeout: number;
-  autoMerge: boolean;
-  requireTests: boolean;
-}
-
 export interface InnovationConfig {
   /** Provider name (as registered in ProviderRegistry) used for reasoning over signals, e.g. "lmstudio". */
   researchProvider: string;
@@ -38,7 +25,6 @@ export interface AshOSConfig {
     lmstudio?: { baseUrl?: string; apiKey?: string; model?: string };
   };
   plugins: string[];
-  evolution: EvolutionConfig;
   innovation: InnovationConfig;
   createdAt: string;
 }
@@ -68,15 +54,6 @@ export function defaultConfig(): AshOSConfig {
       }
     },
     plugins: [],
-    evolution: {
-      researchProvider: process.env.ASHOS_RESEARCH_PROVIDER ?? "lmstudio",
-      researchModel: process.env.ASHOS_RESEARCH_MODEL ?? "google/gemma-4-12b-qat",
-      maxExperiments: 20,
-      parallelExperiments: 2,
-      benchmarkTimeout: 300,
-      autoMerge: false,
-      requireTests: true
-    },
     innovation: {
       researchProvider: process.env.ASHOS_RESEARCH_PROVIDER ?? "lmstudio",
       researchModel: process.env.ASHOS_RESEARCH_MODEL ?? "google/gemma-4-12b-qat",

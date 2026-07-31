@@ -4,15 +4,9 @@ import { PluginManager } from "./plugin-manager";
 import { ToolRegistry } from "../tools/registry";
 import { AgentRegistry } from "../agents/registry";
 import { ProviderRegistry } from "../providers/registry";
-import { MutationRegistry } from "../evolution/mutation/registry";
-import { BenchmarkRegistry } from "../evolution/benchmark/registry";
 import { CollectorRegistry } from "../innovation/collectors/registry";
 import { Kernel } from "./kernel";
 import { defaultConfig } from "./config";
-
-function evolutionHost() {
-  return { mutations: new MutationRegistry(), benchmarks: new BenchmarkRegistry() };
-}
 
 function innovationHost() {
   return { collectors: new CollectorRegistry() };
@@ -31,7 +25,6 @@ describe("PluginManager", () => {
       tools,
       agents,
       providers,
-      evolution: evolutionHost(),
       innovation: innovationHost()
     });
 
@@ -48,28 +41,8 @@ describe("PluginManager", () => {
       tools: new ToolRegistry(),
       agents: new AgentRegistry(),
       providers: new ProviderRegistry(kernel.config),
-      evolution: evolutionHost(),
       innovation: innovationHost()
     });
     expect(loaded).toEqual([]);
-  });
-
-  it("loads a reference evolution plugin contributing a mutation and a benchmark", async () => {
-    const kernel = new Kernel({ config: defaultConfig() });
-    const evolution = evolutionHost();
-    const manager = new PluginManager();
-
-    const loaded = await manager.loadFromDirectory(path.join(process.cwd(), "evolution", "plugins"), {
-      kernel,
-      tools: new ToolRegistry(),
-      agents: new AgentRegistry(),
-      providers: new ProviderRegistry(kernel.config),
-      evolution,
-      innovation: innovationHost()
-    });
-
-    expect(loaded).toContain("evolution-extras");
-    expect(evolution.mutations.get("comment-strip")).toBeDefined();
-    expect(evolution.benchmarks.get("documentation-summary")).toBeDefined();
   });
 });

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { IdeaLifecycleStage, Opportunity } from "../types";
 
-/** JSON-file-per-opportunity persistence — mirrors evolution/history/experiment-store.ts's ExperimentStore. */
+/** JSON-file-per-opportunity persistence. */
 export class OpportunityStore {
   constructor(private readonly root: string) {}
 

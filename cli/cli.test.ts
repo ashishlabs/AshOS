@@ -10,7 +10,6 @@ import { registerPlanCommand } from "./commands/plan";
 import { registerRunCommand } from "./commands/run";
 import { registerProviderCommand } from "./commands/provider";
 import { registerMemoryCommand } from "./commands/memory";
-import { registerEvolveCommand } from "./commands/evolve";
 import { registerInnovationCommand } from "./commands/innovation";
 import { isInitialized, configPath } from "../kernel/config";
 import { AshOS } from "../sdk/ashos";
@@ -144,79 +143,6 @@ describe("CLI commands", () => {
     output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
     expect(output).toContain("Forgot project/cli-note");
     expect(ashos.memory.recall("project", "cli-note")).toBeUndefined();
-  });
-
-  it("evolve mutations and evolve benchmarks list the built-in registrations", async () => {
-    const program = freshProgram();
-    registerEvolveCommand(program);
-
-    await program.parseAsync(["node", "ash", "evolve", "mutations"]);
-    let output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
-    expect(output).toContain("prompt-rewrite");
-    expect(output).toContain("temperature-adjust");
-    expect(output).toContain("retry-count-adjust");
-    expect(output).toContain("workflow-reorder");
-
-    logSpy.mockClear();
-    await program.parseAsync(["node", "ash", "evolve", "benchmarks"]);
-    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
-    expect(output).toContain("code-gen-is-palindrome");
-    expect(output).toContain("reasoning-ci-setup-plan");
-  });
-
-  it("evolve status reports the research provider and a zero-experiment baseline", async () => {
-    const program = freshProgram();
-    registerEvolveCommand(program);
-    await program.parseAsync(["node", "ash", "evolve", "status"]);
-
-    const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
-    expect(output).toContain("Research provider: lmstudio");
-    expect(output).toContain("0 total");
-  });
-
-  it("evolve list reports no experiments before any have run", async () => {
-    const program = freshProgram();
-    registerEvolveCommand(program);
-    await program.parseAsync(["node", "ash", "evolve", "list"]);
-
-    const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
-    expect(output).toContain("No experiments recorded yet");
-  });
-
-  it("evolve show reports an error for an unknown experiment id", async () => {
-    const program = freshProgram();
-    registerEvolveCommand(program);
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-    await program.parseAsync(["node", "ash", "evolve", "show", "does-not-exist"]);
-
-    expect(errorSpy.mock.calls.join(" ")).toContain("not found");
-    expect(process.exitCode).toBe(1);
-    process.exitCode = 0;
-    errorSpy.mockRestore();
-  });
-
-  it("evolve exec runs the input through ashos.run() and prints JSON with a content field", async () => {
-    const program = freshProgram();
-    registerEvolveCommand(program);
-    await program.parseAsync(["node", "ash", "evolve", "exec", "--input", "say hi"]);
-
-    const lastLine = logSpy.mock.calls.map((c) => c.join(" ")).filter(Boolean).pop() ?? "";
-    const parsed = JSON.parse(lastLine);
-    expect(typeof parsed.content).toBe("string");
-    expect(parsed.content).toContain("say hi");
-  });
-
-  it("evolve run completes a cycle and records the result even outside a git repo", async () => {
-    const program = freshProgram();
-    registerEvolveCommand(program);
-    await program.parseAsync(["node", "ash", "evolve", "run", "--max", "1", "--parallel", "1"]);
-
-    const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
-    expect(output).toContain("Completed 1 experiment(s)");
-
-    const ashos = new AshOS({ root: cwd });
-    expect(ashos.evolution.history.list()).toHaveLength(1);
   });
 
   it("innovation collectors lists one collector per default domain", async () => {

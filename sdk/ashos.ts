@@ -16,7 +16,6 @@ import { Planner } from "../planner/planner";
 import { TaskExecutor } from "../planner/executor";
 import { WorkflowEngine } from "../workflow/workflow-engine";
 import { Scheduler } from "../scheduler/scheduler";
-import { EvolutionModule } from "../evolution/evolution-module";
 import { InnovationModule } from "../innovation/innovation-module";
 import type { Agent, AgentContext, AgentResult } from "../agents/types";
 import type { WorkflowDefinition } from "../workflow/types";
@@ -41,7 +40,6 @@ export class AshOS {
   readonly tools: ToolRegistry;
   readonly agents: AgentRegistry;
   readonly scheduler: Scheduler;
-  readonly evolution: EvolutionModule;
   readonly innovation: InnovationModule;
 
   constructor(opts: AshOSOptions = {}) {
@@ -63,7 +61,6 @@ export class AshOS {
     this.agents.register(new TestingAgent());
     this.agents.register(new GitHubTrendingAgent());
 
-    this.evolution = new EvolutionModule({ kernel: this.kernel, providers: this.providers, scheduler: this.scheduler });
     this.innovation = new InnovationModule({ kernel: this.kernel, providers: this.providers, agents: this.agents, tools: this.tools });
   }
 
@@ -114,7 +111,6 @@ export class AshOS {
       tools: this.tools,
       agents: this.agents,
       providers: this.providers,
-      evolution: { mutations: this.evolution.mutations, benchmarks: this.evolution.benchmarks },
       innovation: { collectors: this.innovation.collectors }
     });
     for (const name of loaded) this.kernel.eventBus.emit("plugin:installed", { name });

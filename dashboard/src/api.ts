@@ -71,80 +71,6 @@ export interface ChatMessage {
   content: string;
 }
 
-export interface EvolutionConfig {
-  researchProvider: string;
-  researchModel: string;
-  maxExperiments: number;
-  parallelExperiments: number;
-  benchmarkTimeout: number;
-  autoMerge: boolean;
-  requireTests: boolean;
-}
-export interface EvolutionStatus {
-  running: boolean;
-  config: EvolutionConfig;
-}
-export interface EvolutionStats {
-  total: number;
-  accepted: number;
-  rejected: number;
-  errors: number;
-  acceptanceRate: number;
-}
-export interface Hypothesis {
-  summary: string;
-  filesToModify: string[];
-  implementationPlan: string;
-  expectedImpact: string;
-  risks: string;
-  benchmarkStrategy: string;
-  mutationId: string;
-  mutationParams?: Record<string, unknown>;
-}
-export interface ExperimentMetrics {
-  latencyMs: number;
-  tokenUsage?: number;
-  executionTimeMs: number;
-  memoryUsageMb?: number;
-  gpuUtilizationPercent?: number;
-  toolCalls: number;
-  successRate: number;
-  failureRate: number;
-  compilationSuccess: boolean;
-  testsPassed?: number;
-  testsFailed?: number;
-  benchmarkScore: number;
-  weightedOverallScore: number;
-}
-export interface ExperimentRecord {
-  id: string;
-  createdAt: string;
-  finishedAt?: string;
-  status: "pending" | "running" | "completed" | "error";
-  hypothesis: Hypothesis;
-  mutationId: string;
-  mutationParams?: Record<string, unknown>;
-  researchProvider: string;
-  researchModel: string;
-  gitBranch: string;
-  gitCommit?: string;
-  metrics?: ExperimentMetrics;
-  result: "accepted" | "rejected" | "error" | "pending";
-  reason?: string;
-  logs: string[];
-}
-export interface MutationInfo {
-  id: string;
-  name: string;
-  description: string;
-  targetKind: string;
-}
-export interface BenchmarkInfo {
-  id: string;
-  category: string;
-  description: string;
-}
-
 export type IntelligenceDomain = "market" | "github" | "community" | "research" | "workflow" | "competitor";
 export interface InnovationConfig {
   researchProvider: string;
@@ -246,18 +172,6 @@ export const api = {
   memoryRemember: (scope: MemoryScope, key: string, value: unknown, tags?: string[]) =>
     post<MemoryRecord>("/memory", { scope, key, value, tags }),
   memoryForget: (scope: MemoryScope, key: string) => post<{ ok: boolean }>("/memory/forget", { scope, key }),
-
-  evolutionStatus: () => get<EvolutionStatus>("/evolution/status"),
-  evolutionStats: () => get<EvolutionStats>("/evolution/stats"),
-  evolutionExperiments: (limit?: number) => get<ExperimentRecord[]>(`/evolution/experiments${limit ? `?limit=${limit}` : ""}`),
-  evolutionExperiment: (id: string) => get<ExperimentRecord>(`/evolution/experiments/${encodeURIComponent(id)}`),
-  evolutionLeaderboard: (limit?: number) => get<ExperimentRecord[]>(`/evolution/leaderboard${limit ? `?limit=${limit}` : ""}`),
-  evolutionMutations: () => get<MutationInfo[]>("/evolution/mutations"),
-  evolutionBenchmarks: () => get<BenchmarkInfo[]>("/evolution/benchmarks"),
-  evolutionConfig: () => get<EvolutionConfig>("/evolution/config"),
-  evolutionUpdateConfig: (patchBody: Partial<EvolutionConfig>) => patch<EvolutionConfig>("/evolution/config", patchBody),
-  evolutionRun: (options: { maxExperiments?: number; parallelExperiments?: number; benchmarkIds?: string[] }) =>
-    post<{ started: boolean }>("/evolution/run", options),
 
   innovationStatus: () => get<InnovationStatus>("/innovation/status"),
   innovationOpportunities: (limit?: number, stage?: IdeaLifecycleStage) => {
