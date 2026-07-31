@@ -95,8 +95,13 @@ function StatusPill() {
   }, []);
 
   return (
-    <div className="hidden items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs sm:flex">
-      <span className={cn("h-2 w-2 rounded-full", ok ? "bg-success" : "bg-destructive")} />
+    <div className="glass hidden items-center gap-2 rounded-full border px-3 py-1 text-xs sm:flex">
+      <span
+        className={cn(
+          "h-2 w-2 rounded-full",
+          ok ? "animate-pulse-glow bg-success text-success" : "bg-destructive text-destructive"
+        )}
+      />
       {ok && health ? (
         <span className="text-muted-foreground">
           provider <span className="font-medium text-foreground">{health.provider}</span>
@@ -114,14 +119,15 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+      <header className="glass sticky top-0 z-10 border-b">
+        <div className="absolute inset-x-0 bottom-0 h-px bg-[image:var(--gradient-brand)] opacity-60" />
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+            <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-[image:var(--gradient-brand)] shadow-[0_0_20px_-4px_var(--glow-primary)]">
               <Sparkles className="h-4 w-4 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-sm font-semibold leading-tight">AshOS</h1>
+              <h1 className="text-sm font-bold leading-tight tracking-tight text-gradient">AshOS</h1>
               <p className="text-xs leading-tight text-muted-foreground">AI Operating System for Developers</p>
             </div>
           </div>
