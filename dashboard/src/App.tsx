@@ -17,7 +17,6 @@ import {
   Sun,
   Trash2,
   TrendingUp,
-  Wrench,
   X
 } from "lucide-react";
 
@@ -50,16 +49,14 @@ import {
   type MemoryScope,
   type Opportunity,
   type TaskGraph,
-  type ToolInfo,
   type TrendingReposResult,
   type WorkflowStepResultDTO
 } from "./api";
 
-type Tab = "dashboard" | "tools" | "plan" | "workflow" | "evolution" | "innovation" | "trending" | "memory" | "logs" | "chat";
+type Tab = "dashboard" | "plan" | "workflow" | "evolution" | "innovation" | "trending" | "memory" | "logs" | "chat";
 
 const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "tools", label: "Tools", icon: Wrench },
   { id: "plan", label: "Plan", icon: ListTodo },
   { id: "workflow", label: "Workflow", icon: GitBranch },
   { id: "evolution", label: "Evolution", icon: Dna },
@@ -124,7 +121,6 @@ function StatusPill() {
 
 const TAB_PANELS: Record<Tab, React.ComponentType> = {
   dashboard: DashboardTab,
-  tools: ToolsTab,
   plan: PlanTab,
   workflow: WorkflowTab,
   evolution: EvolutionTab,
@@ -387,41 +383,6 @@ function TrendingTab() {
           </ul>
         )}
         {!result && !error && <EmptyState>Click "Find trending repos" to search GitHub.</EmptyState>}
-      </CardContent>
-    </Card>
-  );
-}
-
-function ToolsTab() {
-  const [tools, setTools] = useState<ToolInfo[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    api.tools().then(setTools).catch((e) => setError(e.message));
-  }, []);
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Tools</CardTitle>
-        <CardDescription>Discoverable capabilities agents and workflows can call.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <LoadError error={error} />
-        {tools.length === 0 && !error && <Skeleton className="h-24 w-full" />}
-        <ul className="divide-y">
-          {tools.map((t) => (
-            <li key={t.name} className="space-y-1.5 py-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-semibold">{t.name}</span>
-                {t.actions.map((a) => (
-                  <Badge key={a} variant="outline">
-                    {a}
-                  </Badge>
-                ))}
-              </div>
-              <p className="text-sm text-muted-foreground">{t.description}</p>
-            </li>
-          ))}
-        </ul>
       </CardContent>
     </Card>
   );

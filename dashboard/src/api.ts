@@ -30,11 +30,6 @@ export interface Health {
   ok: boolean;
   provider: string;
 }
-export interface ToolInfo {
-  name: string;
-  description: string;
-  actions: string[];
-}
 export interface PlannedTask {
   id: string;
   title: string;
@@ -240,7 +235,6 @@ export interface TrendingReposResult {
 
 export const api = {
   health: () => get<Health>("/health"),
-  tools: () => get<ToolInfo[]>("/tools"),
   githubTrending: (limit?: number) => get<TrendingReposResult>(`/agents/github-trending${limit ? `?limit=${limit}` : ""}`),
   tasks: () => get<AshOSEvent[]>("/tasks"),
   events: (prefix?: string) => get<AshOSEvent[]>(`/events${prefix ? `?prefix=${encodeURIComponent(prefix)}` : ""}`),
