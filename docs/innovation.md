@@ -195,6 +195,17 @@ Exactly like the Evolution Engine's `researchProvider`, this is resolved
 through the same `ProviderRegistry` as everything else — Claude/OpenAI/
 Ollama/local models all work with zero changes to any innovation/* code.
 
+## Dashboard
+
+The **Innovation** tab (`dashboard/src/App.tsx`) shows: research
+provider/model and monitored domains, live running/idle status and a
+one-click "run discovery cycle" action, knowledge-base counters
+(opportunities, knowledge nodes, relationships, categories tracked), the
+Builder Profile as weighted bars, the top-scoring opportunities with their
+lifecycle stage and tags, the registered collectors, and an on-demand Daily
+Innovation Brief. All of it reads from the REST endpoints below, polling
+every few seconds — same pattern as the Evolution tab.
+
 ## REST API
 
 See `docs/api.md` for the full table. Summary: `POST /innovation/discover`
@@ -227,9 +238,6 @@ See `docs/cli.md`. Summary: `ash innovation discover|list|show
 - **No Weekly Deep Research report** — only the Daily Brief is
   implemented; a weekly rollup would reuse the same
   `DailyBriefGenerator`-style pattern over a longer window.
-- **No dashboard UI page** for Innovation Intelligence yet — the REST API
-  is the current source of truth (same caveat as Evolution's dashboard tab
-  being the only visual surface).
 - **Richer knowledge-graph entity extraction** (companies, people,
   repositories as first-class nodes, not just problem/technology) needs a
   real collector supplying that structure — the graph API already supports

@@ -6,9 +6,11 @@ import {
   Dna,
   GitBranch,
   LayoutDashboard,
+  Lightbulb,
   ListTodo,
   Menu,
   Moon,
+  Newspaper,
   Play,
   ScrollText,
   Send,
@@ -33,21 +35,39 @@ import {
   api,
   type AgentInfo,
   type AshOSEvent,
+  type BuilderProfileEntry,
   type ChatMessage,
+  type CollectorInfo,
+  type DailyBrief,
   type EvolutionConfig,
   type EvolutionStats,
   type ExperimentRecord,
   type Health,
+  type IdeaLifecycleStage,
+  type InnovationConfig,
+  type KnowledgeGraphStats,
   type LogEntry,
   type MemoryRecord,
   type MemoryScope,
+  type Opportunity,
   type ProvidersInfo,
   type TaskGraph,
   type ToolInfo,
   type WorkflowStepResultDTO
 } from "./api";
 
-type Tab = "dashboard" | "providers" | "agents" | "tools" | "plan" | "workflow" | "memory" | "logs" | "chat" | "evolution";
+type Tab =
+  | "dashboard"
+  | "providers"
+  | "agents"
+  | "tools"
+  | "plan"
+  | "workflow"
+  | "memory"
+  | "logs"
+  | "chat"
+  | "evolution"
+  | "innovation";
 
 const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -57,6 +77,7 @@ const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "plan", label: "Plan", icon: ListTodo },
   { id: "workflow", label: "Workflow", icon: GitBranch },
   { id: "evolution", label: "Evolution", icon: Dna },
+  { id: "innovation", label: "Innovation", icon: Lightbulb },
   { id: "memory", label: "Memory", icon: Brain },
   { id: "logs", label: "Logs", icon: ScrollText },
   { id: "chat", label: "Chat", icon: Send }
@@ -122,6 +143,7 @@ const TAB_PANELS: Record<Tab, React.ComponentType> = {
   plan: PlanTab,
   workflow: WorkflowTab,
   evolution: EvolutionTab,
+  innovation: InnovationTab,
   memory: MemoryTab,
   logs: LogsTab,
   chat: ChatTab
@@ -780,6 +802,292 @@ function EvolutionTab() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+const STAGE_VARIANT: Record<IdeaLifecycleStage, "success" | "destructive" | "warning" | "secondary" | "outline"> = {
+  captured: "outline",
+  validated: "secondary",
+  growing: "warning",
+  researching: "secondary",
+  planning: "secondary",
+  building: "warning",
+  testing: "warning",
+  released: "success",
+  archived: "outline",
+  revived: "warning"
+};
+
+function InnovationTab() {
+  const [config, setConfig] = useState<InnovationConfig | null>(null);
+  const [running, setRunning] = useState(false);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [profile, setProfile] = useState<BuilderProfileEntry[]>([]);
+  const [collectors, setCollectors] = useState<CollectorInfo[]>([]);
+  const [graph, setGraph] = useState<KnowledgeGraphStats | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
+  const [brief, setBrief] = useState<DailyBrief | null>(null);
+  const [briefLoading, setBriefLoading] = useState(false);
+  const [briefError, setBriefError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = () =>
+      Promise.all([
+        api.innovationStatus(),
+        api.innovationOpportunities(20),
+        api.innovationProfile(6),
+        api.innovationCollectors(),
+        api.innovationGraph()
+      ])
+        .then(([status, opps, prof, cols, g]) => {
+          setConfig(status.config);
+          setRunning(status.running);
+          setOpportunities(opps);
+          setProfile(prof);
+          setCollectors(cols);
+          setGraph(g);
+          setError(null);
+        })
+        .catch((e) => setError(e.message));
+    load();
+    const interval = setInterval(load, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const runDiscovery = async () => {
+    setStarting(true);
+    setRunError(null);
+    try {
+      await api.innovationDiscover();
+      setRunning(true);
+    } catch (e) {
+      setRunError((e as Error).message);
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const generateBrief = async () => {
+    setBriefLoading(true);
+    setBriefError(null);
+    try {
+      setBrief(await api.innovationBrief());
+    } catch (e) {
+      setBriefError((e as Error).message);
+    } finally {
+      setBriefLoading(false);
+    }
+  };
+
+  const maxWeight = Math.max(1, ...profile.map((p) => p.weight));
+
+  return (
+    <div className="space-y-4">
+      <LoadError error={error} />
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Innovation Intelligence</CardTitle>
+            <CardDescription>
+              Continuously discovers opportunities worth building next — observe, merge into ideas, score, track.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {config && (
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-1 text-sm">
+                  <span className="text-muted-foreground">Research provider</span>
+                  <Badge variant="secondary" className="break-all text-right">
+                    {config.researchProvider} · {config.researchModel}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Status</span>
+                  <Badge variant={running ? "warning" : "outline"}>{running ? "running" : "idle"}</Badge>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-1.5 text-sm">
+                  <span className="text-muted-foreground">Domains</span>
+                  <div className="flex flex-wrap justify-end gap-1">
+                    {config.domains.map((d) => (
+                      <Badge key={d} variant="outline">
+                        {d}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+            <Button onClick={runDiscovery} disabled={running || starting} className="w-full">
+              <Play className="h-4 w-4" />
+              {starting ? "Starting…" : running ? "Cycle running…" : "Run discovery cycle"}
+            </Button>
+            <LoadError error={runError} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Knowledge base</CardTitle>
+            <CardDescription>What's been observed and merged so far.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-lg border p-3">
+                <p className="text-muted-foreground">Opportunities</p>
+                <p className="text-xl font-semibold">{opportunities.length}</p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-muted-foreground">Knowledge nodes</p>
+                <p className="text-xl font-semibold">{graph?.nodeCount ?? 0}</p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-muted-foreground">Relationships</p>
+                <p className="text-xl font-semibold">{graph?.edgeCount ?? 0}</p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-muted-foreground">Categories tracked</p>
+                <p className="text-xl font-semibold">{profile.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Builder profile</CardTitle>
+          <CardDescription>Categories the recommendation engine currently favors, learned from accumulated signals.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {profile.length === 0 ? (
+            <EmptyState>No signal history yet — run a discovery cycle to start building a profile.</EmptyState>
+          ) : (
+            <ul className="space-y-2.5">
+              {profile.map((p) => (
+                <li key={p.category} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium">{p.category}</span>
+                    <span className="text-muted-foreground">
+                      {p.signalCount} signal{p.signalCount === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-[image:var(--gradient-brand)]"
+                      style={{ width: `${Math.max(4, (p.weight / maxWeight) * 100)}%` }}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Top opportunities</CardTitle>
+            <CardDescription>Highest-scoring ideas, ranked by weighted opportunity score.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {opportunities.length === 0 ? (
+              <EmptyState>No opportunities recorded yet — click "Run discovery cycle" to start.</EmptyState>
+            ) : (
+              <ul className="max-h-96 space-y-2 overflow-y-auto">
+                {opportunities.map((o) => (
+                  <li key={o.id} className="rounded-lg border p-2.5 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-1">
+                      <Badge variant={STAGE_VARIANT[o.stage] ?? "outline"}>{o.stage}</Badge>
+                      <span className="font-mono text-xs">{o.score.overall.toFixed(2)}</span>
+                    </div>
+                    <p className="mt-1 min-w-0 break-words font-medium">{o.title}</p>
+                    {o.tags.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {o.tags.slice(0, 4).map((t) => (
+                          <Badge key={t} variant="outline" className="text-[10px]">
+                            {t}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Collectors</CardTitle>
+            <CardDescription>One per intelligence domain, feeding raw signals into the graph.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {collectors.length === 0 ? (
+              <EmptyState>No collectors registered.</EmptyState>
+            ) : (
+              <ul className="divide-y">
+                {collectors.map((c) => (
+                  <li key={c.id} className="space-y-1 py-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold">{c.id}</span>
+                      <Badge variant="outline">{c.domain}</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{c.description}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Daily Innovation Brief</CardTitle>
+          <CardDescription>A narrative summary of today's top opportunities and what changed.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Button onClick={generateBrief} disabled={briefLoading} variant="outline">
+            <Newspaper className="h-4 w-4" />
+            {briefLoading ? "Generating…" : "Generate today's brief"}
+          </Button>
+          <LoadError error={briefError} />
+          {brief && (
+            <div className="space-y-3 rounded-lg border p-3">
+              <p className="text-sm whitespace-pre-wrap">{brief.narrative}</p>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span>
+                  {brief.newSignalCount} new signal{brief.newSignalCount === 1 ? "" : "s"}
+                </span>
+                <span>·</span>
+                <div className="flex flex-wrap gap-1">
+                  {brief.domainsCovered.map((d) => (
+                    <Badge key={d} variant="outline" className="text-[10px]">
+                      {d}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+              {brief.topOpportunities.length > 0 && (
+                <ul className="space-y-1.5">
+                  {brief.topOpportunities.map((o) => (
+                    <li key={o.id} className="flex flex-wrap items-center justify-between gap-1 text-sm">
+                      <span className="min-w-0 break-words font-medium">{o.title}</span>
+                      <span className="font-mono text-xs text-muted-foreground">{o.score.overall.toFixed(2)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
