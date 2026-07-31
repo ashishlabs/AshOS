@@ -5,4 +5,5 @@ export * from "./code-agent";
 export * from "./research-agent";
 export * from "./git-agent";
 export * from "./testing-agent";
+export * from "./github-trending-agent";
 export * from "./registry";

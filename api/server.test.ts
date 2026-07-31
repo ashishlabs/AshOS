@@ -45,6 +45,43 @@ describe("AshOS API", () => {
     expect(body.length).toBeGreaterThan(0);
   });
 
+  it("GET /agents/github-trending runs the agent and forwards ?limit as task input", async () => {
+    // A dedicated server/agent so this test never touches the real network:
+    // registering under the same name/capability overrides the real
+    // GitHubTrendingAgent on this instance only.
+    const stubRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ashos-api-github-trending-"));
+    const stubAshos = new AshOS({ root: stubRoot });
+    let receivedInput: Record<string, unknown> | undefined;
+    stubAshos.agents.register({
+      name: "github-trending",
+      description: "stub",
+      capabilities: ["github-trending"],
+      async execute(task) {
+        receivedInput = task.input;
+        return { ok: true, output: "1. acme/widget (100★)", data: { repos: [{ fullName: "acme/widget" }] } };
+      }
+    });
+    const stubApp = createServer(stubAshos);
+    const stubServer = await new Promise<Server>((resolve) => {
+      const s = stubApp.listen(0, () => resolve(s));
+    });
+    try {
+      const address = stubServer.address();
+      const stubBaseUrl = `http://127.0.0.1:${typeof address === "object" && address ? address.port : 0}`;
+
+      const res = await fetch(`${stubBaseUrl}/agents/github-trending?limit=3`);
+      const body = (await res.json()) as any;
+
+      expect(res.status).toBe(200);
+      expect(body.ok).toBe(true);
+      expect(body.data.repos).toEqual([{ fullName: "acme/widget" }]);
+      expect(receivedInput).toEqual({ limit: 3 });
+    } finally {
+      stubServer.close();
+      fs.rmSync(stubRoot, { recursive: true, force: true });
+    }
+  });
+
   it("POST /chat proxies to the active provider", async () => {
     const res = await fetch(`${baseUrl}/chat`, {
       method: "POST",

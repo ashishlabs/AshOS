@@ -43,7 +43,7 @@
 | `providers/` | `AIProvider` interface plus Anthropic, OpenAI, Ollama, LM Studio (OpenAI-compatible, local) and Mock implementations, and a registry that resolves the active one from config/env. |
 | `tools/` | `Tool` interface plus shell, git and filesystem tools, each declaring capabilities/requirements/permissions and a health check. |
 | `memory/` | `MemoryManager` unifying short-term (in-process, TTL), session (in-process), project (`.ashos/memory/project.json`) and global (`~/.ashos/memory/global.json`) scopes, backed by a brute-force cosine-similarity `VectorStore` for semantic recall. |
-| `agents/` | `Agent` interface plus Code, Research, Git, Testing and Generic agents, routed by capability tag. |
+| `agents/` | `Agent` interface plus Code, Research, Git, Testing, Generic, and GitHub Trending agents, routed by capability tag. |
 | `planner/` | `Planner` turns a natural-language goal into a `TaskGraph` via the active provider (JSON-mode prompt with a safe single-task fallback); `TaskExecutor` runs the graph through the shared `DagExecutor`. |
 | `workflow/` | `WorkflowEngine` executes user-authored JSON workflow definitions (chains of `agent:<capability>` / `tool:<name>` steps) through the same `DagExecutor`. |
 | `scheduler/` | Cron-based `Scheduler` (via `node-cron`) for recurring automation, e.g. "every morning, check GitHub, summarize, email report". |

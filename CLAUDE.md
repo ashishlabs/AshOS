@@ -45,11 +45,14 @@ There is one `tsconfig.json` / one `vitest.config.ts` for everything except
 **Composition root is `sdk/ashos.ts` (`AshOS` class).** It constructs a
 `Kernel`, a `ProviderRegistry`, a `MemoryManager`, a `ToolRegistry`
 (pre-registering shell/git/fs tools), and an `AgentRegistry` (pre-registering
-generic/code/research/git/testing agents), and exposes `chat()`, `plan()`,
-`run()` (plan + execute), `runWorkflow()`, and `loadPlugins()`. Both `cli/`
-and `api/server.ts` construct an `AshOS` instance and are thin adapters over
-it — business logic belongs in the packages below, not in CLI commands or
-route handlers.
+generic/code/research/git/testing/github-trending agents), and exposes
+`chat()`, `plan()`, `run()` (plan + execute), `runAgent()` (find-by-capability
++ execute a single agent directly, bypassing the planner — for deterministic
+capabilities like `github-trending` that don't need an LLM to decide how to
+invoke them), `runWorkflow()`, and `loadPlugins()`. Both `cli/` and
+`api/server.ts` construct an `AshOS` instance and are thin adapters over it —
+business logic belongs in the packages below, not in CLI commands or route
+handlers.
 
 **`kernel/`** holds cross-cutting primitives with no dependency on the rest
 of the system: `EventBus` (typed pub/sub every subsystem emits onto —
@@ -96,6 +99,17 @@ agents only implement `run()`). Agents are routed by a `capabilities: string[]`
 tag, not by class — `AgentRegistry.findByCapability()` picks the first
 match. `GenericAgent` (capability `"generic"`) is the fallback used when the
 Planner emits a task whose capability doesn't map to a specialized agent.
+Most agents call `context.provider`/`context.tools`, but an agent can also
+talk to a real external API directly with raw `fetch` when the task is
+deterministic and doesn't need an LLM in the loop — `GitHubTrendingAgent`
+(capability `"github-trending"`) queries GitHub's public Search API this
+way (one request per topic, merged + deduped, tolerant of a single
+failing/rate-limited topic) and is invoked on demand via
+`AshOS.runAgent("github-trending", ...)` / `GET /agents/github-trending`
+rather than through the planner, since there's nothing for an LLM to
+decide. Its tests stub global `fetch` (`vi.stubGlobal`), the same
+convention `providers/lmstudio-provider.test.ts` uses — never make a test
+depend on live network access.
 
 **`planner/`** (`Planner.plan(goal)`) prompts the active provider for a JSON
 task graph (`{ tasks: [{ id, title, description, capability, dependsOn }] }`)

@@ -10,6 +10,7 @@ import {
   Moon,
   Newspaper,
   Play,
+  RefreshCw,
   ScrollText,
   Send,
   Sparkles,
@@ -49,6 +50,7 @@ import {
   type Opportunity,
   type TaskGraph,
   type ToolInfo,
+  type TrendingReposResult,
   type WorkflowStepResultDTO
 } from "./api";
 
@@ -279,52 +281,115 @@ function DashboardTab() {
   }, []);
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle>Status</CardTitle>
-          <CardDescription>Kernel health and the active AI provider.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <LoadError error={error} />
-          {health ? (
-            <>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Kernel</span>
-                <Badge variant={health.ok ? "success" : "destructive"}>{health.ok ? "healthy" : "unhealthy"}</Badge>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Active provider</span>
-                <Badge variant="secondary">{health.provider}</Badge>
-              </div>
-            </>
-          ) : (
-            !error && <Skeleton className="h-16 w-full" />
-          )}
-        </CardContent>
-      </Card>
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Status</CardTitle>
+            <CardDescription>Kernel health and the active AI provider.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <LoadError error={error} />
+            {health ? (
+              <>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Kernel</span>
+                  <Badge variant={health.ok ? "success" : "destructive"}>{health.ok ? "healthy" : "unhealthy"}</Badge>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Active provider</span>
+                  <Badge variant="secondary">{health.provider}</Badge>
+                </div>
+              </>
+            ) : (
+              !error && <Skeleton className="h-16 w-full" />
+            )}
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent activity</CardTitle>
-          <CardDescription>Live feed from the kernel event bus.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {events.length === 0 ? (
-            <EmptyState>No events yet — plan a goal, run a workflow, or chat to generate some.</EmptyState>
-          ) : (
-            <ul className="divide-y">
-              {events.map((e, i) => (
-                <li key={i} className="flex items-center justify-between py-2 text-sm">
-                  <span className="font-mono text-xs text-primary">{e.name}</span>
-                  <span className="text-xs text-muted-foreground">{new Date(e.timestamp).toLocaleTimeString()}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent activity</CardTitle>
+            <CardDescription>Live feed from the kernel event bus.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {events.length === 0 ? (
+              <EmptyState>No events yet — plan a goal, run a workflow, or chat to generate some.</EmptyState>
+            ) : (
+              <ul className="divide-y">
+                {events.map((e, i) => (
+                  <li key={i} className="flex items-center justify-between py-2 text-sm">
+                    <span className="font-mono text-xs text-primary">{e.name}</span>
+                    <span className="text-xs text-muted-foreground">{new Date(e.timestamp).toLocaleTimeString()}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <TrendingReposCard />
     </div>
+  );
+}
+
+function TrendingReposCard() {
+  const [result, setResult] = useState<TrendingReposResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setResult(await api.githubTrending(8));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const repos = result?.data?.repos ?? [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Trending: AI &amp; Productivity</CardTitle>
+        <CardDescription>
+          Real GitHub repositories pushed to recently, ranked by stars — via the <code className="font-mono">github-trending</code> agent.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Button onClick={load} disabled={loading} variant="outline">
+          <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+          {loading ? "Searching GitHub…" : result ? "Refresh" : "Find trending repos"}
+        </Button>
+        <LoadError error={error} />
+        {result && !result.ok && <LoadError error={result.error ?? "the agent reported a failure"} />}
+        {result?.ok && repos.length === 0 && <EmptyState>No repositories matched — try again later.</EmptyState>}
+        {repos.length > 0 && (
+          <ul className="divide-y">
+            {repos.map((r) => (
+              <li key={r.fullName} className="space-y-1 py-2.5 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <a href={r.url} target="_blank" rel="noreferrer" className="min-w-0 font-medium text-primary hover:underline">
+                    {r.fullName}
+                  </a>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {r.language && <Badge variant="outline">{r.language}</Badge>}
+                    <span className="font-mono text-xs text-muted-foreground">★ {r.stars.toLocaleString()}</span>
+                  </div>
+                </div>
+                {r.description && <p className="text-muted-foreground">{r.description}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
+        {!result && !error && <EmptyState>Click "Find trending repos" to search GitHub.</EmptyState>}
+      </CardContent>
+    </Card>
   );
 }
 

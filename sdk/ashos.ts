@@ -11,13 +11,14 @@ import { CodeAgent } from "../agents/code-agent";
 import { ResearchAgent } from "../agents/research-agent";
 import { GitAgent } from "../agents/git-agent";
 import { TestingAgent } from "../agents/testing-agent";
+import { GitHubTrendingAgent } from "../agents/github-trending-agent";
 import { Planner } from "../planner/planner";
 import { TaskExecutor } from "../planner/executor";
 import { WorkflowEngine } from "../workflow/workflow-engine";
 import { Scheduler } from "../scheduler/scheduler";
 import { EvolutionModule } from "../evolution/evolution-module";
 import { InnovationModule } from "../innovation/innovation-module";
-import type { AgentContext } from "../agents/types";
+import type { Agent, AgentContext, AgentResult } from "../agents/types";
 import type { WorkflowDefinition } from "../workflow/types";
 import type { TaskGraph } from "../planner/types";
 import type { ChatMessage, ChatOptions } from "../providers/types";
@@ -60,6 +61,7 @@ export class AshOS {
     this.agents.register(new ResearchAgent());
     this.agents.register(new GitAgent());
     this.agents.register(new TestingAgent());
+    this.agents.register(new GitHubTrendingAgent());
 
     this.evolution = new EvolutionModule({ kernel: this.kernel, providers: this.providers, scheduler: this.scheduler });
     this.innovation = new InnovationModule({ kernel: this.kernel, providers: this.providers, agents: this.agents, tools: this.tools });
@@ -87,6 +89,13 @@ export class AshOS {
     const graph = await this.plan(goal);
     const executor = new TaskExecutor({ agents: this.agents, agentContext: this.agentContext(), eventBus: this.kernel.eventBus });
     return { graph, results: await executor.execute(graph) };
+  }
+
+  /** Runs a single registered agent directly by capability, bypassing the planner — for on-demand, deterministic capabilities like `github-trending` that don't need an LLM to decide how to invoke them. */
+  async runAgent(capability: string, task: { description: string; input?: Record<string, unknown> }): Promise<AgentResult> {
+    const agent: Agent | undefined = this.agents.findByCapability(capability);
+    if (!agent) throw new Error(`no agent registered for capability "${capability}"`);
+    return agent.execute({ id: `${capability}-${Date.now()}`, description: task.description, input: task.input }, this.agentContext());
   }
 
   async runWorkflow(definition: WorkflowDefinition) {

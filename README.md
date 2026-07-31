@@ -39,7 +39,7 @@ kernel/     event bus, logger, permissions, plugin loader, agent router, DAG exe
 providers/  AIProvider interface + Anthropic, OpenAI, Ollama, Mock, and a registry
 tools/      Tool interface + shell, git, filesystem
 memory/     short-term / session / project / global memory + vector search
-agents/     Agent interface + Generic, Code, Research, Git, Testing
+agents/     Agent interface + Generic, Code, Research, Git, Testing, GitHub Trending
 planner/    goal -> task graph (via the active provider) + parallel/retrying executor
 workflow/   JSON-defined workflow engine (same DAG executor as the planner)
 scheduler/  cron-based recurring jobs

@@ -6,7 +6,7 @@
 - Providers: `AIProvider` interface + Anthropic, OpenAI, Ollama, LM Studio (local, OpenAI-compatible), Mock, with a registry that resolves the active one from config/env.
 - Tools: shell, git, filesystem, each with capabilities/requirements/permissions/health-check.
 - Memory: short-term, session, project, global scopes + brute-force vector search for semantic recall.
-- Agents: Generic, Code, Research, Git, Testing, routed by capability.
+- Agents: Generic, Code, Research, Git, Testing, GitHub Trending, routed by capability.
 - Planner: goal → task graph via the active provider, with dependency-aware parallel execution, retries, and rollback hooks.
 - Workflow engine: JSON-defined step graphs (`agent:<capability>` / `tool:<name>`) on the same DAG executor.
 - Scheduler: cron-based recurring jobs.

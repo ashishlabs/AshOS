@@ -157,6 +157,19 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     res.json(ashos.kernel.logger.getEntries());
   });
 
+  app.get("/agents/github-trending", async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const result = await ashos.runAgent("github-trending", {
+        description: "Find trending GitHub repositories focused on AI and productivity",
+        input: limit ? { limit } : undefined
+      });
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
   app.get("/health", (_req, res) => {
     res.json({ ok: true, provider: ashos.providers.active().name() });
   });

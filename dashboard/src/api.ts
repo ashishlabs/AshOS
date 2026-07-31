@@ -221,9 +221,27 @@ export interface KnowledgeGraphStats {
   byKind: Record<string, number>;
 }
 
+export interface TrendingRepo {
+  fullName: string;
+  url: string;
+  description: string | null;
+  stars: number;
+  forks: number;
+  language: string | null;
+  topics: string[];
+  pushedAt: string;
+}
+export interface TrendingReposResult {
+  ok: boolean;
+  output?: string;
+  data?: { repos: TrendingRepo[]; sinceDays: number; topics: string[] };
+  error?: string;
+}
+
 export const api = {
   health: () => get<Health>("/health"),
   tools: () => get<ToolInfo[]>("/tools"),
+  githubTrending: (limit?: number) => get<TrendingReposResult>(`/agents/github-trending${limit ? `?limit=${limit}` : ""}`),
   tasks: () => get<AshOSEvent[]>("/tasks"),
   events: (prefix?: string) => get<AshOSEvent[]>(`/events${prefix ? `?prefix=${encodeURIComponent(prefix)}` : ""}`),
   logs: () => get<LogEntry[]>("/logs"),

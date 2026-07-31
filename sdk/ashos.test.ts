@@ -38,6 +38,23 @@ describe("AshOS SDK facade", () => {
     expect(results.get("s1")?.status).toBe("success");
   });
 
+  it("runAgent finds a registered agent by capability and executes it directly, bypassing the planner", async () => {
+    const ashos = new AshOS({ root });
+    const result = await ashos.runAgent("generic", { description: "say hi" });
+    expect(result.ok).toBe(true);
+    expect(result.output).toContain("say hi");
+  });
+
+  it("runAgent throws a clear error for an unregistered capability", async () => {
+    const ashos = new AshOS({ root });
+    await expect(ashos.runAgent("does-not-exist", { description: "x" })).rejects.toThrow(/no agent registered/);
+  });
+
+  it("registers the GitHubTrendingAgent under the github-trending capability", async () => {
+    const ashos = new AshOS({ root });
+    expect(ashos.agents.findByCapability("github-trending")?.name).toBe("github-trending");
+  });
+
   it("wires the Innovation Intelligence module in, with its agents registered on the shared AgentRegistry", async () => {
     const ashos = new AshOS({ root });
     expect(ashos.agents.findByCapability("intelligence:market")).toBeDefined();
