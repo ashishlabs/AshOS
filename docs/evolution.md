@@ -403,6 +403,32 @@ fully-real-subprocess version in `subprocess-workspace-executor.test.ts`.)
   `POST /evolution/run`, or explicitly schedule it — there's no
   auto-start-on-boot behavior.
 
+### Crash recovery: orphaned worktrees
+
+Every normal path (`rejected`, `accepted`+merged) already calls `rollback()`
+itself, and a *caught* error also rolls back in `runExperiment`'s `catch`
+block. But an unclean shutdown — `kill -9`, an OOM, a host reboot — can land
+the process between `createWorkspace` and that cleanup, leaving a git
+worktree/branch under `.ashos/evolution/worktrees/<id>` with no
+`ExperimentRecord` at all.
+
+`EvolutionEngine.pruneOrphanedExperiments()` sweeps for exactly this: it
+lists every worktree still on disk (`GitWorkspaceManager.listWorktreeIds()`,
+a plain filesystem read, not a git call) and removes any whose experiment
+has no record, or whose record says `rejected`/`error` (meaning `rollback`
+should have run but didn't finish). For an ID with no prior record it also
+files a synthetic `error` record explaining what happened, so it's visible
+in `ash evolve list`/the dashboard timeline instead of silently
+disappearing. It deliberately leaves alone the one *intentional* survivor —
+an `accepted` experiment with `autoMerge` off, kept on its branch for manual
+review.
+
+This runs automatically at two points — `ash evolve run` (before starting a
+new cycle) and API server startup (`createServer`) — and is also available
+on demand via `ash evolve prune`. It's idempotent and safe to call anytime,
+including against a root that isn't a git repo at all (no worktrees
+directory means nothing to do).
+
 ## What's not implemented (see `docs/roadmap.md`)
 
 - Only 3 of the 10 listed benchmark categories, and 4 (+1 plugin example)

@@ -109,6 +109,37 @@ describe("GitWorkspaceManager", () => {
     expect(fs.readFileSync(path.join(repoRoot, "README.md"), "utf-8")).toBe("hello\n");
   });
 
+  it("listWorktreeIds returns worktree ids present on disk, excluding integration worktrees", async () => {
+    const manager = new GitWorkspaceManager({ repoRoot });
+    expect(manager.listWorktreeIds()).toEqual([]);
+
+    const a = await manager.createWorkspace("exp-a");
+    const b = await manager.createWorkspace("exp-b");
+    fs.writeFileSync(path.join(a.worktreePath, "a.txt"), "a\n");
+    await manager.commit(a, "add a");
+    await manager.mergeToIntegrationBranch(a, "evolution/accepted"); // creates a "_integration_..." worktree too
+
+    const ids = manager.listWorktreeIds().sort();
+    expect(ids).toEqual(["exp-a", "exp-b"]);
+  });
+
+  it("pruneOrphan removes a leftover worktree/branch reconstructed only from its id", async () => {
+    const manager = new GitWorkspaceManager({ repoRoot });
+    const workspace = await manager.createWorkspace("exp-orphan");
+    fs.writeFileSync(path.join(workspace.worktreePath, "README.md"), "half-finished\n");
+    await manager.commit(workspace, "half-finished mutation");
+
+    // Simulate a fresh process that only knows the id (e.g. after a crash + restart).
+    const fresh = new GitWorkspaceManager({ repoRoot });
+    const pruned = await fresh.pruneOrphan("exp-orphan");
+
+    expect(pruned.branch).toBe(workspace.branch);
+    expect(fs.existsSync(workspace.worktreePath)).toBe(false);
+    const branches = await git(repoRoot, ["branch", "--list", workspace.branch]);
+    expect(branches).toBe("");
+    expect(fs.readFileSync(path.join(repoRoot, "README.md"), "utf-8")).toBe("hello\n");
+  });
+
   it("reuses the same integration branch/worktree across multiple accepted experiments", async () => {
     const manager = new GitWorkspaceManager({ repoRoot });
 

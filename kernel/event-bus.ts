@@ -23,6 +23,7 @@ export type AshOSEventName =
   | "evolution:experiment-started"
   | "evolution:experiment-finished"
   | "evolution:experiment-failed"
+  | "evolution:experiment-pruned"
   | "innovation:cycle-started"
   | "innovation:cycle-finished"
   | "innovation:signal-captured"

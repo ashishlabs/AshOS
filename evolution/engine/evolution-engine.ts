@@ -130,6 +130,51 @@ export class EvolutionEngine {
     }
   }
 
+  /**
+   * Sweeps `.ashos/evolution/worktrees` for experiment IDs whose git
+   * worktree/branch is still on disk but shouldn't be — the process was
+   * killed (crash, OOM, `kill -9`, host reboot) somewhere between
+   * `createWorkspace` and `rollback`, so the normal cleanup in
+   * `runExperiment`'s try/catch never ran. Safe to call anytime (on
+   * startup, before a new cycle, or on demand via `ash evolve prune`):
+   * an accepted experiment with `autoMerge` off is *intentionally* left
+   * on disk for manual review, and this never touches those — it only
+   * removes worktrees that have no experiment record at all, or whose
+   * record says "rejected"/"error" (meaning `rollback` should have run
+   * but didn't, e.g. because the kill landed mid-rollback too).
+   */
+  async pruneOrphanedExperiments(): Promise<string[]> {
+    const pruned: string[] = [];
+    for (const id of this.deps.gitWorkspace.listWorktreeIds()) {
+      const existing = this.deps.history.get(id);
+      if (existing?.result === "accepted") continue;
+
+      const workspace = await this.deps.gitWorkspace.pruneOrphan(id).catch(() => undefined);
+      if (!workspace) continue;
+
+      pruned.push(id);
+      if (!existing) {
+        const now = new Date().toISOString();
+        this.deps.history.save({
+          id,
+          createdAt: now,
+          finishedAt: now,
+          status: "error",
+          hypothesis: this.emptyHypothesis(),
+          mutationId: "",
+          researchProvider: this.deps.config.researchProvider,
+          researchModel: this.deps.config.researchModel,
+          gitBranch: workspace.branch,
+          result: "error",
+          reason: "orphaned worktree pruned on startup — the process likely terminated mid-experiment before it could roll back",
+          logs: [`pruned leftover worktree/branch "${workspace.branch}" with no experiment record`]
+        });
+      }
+      this.deps.eventBus?.emit("evolution:experiment-pruned", { id, hadRecord: Boolean(existing) });
+    }
+    return pruned;
+  }
+
   async runCycle(options: EvolutionCycleOptions = {}): Promise<ExperimentRecord[]> {
     const max = options.maxExperiments ?? this.deps.config.maxExperiments;
     const parallel = Math.max(1, options.parallelExperiments ?? this.deps.config.parallelExperiments);

@@ -130,4 +130,43 @@ export class GitWorkspaceManager {
     }
     await git(this.options.repoRoot, ["branch", "-D", workspace.branch]).catch(() => {});
   }
+
+  /**
+   * Experiment IDs that currently have a worktree directory on disk — a
+   * plain filesystem listing, deliberately not a git call, so it's cheap
+   * and safe to call even when `repoRoot` isn't a git repo at all (e.g. in
+   * tests). Excludes the special `_integration_*` worktree used by
+   * `mergeToIntegrationBranch`. Every ID returned here was left behind by
+   * `createWorkspace` and never reached `rollback` — normally that only
+   * happens mid-experiment (a crash), since every other path (rejected,
+   * accepted+merged) calls `rollback` itself; the one *intentional*
+   * survivor is an accepted experiment with `autoMerge` off, left for
+   * manual review — callers should cross-reference `ExperimentStore`
+   * before deciding whether a given ID is actually orphaned.
+   */
+  listWorktreeIds(): string[] {
+    if (!fs.existsSync(this.worktreesDir)) return [];
+    return fs
+      .readdirSync(this.worktreesDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && !entry.name.startsWith("_integration_"))
+      .map((entry) => entry.name);
+  }
+
+  /**
+   * Removes a leftover worktree/branch for an experiment ID with no live
+   * `ExperimentWorkspace` object in memory (e.g. reconstructed after a
+   * restart). Reconstructs the workspace shape from the same naming
+   * convention `createWorkspace` used, then delegates to `rollback`.
+   */
+  async pruneOrphan(id: string): Promise<ExperimentWorkspace> {
+    const baseBranch = await this.resolveBaseBranch();
+    const workspace: ExperimentWorkspace = {
+      id,
+      branch: `${this.branchPrefix}${id}`,
+      worktreePath: path.join(this.worktreesDir, id),
+      baseBranch
+    };
+    await this.rollback(workspace);
+    return workspace;
+  }
 }

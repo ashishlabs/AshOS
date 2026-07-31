@@ -225,6 +225,65 @@ describe("EvolutionEngine", () => {
     expect(integrationContent).toContain("temperature: 0.5");
   });
 
+  it("pruneOrphanedExperiments removes a leftover worktree with no record and files an error record for it", async () => {
+    const { engine, history, gitWorkspace, eventBus } = buildEngine(repoRoot);
+
+    // Simulate a hard crash: a worktree/branch was created directly (bypassing
+    // runExperiment's try/catch entirely) and never rolled back or recorded.
+    const orphan = await gitWorkspace.createWorkspace("exp-crashed");
+    expect(history.get("exp-crashed")).toBeUndefined();
+
+    const pruned = await engine.pruneOrphanedExperiments();
+
+    expect(pruned).toEqual(["exp-crashed"]);
+    expect(fs.existsSync(orphan.worktreePath)).toBe(false);
+    const branches = await git(repoRoot, ["branch", "--list", orphan.branch]);
+    expect(branches).toBe("");
+
+    const record = history.get("exp-crashed");
+    expect(record?.result).toBe("error");
+    expect(record?.reason).toMatch(/orphaned worktree pruned on startup/);
+
+    const eventNames = eventBus.getHistory().map((e) => e.name);
+    expect(eventNames).toContain("evolution:experiment-pruned");
+  });
+
+  it("pruneOrphanedExperiments leaves an accepted experiment's worktree alone (kept for manual review)", async () => {
+    const { engine, gitWorkspace } = buildEngine(repoRoot, {
+      configOverrides: { autoMerge: false },
+      executor: new FakeExecutor(["function isPalindrome(s: string): boolean { return s.toLowerCase().replace(/x/, '') === s.split('').reverse().join(''); }"])
+    });
+
+    const record = await engine.runExperiment();
+    expect(record.result).toBe("accepted");
+    expect(gitWorkspace.listWorktreeIds()).toContain(record.id);
+
+    const pruned = await engine.pruneOrphanedExperiments();
+
+    expect(pruned).toEqual([]);
+    expect(gitWorkspace.listWorktreeIds()).toContain(record.id);
+  });
+
+  it("pruneOrphanedExperiments cleans up a rejected experiment's worktree if rollback silently failed to remove it", async () => {
+    const { engine, history, gitWorkspace } = buildEngine(repoRoot, {
+      executor: new FakeExecutor(["irrelevant"], { success: false, log: "type error" })
+    });
+
+    const record = await engine.runExperiment();
+    expect(record.result).toBe("rejected");
+    expect(gitWorkspace.listWorktreeIds()).not.toContain(record.id); // rollback already ran normally
+
+    // Recreate the same worktree out-of-band to simulate rollback having failed to fully clean up.
+    await gitWorkspace.createWorkspace(record.id);
+    expect(gitWorkspace.listWorktreeIds()).toContain(record.id);
+
+    const pruned = await engine.pruneOrphanedExperiments();
+
+    expect(pruned).toContain(record.id);
+    expect(gitWorkspace.listWorktreeIds()).not.toContain(record.id);
+    expect(history.get(record.id)?.result).toBe("rejected"); // existing record is untouched, not overwritten
+  });
+
   it("runCycle runs the configured number of experiments in bounded-parallel batches and emits lifecycle events", async () => {
     const eventBus = new EventBus();
     const { engine } = buildEngine(repoRoot, {

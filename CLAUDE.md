@@ -149,7 +149,15 @@ hard-reject gate (build/test failure) -> `ExperimentHistory`
 the result -> accepted experiments merge into the `evolution/accepted`
 integration branch, never `main` (`GitWorkspaceManager.assertNotProtected`
 enforces this in code, not just convention) -> rejected/errored experiments
-are rolled back (worktree + branch removed). Extend it the same way as
+are rolled back (worktree + branch removed). `EvolutionEngine.
+pruneOrphanedExperiments()` is a separate crash-recovery sweep (not part of
+the per-experiment try/catch) for worktrees an unclean shutdown left behind
+with no `rollback()` ever having run — it cross-references
+`GitWorkspaceManager.listWorktreeIds()` against `ExperimentStore` and only
+removes IDs with no record or a `rejected`/`error` one, deliberately
+skipping an `accepted` experiment kept for manual review; it runs
+automatically before `ash evolve run` and on API server startup, and via
+`ash evolve prune` on demand. Extend it the same way as
 tools/agents: a `Mutation` or `Benchmark` is a plain object registered
 either in `evolution-module.ts` (built-in) or via a plugin's
 `host.evolution.mutations`/`host.evolution.benchmarks` (see

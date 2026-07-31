@@ -20,6 +20,7 @@ ash evolve list [-l <n>]                 List past experiments, newest first
 ash evolve show <id>                     Show full detail for one experiment
 ash evolve mutations                     List registered mutations
 ash evolve benchmarks                    List registered benchmarks
+ash evolve prune                         Remove worktrees/branches orphaned by an unclean shutdown (also runs automatically before `evolve run` and on API server startup)
 ash innovation discover [-d <domains>]   Run one discovery cycle (collect signals -> merge into opportunities)
 ash innovation list [-l <n>] [-s <stage>]  List opportunities, highest-scoring first
 ash innovation show <id>                 Show full detail for one opportunity

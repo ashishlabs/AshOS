@@ -23,6 +23,11 @@ export function registerEvolveCommand(program: Command): void {
     .option("-b, --benchmarks <ids>", "comma-separated benchmark ids to restrict this run to")
     .action(async (opts) => {
       const ashos = new AshOS();
+      const pruned = await ashos.evolution.engine.pruneOrphanedExperiments();
+      if (pruned.length > 0) {
+        console.log(`Pruned ${pruned.length} orphaned worktree(s) left by an unclean shutdown: ${pruned.join(", ")}`);
+      }
+
       const off = ashos.kernel.eventBus.on("evolution:experiment-finished", (e: AshOSEvent<{ id: string; result: string }>) => {
         console.log(`  ${resultIcon(e.payload.result as ExperimentRecord["result"])} ${e.payload.id} — ${e.payload.result}`);
       });
@@ -105,6 +110,22 @@ export function registerEvolveCommand(program: Command): void {
         console.log(`\nLog:`);
         for (const line of record.logs) console.log(`  ${line}`);
       }
+    });
+
+  cmd
+    .command("prune")
+    .description(
+      "Remove orphaned experiment worktrees/branches left by an unclean shutdown (crash, kill -9, reboot mid-experiment). Safe to run anytime; never touches an accepted experiment kept for manual review."
+    )
+    .action(async () => {
+      const ashos = new AshOS();
+      const pruned = await ashos.evolution.engine.pruneOrphanedExperiments();
+      if (pruned.length === 0) {
+        console.log("Nothing to prune — no orphaned worktrees found.");
+        return;
+      }
+      console.log(`Pruned ${pruned.length} orphaned worktree(s):`);
+      for (const id of pruned) console.log(`  ${id}`);
     });
 
   cmd

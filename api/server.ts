@@ -36,6 +36,14 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
   app.use(cors());
   app.use(express.json());
 
+  // Startup sweep: remove any evolution worktrees/branches orphaned by an
+  // unclean shutdown (crash, kill -9, reboot) before anything else can
+  // observe or race with them. Best-effort — a failure here shouldn't
+  // block the API from starting.
+  ashos.evolution.engine.pruneOrphanedExperiments().catch((error) => {
+    ashos.kernel.logger.error(`evolution startup prune failed: ${(error as Error).message}`);
+  });
+
   app.post("/chat", requireMessages, async (req, res) => {
     try {
       const result = await ashos.chat(req.body.messages, req.body.options);
