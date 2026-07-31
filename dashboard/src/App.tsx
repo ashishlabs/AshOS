@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Bot,
   Brain,
-  Cpu,
   Dna,
   GitBranch,
   LayoutDashboard,
@@ -33,7 +31,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import {
   api,
-  type AgentInfo,
   type AshOSEvent,
   type BuilderProfileEntry,
   type ChatMessage,
@@ -50,29 +47,15 @@ import {
   type MemoryRecord,
   type MemoryScope,
   type Opportunity,
-  type ProvidersInfo,
   type TaskGraph,
   type ToolInfo,
   type WorkflowStepResultDTO
 } from "./api";
 
-type Tab =
-  | "dashboard"
-  | "providers"
-  | "agents"
-  | "tools"
-  | "plan"
-  | "workflow"
-  | "memory"
-  | "logs"
-  | "chat"
-  | "evolution"
-  | "innovation";
+type Tab = "dashboard" | "tools" | "plan" | "workflow" | "memory" | "logs" | "chat" | "evolution" | "innovation";
 
 const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "providers", label: "Providers", icon: Cpu },
-  { id: "agents", label: "Agents", icon: Bot },
   { id: "tools", label: "Tools", icon: Wrench },
   { id: "plan", label: "Plan", icon: ListTodo },
   { id: "workflow", label: "Workflow", icon: GitBranch },
@@ -137,8 +120,6 @@ function StatusPill() {
 
 const TAB_PANELS: Record<Tab, React.ComponentType> = {
   dashboard: DashboardTab,
-  providers: ProvidersTab,
-  agents: AgentsTab,
   tools: ToolsTab,
   plan: PlanTab,
   workflow: WorkflowTab,
@@ -344,71 +325,6 @@ function DashboardTab() {
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-function ProvidersTab() {
-  const [providers, setProviders] = useState<ProvidersInfo | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    api.providers().then(setProviders).catch((e) => setError(e.message));
-  }, []);
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Providers</CardTitle>
-        <CardDescription>Every AI backend implements the same interface — switching is a config change.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <LoadError error={error} />
-        {!providers && !error && <Skeleton className="h-24 w-full" />}
-        {providers && (
-          <ul className="divide-y">
-            {providers.available.map((p) => (
-              <li key={p} className="flex items-center justify-between py-2.5 text-sm">
-                <span className="font-medium">{p}</span>
-                {p === providers.active && <Badge>active</Badge>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function AgentsTab() {
-  const [agents, setAgents] = useState<AgentInfo[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    api.agents().then(setAgents).catch((e) => setError(e.message));
-  }, []);
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Agents</CardTitle>
-        <CardDescription>Independent workers, routed to a task by capability tag.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <LoadError error={error} />
-        {agents.length === 0 && !error && <Skeleton className="h-24 w-full" />}
-        <ul className="divide-y">
-          {agents.map((a) => (
-            <li key={a.name} className="space-y-1.5 py-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-semibold">{a.name}</span>
-                {a.capabilities.map((c) => (
-                  <Badge key={c} variant="outline">
-                    {c}
-                  </Badge>
-                ))}
-              </div>
-              <p className="text-sm text-muted-foreground">{a.description}</p>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
   );
 }
 

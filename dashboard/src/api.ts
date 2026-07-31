@@ -30,15 +30,6 @@ export interface Health {
   ok: boolean;
   provider: string;
 }
-export interface AgentInfo {
-  name: string;
-  description: string;
-  capabilities: string[];
-}
-export interface ProvidersInfo {
-  active: string;
-  available: string[];
-}
 export interface ToolInfo {
   name: string;
   description: string;
@@ -232,8 +223,6 @@ export interface KnowledgeGraphStats {
 
 export const api = {
   health: () => get<Health>("/health"),
-  agents: () => get<AgentInfo[]>("/agents"),
-  providers: () => get<ProvidersInfo>("/providers"),
   tools: () => get<ToolInfo[]>("/tools"),
   tasks: () => get<AshOSEvent[]>("/tasks"),
   events: (prefix?: string) => get<AshOSEvent[]>(`/events${prefix ? `?prefix=${encodeURIComponent(prefix)}` : ""}`),

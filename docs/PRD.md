@@ -115,7 +115,7 @@ Status legend: ✅ Shipped · 🚧 Partially shipped · ⏳ Planned (roadmap)
 | FR-29 | REST API covering chat/plan/execute/workflow/agents/providers/tools/tasks/events/memory/logs/health | ✅ | `api/server.ts`, `docs/api.md` |
 | FR-30 | Streaming chat over HTTP | ✅ (chunked, not SSE) | `POST /chat/stream` |
 | FR-31 | GraphQL / WebSocket / MCP transports | ⏳ | `docs/roadmap.md` |
-| FR-32 | Web dashboard: status, providers, agents, tools, plan, workflow, memory, logs, chat | ✅ | `dashboard/` |
+| FR-32 | Web dashboard: status, tools, plan, workflow, evolution, innovation, memory, logs, chat | ✅ | `dashboard/` (Providers/Agents tabs were dropped from the UI as unused surface — both remain fully available via `ash provider`/`ash status` and `GET /providers`/`/agents`) |
 | FR-33 | Dashboard: analytics/observability (token usage, latency, success/failure rates) | 🚧 | Evolution tab has latency trend/acceptance-rate/leaderboard; no system-wide token-usage or chat/plan latency dashboards yet |
 | FR-34 | SDK facade for embedding AshOS in other Node apps | ✅ | `sdk/ashos.ts` |
 | FR-35 | API request validation (reject malformed bodies with 4xx) | ✅ | added in this pass — see `docs/test-report.md` |
