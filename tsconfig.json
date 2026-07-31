@@ -31,7 +31,8 @@
     "sdk/**/*.ts",
     "tests/**/*.ts",
     "plugins/**/*.ts",
-    "evolution/**/*.ts"
+    "evolution/**/*.ts",
+    "innovation/**/*.ts"
   ],
   "exclude": ["dashboard", "node_modules", "dist"]
 }

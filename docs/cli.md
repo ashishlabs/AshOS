@@ -29,7 +29,11 @@ ash innovation collectors                List registered collectors
 ```
 
 Run `npm run cli -- <command>` during development, or `ash <command>`
-once installed globally after `npm run build && npm link`.
+once installed globally after `npm run build && npm link` (or via
+`npm pack && npm install -g ./ashos-<version>.tgz` — see the README's
+"Installing `ash` globally" section for both paths and why `package.json`
+needs a `files`/`prepare` setup for the tarball path to actually contain a
+working `dist/`).
 
 `ash evolve exec --input <text>` also exists but is internal: the Evolution
 Engine spawns it inside a mutated git worktree to exercise that workspace's

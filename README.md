@@ -81,7 +81,35 @@ ash provider set anthropic   # or openai / ollama / mock
 
 See [`docs/cli.md`](docs/cli.md) for the full command reference
 (`init`, `doctor`, `status`, `provider`, `plugin`, `plan`, `run`, `chat`,
-`memory`, `logs`).
+`memory`, `logs`, `evolve`, `innovation`).
+
+### Installing `ash` globally
+
+`npm run cli -- <command>` (above) runs the CLI from source via `tsx` — no
+build needed, best for developing AshOS itself. To get a real `ash` command
+on your `PATH`:
+
+```bash
+npm install
+npm run build      # compiles to dist/ (bin points at dist/cli/index.js)
+npm link           # symlinks `ash` into your global npm bin dir
+ash --help
+```
+
+`npm link` is for local development. To install it like any other package
+(e.g. onto another machine, or for someone who doesn't have this repo
+cloned), pack and install the tarball instead — the `prepare` script builds
+`dist/` automatically before packing, and only `dist/` (plus README/LICENSE)
+ships in the tarball:
+
+```bash
+npm pack                        # -> ashos-<version>.tgz
+npm install -g ./ashos-<version>.tgz
+```
+
+`ash` isn't published to the public npm registry (the package is marked
+`private`), so `npm install -g ashos` won't work — use one of the two
+methods above.
 
 ## Contributing
 

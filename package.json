@@ -4,14 +4,20 @@
   "description": "AshOS - AI Operating System for Developers",
   "license": "MIT",
   "private": true,
+  "main": "dist/sdk/ashos.js",
+  "types": "dist/sdk/ashos.d.ts",
   "bin": {
-    "ash": "./dist/cli/index.js"
+    "ash": "dist/cli/index.js"
   },
+  "files": [
+    "dist"
+  ],
   "workspaces": [
     "dashboard"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "prepare": "npm run build",
     "cli": "tsx cli/index.ts",
     "api": "tsx api/server.ts",
     "dev": "tsx cli/index.ts",
