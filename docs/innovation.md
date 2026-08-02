@@ -359,7 +359,7 @@ event-flow and daily-research-workflow design.
 {
   "innovation": {
     "researchProvider": "lmstudio",
-    "researchModel": "google/gemma-4-12b-qat",
+    "researchModel": "qwen/qwen2.5-coder-14b",
     "domains": ["market", "github", "community", "research", "workflow", "competitor"],
     "mergeThreshold": 0.5,
     "briefSize": 5

@@ -15,7 +15,7 @@ export interface LMStudioProviderOptions {
  * distinctly and so the Innovation Intelligence `researchProvider: "lmstudio"`
  * config reads naturally — but the wire protocol is identical to OpenAI's,
  * and the model name is never hardcoded: it's whatever `model` resolves to
- * from config, e.g. "google/gemma-4-12b-qat".
+ * from config, e.g. "qwen/qwen2.5-coder-14b".
  */
 export class LMStudioProvider implements AIProvider {
   private baseUrl: string;
@@ -40,7 +40,7 @@ export class LMStudioProvider implements AIProvider {
     const model = options?.model ?? this.model;
     if (!model) {
       throw new Error(
-        "LMStudioProvider: no model configured. Set providers.lmstudio.model in .ashos/config.json (e.g. \"google/gemma-4-12b-qat\") to whatever model is loaded in LM Studio."
+        "LMStudioProvider: no model configured. Set providers.lmstudio.model in .ashos/config.json (e.g. \"qwen/qwen2.5-coder-14b\") to whatever model is loaded in LM Studio."
       );
     }
     return model;

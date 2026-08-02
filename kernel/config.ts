@@ -71,7 +71,7 @@ export function defaultConfig(): AshOSConfig {
     plugins: [],
     innovation: {
       researchProvider: process.env.ASHOS_RESEARCH_PROVIDER ?? "lmstudio",
-      researchModel: process.env.ASHOS_RESEARCH_MODEL ?? "google/gemma-4-12b-qat",
+      researchModel: process.env.ASHOS_RESEARCH_MODEL ?? "qwen/qwen2.5-coder-14b",
       domains: ["market", "github", "community", "research", "workflow", "competitor"],
       mergeThreshold: 0.5,
       briefSize: 5

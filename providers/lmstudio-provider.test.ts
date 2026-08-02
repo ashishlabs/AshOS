@@ -9,20 +9,20 @@ describe("LMStudioProvider", () => {
   it("defaults to the local LM Studio endpoint and lm-studio placeholder key", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ choices: [{ message: { content: "hi from gemma" } }] })
+      json: async () => ({ choices: [{ message: { content: "hi from qwen" } }] })
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const provider = new LMStudioProvider({ model: "google/gemma-4-12b-qat" });
+    const provider = new LMStudioProvider({ model: "qwen/qwen2.5-coder-14b" });
     const result = await provider.chat([{ role: "user", content: "hello" }]);
 
-    expect(result.content).toBe("hi from gemma");
+    expect(result.content).toBe("hi from qwen");
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:1234/v1/chat/completions",
       expect.objectContaining({ headers: expect.objectContaining({ authorization: "Bearer lm-studio" }) })
     );
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(body.model).toBe("google/gemma-4-12b-qat");
+    expect(body.model).toBe("qwen/qwen2.5-coder-14b");
   });
 
   it("never hardcodes a model name — throws a clear error when none is configured", async () => {
@@ -46,7 +46,7 @@ describe("LMStudioProvider", () => {
       "fetch",
       vi.fn().mockResolvedValue({ ok: false, status: 500, text: async () => "internal error" })
     );
-    const provider = new LMStudioProvider({ model: "google/gemma-4-12b-qat" });
+    const provider = new LMStudioProvider({ model: "qwen/qwen2.5-coder-14b" });
     await expect(provider.chat([{ role: "user", content: "hi" }])).rejects.toThrow(/request failed \(500\)/);
   });
 
