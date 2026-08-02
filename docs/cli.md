@@ -14,12 +14,16 @@ ash chat                                 Interactive chat session
 ash memory list [--scope <scope>]        Inspect memory records
 ash memory forget <scope> <key>          Delete a memory record
 ash logs                                 Show recent log entries
-ash innovation discover [-d <domains>]   Run one discovery cycle (collect signals -> merge into opportunities)
+ash innovation discover [-d <domains>] [--live]   Run one discovery cycle (--live uses the real GitHub Search API)
 ash innovation list [-l <n>] [-s <stage>]  List opportunities, highest-scoring first
 ash innovation show <id>                 Show full detail for one opportunity
 ash innovation brief                     Generate today's Daily Innovation Brief
 ash innovation profile [-l <n>]          Show the learned Builder Profile
-ash innovation collectors                List registered collectors
+ash innovation collectors                List registered collectors (+ the opt-in live GitHub one)
+ash innovation events [-l <n>] [-c <category>]   List canonical, deduplicated events
+ash innovation repo analyze <owner/repo> Analyze a repository into a structured, cached profile (real API)
+ash innovation repo list [-l <n>]        List every previously analyzed repository
+ash innovation radar [-r]                Show the Technology Radar (-r/--refresh recomputes it first)
 ```
 
 Run `npm run cli -- <command>` during development, or `ash <command>`

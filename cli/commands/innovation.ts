@@ -23,12 +23,15 @@ export function registerInnovationCommand(program: Command): void {
     .command("discover")
     .description("Run one discovery cycle: collect signals, update the knowledge graph, merge into opportunities")
     .option("-d, --domains <domains>", "comma-separated domains to restrict this cycle to (market,github,community,research,workflow,competitor)")
+    .option("--live", "use the real GitHub Search API instead of the offline mock collectors (github domain only)")
     .action(async (opts) => {
       const ashos = new AshOS();
       const domains = opts.domains ? (String(opts.domains).split(",") as IntelligenceDomain[]) : undefined;
 
-      console.log("Running discovery cycle...");
-      const { opportunities, signalCount } = await ashos.innovation.runDiscoveryCycle(domains);
+      console.log(opts.live ? "Running live GitHub discovery..." : "Running discovery cycle...");
+      const { opportunities, signalCount } = opts.live
+        ? await ashos.innovation.runLiveGithubDiscovery()
+        : await ashos.innovation.runDiscoveryCycle(domains);
       console.log(`\nCaptured ${signalCount} signal(s) across ${opportunities.length} opportunit${opportunities.length === 1 ? "y" : "ies"} total.`);
     });
 
@@ -107,6 +110,77 @@ export function registerInnovationCommand(program: Command): void {
       const ashos = new AshOS();
       for (const collector of ashos.innovation.collectors.list()) {
         console.log(`${collector.id} [${collector.domain}] — ${collector.description}`);
+      }
+      console.log(`${ashos.innovation.liveGithubCollector.id} [${ashos.innovation.liveGithubCollector.domain}] (opt-in via --live) — ${ashos.innovation.liveGithubCollector.description}`);
+    });
+
+  cmd
+    .command("events")
+    .description("List canonical, deduplicated events (the normalized layer between raw signals and opportunities)")
+    .option("-l, --limit <n>", "max rows", (v) => parseInt(v, 10), 20)
+    .option("-c, --category <category>", "filter by event category")
+    .action((opts) => {
+      const ashos = new AshOS();
+      const list = opts.category ? ashos.innovation.events.byCategory(opts.category) : ashos.innovation.events.list();
+      if (list.length === 0) {
+        console.log("No events recorded yet. Run `ash innovation discover` to start.");
+        return;
+      }
+      for (const event of list.slice(0, opts.limit)) {
+        console.log(`[${event.category}] ${event.title}  (${event.occurrences} source${event.occurrences === 1 ? "" : "s"}, confidence=${event.confidence.toFixed(2)})`);
+      }
+    });
+
+  const repo = cmd.command("repo").description("Repository Intelligence: structured, cached analysis of GitHub repositories");
+
+  repo
+    .command("analyze <fullName>")
+    .description('Analyze a repository (e.g. "ollama/ollama") via the real GitHub API into a structured, cached profile')
+    .action(async (fullName: string) => {
+      const ashos = new AshOS();
+      const result = await ashos.runAgent("repository-analyst", { description: `analyze ${fullName}`, input: { fullName } });
+      if (!result.ok) {
+        console.error(result.error);
+        process.exitCode = 1;
+        return;
+      }
+      console.log(result.output);
+    });
+
+  repo
+    .command("list")
+    .description("List every previously analyzed repository")
+    .option("-l, --limit <n>", "max rows", (v) => parseInt(v, 10), 20)
+    .action((opts) => {
+      const ashos = new AshOS();
+      const list = ashos.innovation.repositories.list();
+      if (list.length === 0) {
+        console.log('No repositories analyzed yet. Run `ash innovation repo analyze "owner/repo"` to start.');
+        return;
+      }
+      for (const profile of list.slice(0, opts.limit)) {
+        console.log(`${profile.fullName}  [${profile.maintenanceStatus}]  ${profile.stars}★  ${profile.license ?? "no license"}`);
+      }
+    });
+
+  cmd
+    .command("radar")
+    .description("Show (or refresh) the Technology Radar: emerging/growing/stable/declining/obsolete, with evidence")
+    .option("-r, --refresh", "recompute the radar from the current knowledge graph before printing")
+    .action(async (opts) => {
+      const ashos = new AshOS();
+      if (opts.refresh) {
+        const result = await ashos.runAgent("technology-radar", { description: "refresh technology radar" });
+        console.log(result.output);
+        console.log();
+      }
+      const entries = ashos.innovation.radar.list();
+      if (entries.length === 0) {
+        console.log("No technologies tracked yet. Run `ash innovation discover` then `ash innovation radar --refresh`.");
+        return;
+      }
+      for (const entry of entries) {
+        console.log(`[${entry.ring}] ${entry.technology}  (${entry.evidence.totalMentions} mentions, ${entry.evidence.mentionsPerDay.toFixed(2)}/day)`);
       }
     });
 }

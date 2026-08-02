@@ -26,17 +26,28 @@ Start it with `npm run api`.
 
 | Method | Path | Body | Description |
 |---|---|---|---|
-| POST | `/innovation/discover` | `{ domains? }` | Fire-and-forget: starts a discovery cycle in the background and returns `202 { started: true }` immediately, or `409` if one is already running. `domains` restricts the cycle to a subset (defaults to `config.innovation.domains`). |
+| POST | `/innovation/discover` | `{ domains?, live? }` | Fire-and-forget: starts a discovery cycle in the background and returns `202 { started: true, live }` immediately, or `409` if one is already running. `domains` restricts the cycle to a subset (defaults to `config.innovation.domains`); `live: true` runs the real GitHub Search API collector instead of the offline mock collectors. |
 | GET | `/innovation/status` | — | `{ running, config }` — whether a cycle is in flight plus the active `InnovationConfig`. |
 | GET | `/innovation/opportunities?stage=&limit=` | — | Opportunities, highest-scoring first (or filtered by lifecycle stage). |
 | GET | `/innovation/opportunities/:id` | — | Full record for one opportunity (score, evidence signals, history), or `404`. |
 | GET | `/innovation/brief` | — | Generates today's Daily Innovation Brief on demand. |
 | GET | `/innovation/profile?limit=` | — | Top Builder Profile categories by learned weight. |
-| GET | `/innovation/collectors` | — | Registered collectors (`id`, `domain`, `description`). |
+| GET | `/innovation/collectors` | — | Registered (offline-by-default) collectors (`id`, `domain`, `description`). Does not include the opt-in `liveGithubCollector` — that only runs via `/innovation/discover` with `live: true`. |
 | GET | `/innovation/graph` | — | Knowledge graph stats (`nodeCount`, `edgeCount`, `byKind`). |
+| GET | `/innovation/events?category=&limit=` | — | Canonical, deduplicated `IntelligenceEvent`s, optionally filtered by category. |
+| GET | `/innovation/events/:id` | — | One event by id, or `404`. |
+| GET | `/innovation/repositories?limit=` | — | Every cached `RepositoryProfile`. |
+| GET | `/innovation/repositories/:owner/:repo` | — | One cached profile, or `404` if not yet analyzed. |
+| POST | `/innovation/repositories/analyze` | `{ fullName }` | Runs the `repository-analyst` agent (real GitHub API call, cached by `pushed_at`) and returns its `AgentResult`. `400` if `fullName` isn't an `"owner/repo"` string. |
+| GET | `/innovation/radar?ring=` | — | Current Technology Radar entries, optionally filtered by ring. |
+| POST | `/innovation/radar/refresh` | — | Runs the `technology-radar` agent to reclassify every tracked technology from the current knowledge graph, and returns its `AgentResult`. |
 | GET | `/innovation/config` | — | Current `InnovationConfig`. |
 | PATCH | `/innovation/config` | partial `InnovationConfig` | Merges into and persists the innovation config. |
 
-See `docs/innovation.md` for the full pipeline (collectors, knowledge graph, opportunity merging/scoring, builder profile, daily brief) that these routes expose.
+See `docs/innovation.md` for the full pipeline (collectors, event
+normalization/dedup, knowledge graph, opportunity merging/scoring, builder
+profile, repository intelligence, technology radar, daily brief) that
+these routes expose, and `docs/ashos-intelligence.md` for the broader
+AshOS Intelligence architecture this is the first slice of.
 
 GraphQL, WebSocket, and MCP transports are on the roadmap (`docs/roadmap.md`) — the REST surface above is the current source of truth and is what the dashboard and CLI consume.

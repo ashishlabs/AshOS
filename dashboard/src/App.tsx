@@ -9,8 +9,10 @@ import {
   Moon,
   Newspaper,
   Play,
+  Radar,
   RefreshCw,
   ScrollText,
+  Search,
   Send,
   Sparkles,
   Sun,
@@ -41,9 +43,13 @@ import {
   type InnovationConfig,
   type KnowledgeGraphStats,
   type LogEntry,
+  type IntelligenceEvent,
   type MemoryRecord,
   type MemoryScope,
   type Opportunity,
+  type RadarEntry,
+  type RadarRing,
+  type RepositoryProfile,
   type TaskGraph,
   type TrendingReposResult,
   type WorkflowStepResultDTO
@@ -535,6 +541,14 @@ const STAGE_VARIANT: Record<IdeaLifecycleStage, "success" | "destructive" | "war
   revived: "warning"
 };
 
+const RADAR_VARIANT: Record<RadarRing, "success" | "destructive" | "warning" | "secondary" | "outline"> = {
+  emerging: "success",
+  growing: "secondary",
+  stable: "outline",
+  declining: "warning",
+  obsolete: "destructive"
+};
+
 function InnovationTab() {
   const [config, setConfig] = useState<InnovationConfig | null>(null);
   const [running, setRunning] = useState(false);
@@ -548,6 +562,15 @@ function InnovationTab() {
   const [brief, setBrief] = useState<DailyBrief | null>(null);
   const [briefLoading, setBriefLoading] = useState(false);
   const [briefError, setBriefError] = useState<string | null>(null);
+  const [events, setEvents] = useState<IntelligenceEvent[]>([]);
+  const [radarEntries, setRadarEntries] = useState<RadarEntry[]>([]);
+  const [radarLoading, setRadarLoading] = useState(false);
+  const [radarError, setRadarError] = useState<string | null>(null);
+  const [repositories, setRepositories] = useState<RepositoryProfile[]>([]);
+  const [repoInput, setRepoInput] = useState("");
+  const [repoLoading, setRepoLoading] = useState(false);
+  const [repoError, setRepoError] = useState<string | null>(null);
+  const [liveStarting, setLiveStarting] = useState(false);
 
   useEffect(() => {
     const load = () =>
@@ -556,15 +579,21 @@ function InnovationTab() {
         api.innovationOpportunities(20),
         api.innovationProfile(6),
         api.innovationCollectors(),
-        api.innovationGraph()
+        api.innovationGraph(),
+        api.innovationEvents(10),
+        api.innovationRadar(),
+        api.innovationRepositories()
       ])
-        .then(([status, opps, prof, cols, g]) => {
+        .then(([status, opps, prof, cols, g, evts, radar, repos]) => {
           setConfig(status.config);
           setRunning(status.running);
           setOpportunities(opps);
           setProfile(prof);
           setCollectors(cols);
           setGraph(g);
+          setEvents(evts);
+          setRadarEntries(radar);
+          setRepositories(repos);
           setError(null);
         })
         .catch((e) => setError(e.message));
@@ -573,16 +602,18 @@ function InnovationTab() {
     return () => clearInterval(interval);
   }, []);
 
-  const runDiscovery = async () => {
-    setStarting(true);
+  const runDiscovery = async (live: boolean) => {
+    if (live) setLiveStarting(true);
+    else setStarting(true);
     setRunError(null);
     try {
-      await api.innovationDiscover();
+      await api.innovationDiscover({ live });
       setRunning(true);
     } catch (e) {
       setRunError((e as Error).message);
     } finally {
-      setStarting(false);
+      if (live) setLiveStarting(false);
+      else setStarting(false);
     }
   };
 
@@ -595,6 +626,39 @@ function InnovationTab() {
       setBriefError((e as Error).message);
     } finally {
       setBriefLoading(false);
+    }
+  };
+
+  const refreshRadar = async () => {
+    setRadarLoading(true);
+    setRadarError(null);
+    try {
+      await api.innovationRefreshRadar();
+      setRadarEntries(await api.innovationRadar());
+    } catch (e) {
+      setRadarError((e as Error).message);
+    } finally {
+      setRadarLoading(false);
+    }
+  };
+
+  const analyzeRepository = async () => {
+    const fullName = repoInput.trim();
+    if (!fullName.includes("/")) {
+      setRepoError('Enter a repository as "owner/repo"');
+      return;
+    }
+    setRepoLoading(true);
+    setRepoError(null);
+    try {
+      const result = await api.innovationAnalyzeRepository(fullName);
+      if (!result.ok) throw new Error(result.error ?? "analysis failed");
+      setRepositories(await api.innovationRepositories());
+      setRepoInput("");
+    } catch (e) {
+      setRepoError((e as Error).message);
+    } finally {
+      setRepoLoading(false);
     }
   };
 
@@ -637,9 +701,13 @@ function InnovationTab() {
                 </div>
               </>
             )}
-            <Button onClick={runDiscovery} disabled={running || starting} className="w-full">
+            <Button onClick={() => runDiscovery(false)} disabled={running || starting} className="w-full">
               <Play className="h-4 w-4" />
               {starting ? "Starting…" : running ? "Cycle running…" : "Run discovery cycle"}
+            </Button>
+            <Button onClick={() => runDiscovery(true)} disabled={running || liveStarting} variant="outline" className="w-full">
+              <Search className="h-4 w-4" />
+              {liveStarting ? "Starting…" : "Run live GitHub discovery"}
             </Button>
             <LoadError error={runError} />
           </CardContent>
@@ -762,6 +830,104 @@ function InnovationTab() {
           </CardContent>
         </Card>
       </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Technology Radar</CardTitle>
+            <CardDescription>Emerging, growing, stable, declining, or obsolete — classified from knowledge-graph evidence.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button onClick={refreshRadar} disabled={radarLoading} variant="outline" className="w-full">
+              <Radar className="h-4 w-4" />
+              {radarLoading ? "Refreshing…" : "Refresh radar"}
+            </Button>
+            <LoadError error={radarError} />
+            {radarEntries.length === 0 ? (
+              <EmptyState>No technologies tracked yet — run a discovery cycle, then refresh the radar.</EmptyState>
+            ) : (
+              <ul className="max-h-80 space-y-2 overflow-y-auto">
+                {radarEntries.map((entry) => (
+                  <li key={entry.technology} className="rounded-lg border p-2.5 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-1">
+                      <span className="min-w-0 break-words font-medium">{entry.technology}</span>
+                      <Badge variant={RADAR_VARIANT[entry.ring] ?? "outline"}>{entry.ring}</Badge>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {entry.evidence.totalMentions} mention{entry.evidence.totalMentions === 1 ? "" : "s"} ·{" "}
+                      {entry.evidence.mentionsPerDay.toFixed(2)}/day
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Repository Intelligence</CardTitle>
+            <CardDescription>Analyze any public GitHub repository into a structured, cached profile.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2">
+              <Input
+                value={repoInput}
+                onChange={(e) => setRepoInput(e.target.value)}
+                placeholder="owner/repo"
+                onKeyDown={(e) => e.key === "Enter" && analyzeRepository()}
+              />
+              <Button onClick={analyzeRepository} disabled={repoLoading}>
+                {repoLoading ? "Analyzing…" : "Analyze"}
+              </Button>
+            </div>
+            <LoadError error={repoError} />
+            {repositories.length === 0 ? (
+              <EmptyState>No repositories analyzed yet.</EmptyState>
+            ) : (
+              <ul className="max-h-80 space-y-2 overflow-y-auto">
+                {repositories.map((r) => (
+                  <li key={r.fullName} className="rounded-lg border p-2.5 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-1">
+                      <span className="min-w-0 break-words font-medium">{r.fullName}</span>
+                      <Badge variant="outline">{r.maintenanceStatus}</Badge>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {r.stars.toLocaleString()}★ · {r.license ?? "no license"} · {r.primaryLanguage ?? "unknown language"}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent events</CardTitle>
+          <CardDescription>Canonical, deduplicated events — the normalized layer between raw signals and opportunities.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {events.length === 0 ? (
+            <EmptyState>No events recorded yet — run a discovery cycle to start.</EmptyState>
+          ) : (
+            <ul className="divide-y">
+              {events.map((e) => (
+                <li key={e.id} className="space-y-1 py-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline">{e.category}</Badge>
+                    <span className="min-w-0 break-words text-sm font-medium">{e.title}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {e.occurrences} source{e.occurrences === 1 ? "" : "s"} · confidence {e.confidence.toFixed(2)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

@@ -169,3 +169,20 @@ listener block. Follow this pattern for any new route module.
 - `AshOSConfig.innovation` is a required field (not optional) — `kernel/
   config.ts`'s `defaultConfig()` always sets it, so don't add `?.` guards
   for it in new code.
+- "AshOS Intelligence" (`docs/ashos-intelligence.md`) extends Innovation
+  Intelligence (`docs/innovation.md`) rather than replacing it: raw
+  `Signal`s are normalized/deduped into canonical `IntelligenceEvent`s
+  (`innovation/events/`) before reaching the knowledge graph/opportunity
+  engine, and `RepositoryAnalystAgent`/`TechnologyRadarAgent`
+  (`innovation/repository/`, `innovation/radar/`) are real, network-backed
+  agents invoked on demand (like `github-trending`), not routed through
+  the mock-by-default `CollectorRegistry`. The one real collector so far,
+  `github-releases-collector.ts`, follows the same "offline by default,
+  real via explicit opt-in" rule as everything else: it's deliberately
+  **not** registered on `CollectorRegistry` (which every default `ash
+  innovation discover` sweeps), only reachable via
+  `InnovationModule.runLiveGithubDiscovery()` / `--live` / `{ live: true }`.
+  This environment's network sandbox only allowlists `api.github.com`, so
+  GitHub is the only real collector target verified here — treat other
+  named sources (HuggingFace, arXiv, Reddit, HN, ...) as mock-only until
+  proven reachable.

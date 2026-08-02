@@ -173,17 +173,18 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
       res.status(409).json({ error: "a discovery cycle is already running" });
       return;
     }
+    const live = Boolean(req.body?.live);
     const domains = Array.isArray(req.body?.domains) ? req.body.domains : undefined;
     innovationDiscoveryRunning = true;
-    ashos.innovation
-      .runDiscoveryCycle(domains)
+    const run = live ? ashos.innovation.runLiveGithubDiscovery() : ashos.innovation.runDiscoveryCycle(domains);
+    run
       .catch((error) => {
         ashos.kernel.logger.error(`innovation discovery cycle failed: ${(error as Error).message}`);
       })
       .finally(() => {
         innovationDiscoveryRunning = false;
       });
-    res.status(202).json({ started: true });
+    res.status(202).json({ started: true, live });
   });
 
   app.get("/innovation/status", (_req, res) => {
@@ -225,6 +226,65 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
 
   app.get("/innovation/graph", (_req, res) => {
     res.json(ashos.innovation.graph.stats());
+  });
+
+  app.get("/innovation/events", (req, res) => {
+    const category = req.query.category as never;
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+    const list = category ? ashos.innovation.events.byCategory(category) : ashos.innovation.events.list();
+    res.json(limit ? list.slice(0, limit) : list);
+  });
+
+  app.get("/innovation/events/:id", (req, res) => {
+    const event = ashos.innovation.events.get(req.params.id);
+    if (!event) {
+      res.status(404).json({ error: `event "${req.params.id}" not found` });
+      return;
+    }
+    res.json(event);
+  });
+
+  app.get("/innovation/repositories", (req, res) => {
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+    const list = ashos.innovation.repositories.list();
+    res.json(limit ? list.slice(0, limit) : list);
+  });
+
+  app.get("/innovation/repositories/:owner/:repo", (req, res) => {
+    const profile = ashos.innovation.repositories.get(`${req.params.owner}/${req.params.repo}`);
+    if (!profile) {
+      res.status(404).json({ error: `no cached analysis for "${req.params.owner}/${req.params.repo}" — POST /innovation/repositories/analyze first` });
+      return;
+    }
+    res.json(profile);
+  });
+
+  app.post("/innovation/repositories/analyze", async (req, res) => {
+    const fullName = req.body?.fullName;
+    if (typeof fullName !== "string" || !fullName.includes("/")) {
+      res.status(400).json({ error: "'fullName' must be a non-empty \"owner/repo\" string" });
+      return;
+    }
+    try {
+      const result = await ashos.runAgent("repository-analyst", { description: `analyze ${fullName}`, input: { fullName } });
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  app.get("/innovation/radar", (req, res) => {
+    const ring = req.query.ring as never;
+    res.json(ring ? ashos.innovation.radar.byRing(ring) : ashos.innovation.radar.list());
+  });
+
+  app.post("/innovation/radar/refresh", async (_req, res) => {
+    try {
+      const result = await ashos.runAgent("technology-radar", { description: "refresh technology radar" });
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
   });
 
   app.get("/innovation/config", (_req, res) => {

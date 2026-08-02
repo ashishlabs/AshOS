@@ -210,4 +210,53 @@ describe("CLI commands", () => {
     const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
     expect(output).toContain("weight=");
   });
+
+  it("innovation collectors also lists the opt-in live GitHub collector", async () => {
+    const program = freshProgram();
+    registerInnovationCommand(program);
+    await program.parseAsync(["node", "ash", "innovation", "collectors"]);
+
+    const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("github-live");
+    expect(output).toContain("opt-in via --live");
+  });
+
+  it("innovation events reports nothing yet, then lists canonical events after a discovery cycle", async () => {
+    const program = freshProgram();
+    registerInnovationCommand(program);
+    await program.parseAsync(["node", "ash", "innovation", "events"]);
+    expect(logSpy.mock.calls.map((c) => c.join(" ")).join("\n")).toContain("No events recorded yet");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "innovation", "discover", "--domains", "market"]);
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "innovation", "events"]);
+    const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("confidence=");
+  });
+
+  it("innovation repo list reports nothing analyzed yet", async () => {
+    const program = freshProgram();
+    registerInnovationCommand(program);
+    await program.parseAsync(["node", "ash", "innovation", "repo", "list"]);
+
+    const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("No repositories analyzed yet");
+  });
+
+  it("innovation radar reports nothing tracked before any discovery, then classifies after --refresh", async () => {
+    const program = freshProgram();
+    registerInnovationCommand(program);
+    await program.parseAsync(["node", "ash", "innovation", "radar"]);
+    expect(logSpy.mock.calls.map((c) => c.join(" ")).join("\n")).toContain("No technologies tracked yet");
+
+    await program.parseAsync(["node", "ash", "innovation", "discover", "--domains", "market"]);
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "innovation", "radar", "--refresh"]);
+    const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Radar:");
+    expect(output).toMatch(/\[(emerging|growing|stable|declining|obsolete)\]/);
+  });
 });

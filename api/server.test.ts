@@ -279,5 +279,124 @@ describe("AshOS API", () => {
 
     const profile = (await (await fetch(`${baseUrl}/innovation/profile`)).json()) as any[];
     expect(profile.length).toBeGreaterThan(0);
+
+    const events = (await (await fetch(`${baseUrl}/innovation/events`)).json()) as any[];
+    expect(events.length).toBeGreaterThan(0);
+    expect(events[0]).toHaveProperty("category");
+
+    const eventDetail = (await (await fetch(`${baseUrl}/innovation/events/${events[0].id}`)).json()) as any;
+    expect(eventDetail.id).toBe(events[0].id);
+  });
+
+  it("GET /innovation/events/:id 404s for an unknown event", async () => {
+    const res = await fetch(`${baseUrl}/innovation/events/does-not-exist`);
+    expect(res.status).toBe(404);
+  });
+
+  it("POST /innovation/discover with live:true runs runLiveGithubDiscovery instead of the domain cycle", async () => {
+    // Overriding runLiveGithubDiscovery on a dedicated instance keeps this test off the real network.
+    const stubRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ashos-api-live-discover-"));
+    const stubAshos = new AshOS({ root: stubRoot });
+    let called = false;
+    stubAshos.innovation.runLiveGithubDiscovery = async () => {
+      called = true;
+      return { opportunities: [], signalCount: 0 };
+    };
+    const stubApp = createServer(stubAshos);
+    const stubServer = await new Promise<Server>((resolve) => {
+      const s = stubApp.listen(0, () => resolve(s));
+    });
+    try {
+      const address = stubServer.address();
+      const stubBaseUrl = `http://127.0.0.1:${typeof address === "object" && address ? address.port : 0}`;
+
+      const res = await fetch(`${stubBaseUrl}/innovation/discover`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ live: true })
+      });
+      expect(res.status).toBe(202);
+      expect(((await res.json()) as any).live).toBe(true);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(called).toBe(true);
+    } finally {
+      stubServer.close();
+      fs.rmSync(stubRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("GET /innovation/repositories starts empty; POST /innovation/repositories/analyze runs the agent and caches the result", async () => {
+    // A stub RepositoryAnalystAgent so this never touches the real network.
+    const stubRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ashos-api-repo-"));
+    const stubAshos = new AshOS({ root: stubRoot });
+    stubAshos.agents.register({
+      name: "repository-analyst",
+      description: "stub",
+      capabilities: ["repository-analyst"],
+      async execute(task) {
+        const fullName = task.input?.fullName as string;
+        const profile = { fullName, stars: 42 };
+        stubAshos.innovation.repositories.save(profile as any);
+        return { ok: true, output: `${fullName}: analyzed`, data: { profile, cached: false } };
+      }
+    });
+    const stubApp = createServer(stubAshos);
+    const stubServer = await new Promise<Server>((resolve) => {
+      const s = stubApp.listen(0, () => resolve(s));
+    });
+    try {
+      const address = stubServer.address();
+      const stubBaseUrl = `http://127.0.0.1:${typeof address === "object" && address ? address.port : 0}`;
+
+      const empty = (await (await fetch(`${stubBaseUrl}/innovation/repositories`)).json()) as any[];
+      expect(empty).toEqual([]);
+
+      const missing = await fetch(`${stubBaseUrl}/innovation/repositories/acme/widget`);
+      expect(missing.status).toBe(404);
+
+      const analyzeRes = await fetch(`${stubBaseUrl}/innovation/repositories/analyze`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ fullName: "acme/widget" })
+      });
+      expect(analyzeRes.status).toBe(200);
+      expect(((await analyzeRes.json()) as any).ok).toBe(true);
+
+      const cached = (await (await fetch(`${stubBaseUrl}/innovation/repositories/acme/widget`)).json()) as any;
+      expect(cached.stars).toBe(42);
+
+      const list = (await (await fetch(`${stubBaseUrl}/innovation/repositories`)).json()) as any[];
+      expect(list).toHaveLength(1);
+    } finally {
+      stubServer.close();
+      fs.rmSync(stubRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("POST /innovation/repositories/analyze rejects a missing or malformed fullName", async () => {
+    const res = await fetch(`${baseUrl}/innovation/repositories/analyze`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ fullName: "not-a-repo" })
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("GET /innovation/radar starts empty; POST /innovation/radar/refresh classifies tracked technologies", async () => {
+    const empty = (await (await fetch(`${baseUrl}/innovation/radar`)).json()) as any[];
+    expect(empty).toEqual([]);
+
+    const refreshRes = await fetch(`${baseUrl}/innovation/radar/refresh`, { method: "POST" });
+    expect(refreshRes.status).toBe(200);
+    const body = (await refreshRes.json()) as any;
+    expect(body.ok).toBe(true);
+
+    const radar = (await (await fetch(`${baseUrl}/innovation/radar`)).json()) as any[];
+    expect(radar.length).toBeGreaterThan(0);
+    expect(radar[0]).toHaveProperty("ring");
+
+    const filtered = (await (await fetch(`${baseUrl}/innovation/radar?ring=${radar[0].ring}`)).json()) as any[];
+    expect(filtered.every((e: any) => e.ring === radar[0].ring)).toBe(true);
   });
 });

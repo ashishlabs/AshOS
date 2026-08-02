@@ -43,14 +43,14 @@ agents/     Agent interface + Generic, Code, Research, Git, Testing, GitHub Tren
 planner/    goal -> task graph (via the active provider) + parallel/retrying executor
 workflow/   JSON-defined workflow engine (same DAG executor as the planner)
 scheduler/  cron-based recurring jobs
-innovation/ Innovation Intelligence: collect signals -> knowledge graph -> merge into opportunities -> score -> Daily Brief
+innovation/ Innovation Intelligence / AshOS Intelligence: collect signals -> normalize/dedup into events -> knowledge graph -> merge into opportunities -> score -> Daily Brief, plus Repository Intelligence + Technology Radar
 sdk/        AshOS facade wiring everything together for embedding
 cli/        `ash` command
 api/        REST API (express)
 plugins/    reference plugins (git, shell) + plugin dev guide
 dashboard/  Vite + React + Tailwind v4 + shadcn/ui-style dashboard
 examples/   example workflow definitions
-docs/       architecture, plugin, provider, API, CLI, roadmap, innovation docs
+docs/       architecture, plugin, provider, API, CLI, roadmap, innovation, ashos-intelligence docs
 ```
 
 See [`docs/architecture.md`](docs/architecture.md) for the full picture,

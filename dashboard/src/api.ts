@@ -142,6 +142,92 @@ export interface KnowledgeGraphStats {
   byKind: Record<string, number>;
 }
 
+export const EVENT_CATEGORIES = [
+  "model-release",
+  "repository",
+  "framework",
+  "benchmark",
+  "research-paper",
+  "startup",
+  "funding",
+  "acquisition",
+  "api-change",
+  "pricing-update",
+  "security-issue",
+  "breaking-change",
+  "dataset",
+  "developer-tool",
+  "library-update"
+] as const;
+export type EventCategory = (typeof EVENT_CATEGORIES)[number];
+export interface EventSource {
+  source: string;
+  domain: IntelligenceDomain;
+  url?: string;
+  observedAt: string;
+  confidence: number;
+}
+export interface IntelligenceEvent {
+  id: string;
+  category: EventCategory;
+  title: string;
+  summary: string;
+  tags: string[];
+  domains: IntelligenceDomain[];
+  sources: EventSource[];
+  confidence: number;
+  firstObservedAt: string;
+  lastObservedAt: string;
+  occurrences: number;
+}
+
+export type MaintenanceStatus = "active" | "maintained" | "stale" | "abandoned";
+export interface RepositoryProfile {
+  fullName: string;
+  url: string;
+  description: string | null;
+  primaryLanguage: string | null;
+  languages: Record<string, number>;
+  topics: string[];
+  license: string | null;
+  stars: number;
+  forks: number;
+  openIssues: number;
+  watchers: number;
+  contributors: number;
+  dependencies: string[];
+  createdAt: string;
+  pushedAt: string;
+  maintenanceStatus: MaintenanceStatus;
+  innovationScore: number;
+  productionReadiness: number;
+  adoptionPotential: number;
+  ashosCompatibility: string;
+  analyzedAt: string;
+}
+
+export const RADAR_RINGS = ["emerging", "growing", "stable", "declining", "obsolete"] as const;
+export type RadarRing = (typeof RADAR_RINGS)[number];
+export interface RadarEvidence {
+  totalMentions: number;
+  daysSinceFirstSeen: number;
+  daysSinceLastSeen: number;
+  mentionsPerDay: number;
+}
+export interface RadarEntry {
+  technology: string;
+  ring: RadarRing;
+  evidence: RadarEvidence;
+  evaluatedAt: string;
+}
+
+export interface AgentRunResult {
+  ok: boolean;
+  output?: string;
+  data?: unknown;
+  error?: string;
+}
+
 export interface TrendingRepo {
   fullName: string;
   url: string;
@@ -188,7 +274,25 @@ export const api = {
   innovationGraph: () => get<KnowledgeGraphStats>("/innovation/graph"),
   innovationConfig: () => get<InnovationConfig>("/innovation/config"),
   innovationUpdateConfig: (patchBody: Partial<InnovationConfig>) => patch<InnovationConfig>("/innovation/config", patchBody),
-  innovationDiscover: (domains?: IntelligenceDomain[]) => post<{ started: boolean }>("/innovation/discover", { domains }),
+  innovationDiscover: (options?: { domains?: IntelligenceDomain[]; live?: boolean }) =>
+    post<{ started: boolean; live: boolean }>("/innovation/discover", { domains: options?.domains, live: options?.live }),
+
+  innovationEvents: (limit?: number, category?: EventCategory) => {
+    const params = new URLSearchParams();
+    if (limit) params.set("limit", String(limit));
+    if (category) params.set("category", category);
+    const qs = params.toString();
+    return get<IntelligenceEvent[]>(`/innovation/events${qs ? `?${qs}` : ""}`);
+  },
+  innovationEvent: (id: string) => get<IntelligenceEvent>(`/innovation/events/${encodeURIComponent(id)}`),
+
+  innovationRepositories: (limit?: number) => get<RepositoryProfile[]>(`/innovation/repositories${limit ? `?limit=${limit}` : ""}`),
+  innovationRepository: (owner: string, repo: string) =>
+    get<RepositoryProfile>(`/innovation/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`),
+  innovationAnalyzeRepository: (fullName: string) => post<AgentRunResult>("/innovation/repositories/analyze", { fullName }),
+
+  innovationRadar: (ring?: RadarRing) => get<RadarEntry[]>(`/innovation/radar${ring ? `?ring=${ring}` : ""}`),
+  innovationRefreshRadar: () => post<AgentRunResult>("/innovation/radar/refresh", {}),
 
   async chatStream(history: ChatMessage[], onDelta: (delta: string) => void): Promise<void> {
     const res = await fetch(`${BASE}/chat/stream`, {

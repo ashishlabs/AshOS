@@ -24,6 +24,10 @@ export type AshOSEventName =
   | "innovation:opportunity-created"
   | "innovation:opportunity-updated"
   | "innovation:opportunity-status-changed"
+  | "innovation:event-created"
+  | "innovation:event-merged"
+  | "innovation:repository-analyzed"
+  | "innovation:radar-updated"
   | "log";
 
 export interface AshOSEvent<T = unknown> {
