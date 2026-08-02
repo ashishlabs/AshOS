@@ -12,19 +12,19 @@
 
 | Metric | Value |
 |---|---|
-| Total features tracked | 25 |
-| ✅ Complete | 16 |
-| 🟡 In Progress | 6 |
-| 🔴 Not Implemented | 3 |
+| Total features tracked | 29 |
+| ✅ Complete | 20 |
+| 🟡 In Progress | 3 |
+| 🔴 Not Implemented | 6 |
 | ⚪ Planned (documented, not started) | 0 (folded into Not Implemented — see Missing Features) |
 | ⚫ Blocked | 0 |
-| **Overall completion (weighted by the user's own v1-v5 milestones)** | **v1: 100%, v2: ~85%, v3: ~50%, v4: ~35%, v5: ~10%** |
-| Tests passing | 313 / 313 (48 test files) |
-| Statement coverage | 84.23% (branches 82.53%, functions 85.87%) |
+| **Overall completion (weighted by the user's own v1-v5 milestones)** | **v1: 100%, v2: ~97%, v3: ~50%, v4: ~35%, v5: ~10%** |
+| Tests passing | 331 / 331 (49 test files) |
+| Statement coverage | 84.51% (branches 82.49%, functions 86.02%) |
 | TODO/FIXME comments in source | 0 |
 | Dashboard automated tests | 0 (verified manually via Playwright screenshots per project convention) |
 
-The system is a genuinely working, well-tested local-first AI agent platform (v1 of the user's own milestone scale is fully shipped), with a large and mostly real "Innovation/AshOS Intelligence" subsystem layered on top (v4's discovery half). The biggest verified gaps are: no MCP/browser/Docker-as-a-tool integrations, no general-purpose (non-AI-ecosystem) research capability, no self-improvement/evaluation framework (the previous Evolution Engine was deliberately removed and never rebuilt), and zero creative-media generation. Two directories (`evolution/`, `tests/`) are empty leftovers.
+The system is a genuinely working, well-tested local-first AI agent platform (v1 of the user's own milestone scale is fully shipped, v2 now ~97% with all five North Star Tier 1 stages — Local Codebase Intelligence, Model Router, Outcome Memory, General Knowledge Graph, Verification Gate — shipped), with a large and mostly real "Innovation/AshOS Intelligence" subsystem layered on top (v4's discovery half). The biggest verified gaps are: 6 of 11 named specialist agent roles still missing (v2's last gap), no MCP/browser/Docker-as-a-tool integrations, no general-purpose (non-AI-ecosystem) research capability, no self-improvement/evaluation framework (the previous Evolution Engine was deliberately removed and never rebuilt), and zero creative-media generation. Two directories (`evolution/`, `tests/`) are empty leftovers.
 
 ---
 
@@ -90,9 +90,9 @@ workflow/     4 .ts files   — JSON workflow engine
 | Local Codebase Intelligence | ✅ COMPLETE | 100% (v1 scope) | `codebase/*`, `docs/codebase-intelligence.md` | High |
 | Technology Radar | ✅ COMPLETE | 100% | `innovation/radar/*` | Medium |
 | Real Collectors (GitHub/HN/Reddit/arXiv/HF) | 🟡 IN PROGRESS | 100% code, ~20% live-verified | `innovation/collectors/{github-releases,hn,reddit,arxiv,huggingface}-collector.ts` — only GitHub confirmed reachable in this sandbox | Medium |
-| Knowledge Graph (general-purpose) | 🟡 IN PROGRESS | ~40% | `innovation/graph/knowledge-graph.ts` is domain-agnostic in its types but only populates `problem`/`technology` nodes; `project`/`agent`/`workflow`/`skill`/`tool` node kinds exist and are unused | High |
-| Multi-Agent Specialist Roles | 🟡 IN PROGRESS | ~40% | Only generic-purpose roles exist (Code/Research/Git/Testing/Generic); no Reviewer, Security Auditor, DevOps, UI Designer, Architect, or Video Creator agents | High |
-| Verification Gate | 🔴 NOT IMPLEMENTED | 0% | No code makes `TestingAgent`/a reviewer a required DAG step after code-producing tasks | High |
+| Knowledge Graph (general-purpose) | ✅ COMPLETE | 100% (v1 scope) | `KnowledgeGraph` moved to shared `graph/` package with a `namespace` option; `AshOS.knowledgeGraph` (`.ashos/graph.json`, no namespace) populated automatically by every `BaseAgent.execute()` (`project`/`agent`/`task` nodes, `produced-by`/`part-of` edges) and enriched by `CodebaseAnalystAgent`; `ash graph stats/nodes/neighbors`, `/graph*`. Innovation's own namespaced graph (`{ namespace: "innovation" }`) unchanged. See `docs/knowledge-graph.md` | High |
+| Multi-Agent Specialist Roles | 🟡 IN PROGRESS | ~40% | Only generic-purpose roles exist (Code/Research/Git/Testing/Generic + 8 Innovation agents + Codebase Analyst); no Reviewer, Security Auditor, DevOps, UI Designer, Architect, or Video Creator agents | High |
+| Verification Gate | ✅ COMPLETE | 100% | `planner/executor.ts`'s `TaskExecutor` runs the registered `verify`-capability agent (`TestingAgent` by default) inside the same DAG node immediately after a `"code"`-capability task succeeds; throws on failure so `DagExecutor`'s existing retry/fail/skip-dependents behavior applies. On by default, `verify: false` to disable. See `docs/verification-gate.md` | High |
 | MCP (Model Context Protocol) | 🔴 NOT IMPLEMENTED | 0% | No MCP client or server code; no `@modelcontextprotocol/*` dependency | Medium |
 | Browser Automation | 🔴 NOT IMPLEMENTED | 0% | No Playwright/Puppeteer dependency or tool | Low |
 | Docker as an agent Tool | 🔴 NOT IMPLEMENTED | 0% | Docker exists only as deployment infra (`Dockerfile`, `docker-compose.yml`), not as a `Tool` an agent can invoke | Low |
@@ -839,40 +839,44 @@ Five real, opt-in, network-backed `Collector` implementations feeding the Daily 
 
 ### Knowledge Graph (General-Purpose)
 
-**Status:** 🟡 IN PROGRESS
+**Status:** ✅ COMPLETE (for its stated v1 scope)
 **Priority:** High
 
 **Description**
-`KnowledgeGraph` (`innovation/graph/knowledge-graph.ts`) is architecturally domain-agnostic — its `KnowledgeNodeKind` union already includes `"project"`, `"agent"`, `"workflow"`, `"skill"`, `"tool"` alongside the Innovation-specific kinds — but in practice only `problem` and `technology` nodes are ever created, and the class is only ever instantiated once, scoped to `.ashos/innovation/graph.json`.
+`KnowledgeGraph` was moved from `innovation/graph/` to a shared top-level `graph/` package and given an optional `namespace`, so one class now backs both Innovation Intelligence's original graph (`{ namespace: "innovation" }`, unchanged file path `.ashos/innovation/graph.json`) and a new general-purpose instance (`AshOS.knowledgeGraph`, `.ashos/graph.json`).
 
 **Evidence**
-- `innovation/graph/knowledge-graph.ts` (144 lines), `innovation/graph/knowledge-graph.test.ts`
-- Confirmed by direct inspection: only `innovation/innovation-module.ts` (`recordSignalInGraph`) and `innovation/agents/technology-radar-agent.ts` construct nodes, both using only `problem`/`technology` kinds
-- Node kinds `project`/`agent`/`workflow`/`skill`/`tool` exist in the type but zero call sites create them
+- `graph/{types,knowledge-graph}.ts` (moved via `git mv`, namespace-aware), `graph/knowledge-graph.test.ts`
+- `agents/base-agent.ts`'s `recordGraphActivity()` — every `BaseAgent.execute()` call upserts `project`/`agent`/`task` nodes and `produced-by`/`part-of` edges into `context.graph` when present, for every agent, with no per-agent code changes
+- `codebase/agents/codebase-analyst-agent.ts`'s `enrichProjectNode()` — additionally attaches real language/module data to the same project node
+- `sdk/ashos.ts` — `AshOS.knowledgeGraph = new KnowledgeGraph(this.kernel.root)` (no namespace), passed into `agentContext().graph`
+- `cli/commands/graph.ts` (`ash graph stats/nodes/neighbors`), 3 REST routes (`/graph`, `/graph/nodes`, `/graph/nodes/:id/neighbors`)
+- Verified live: the same project node accumulates data from two independently-run agents across separate invocations, confirming merge-not-duplicate identity via `upsertNode`'s dedup-by-(kind,label)
+- Docs: `docs/knowledge-graph.md`
 
-**Completed:** The reusable class itself; the Innovation-scoped use of it.
-**Remaining:** A second graph instance (or a generalized single instance) actually tracking the user's real projects, agents, tasks, and decisions — this is Stage 4 of the North Star staged plan (`docs/roadmap-v2.md`), tracked as task #60, not yet started.
+**Completed:** Namespace-based generalization with zero data migration for Innovation's own graph; automatic population by every agent via `BaseAgent`; codebase-data enrichment; CLI/REST query surface.
+**Remaining:** No `repository` nodes yet (external-repo analysis doesn't write into either graph instance), no decision/doc node kinds, no dashboard visualization, no cross-file relationship tracking — see `docs/knowledge-graph.md`'s "What's not implemented."
 
 **Definition of Done**
-- [x] Functional implementation complete (for the Innovation-scoped use)
+- [x] Functional implementation complete
 - [x] Architecture follows project standards
-- [ ] Integrated with existing modules (not integrated with Codebase Intelligence, Outcome Memory, or the Planner/TaskExecutor yet)
+- [x] Integrated with existing modules (`BaseAgent`, `CodebaseAnalystAgent`, `AshOS` facade)
 - [x] Error handling implemented
 - [x] Logging added
 - [x] Configuration supported
-- [ ] Documentation written (no doc describes the general-purpose use case, since it doesn't exist yet)
-- [x] Unit tests added (for the class itself)
-- [ ] Integration tests added (for the general-purpose use case)
+- [x] Documentation written (`docs/knowledge-graph.md`)
+- [x] Unit tests added
+- [x] Integration tests added (cross-agent node-merging verified live)
 - [ ] Performance validated
 - [x] Security reviewed
 - [x] Works with local models
 - [x] Works with cloud models
-- [ ] UX completed
+- [ ] UX completed (no dashboard visualization yet — CLI/REST only)
 - [x] No TODOs remain
-- [ ] Code reviewed for the general-purpose use case (doesn't exist yet)
-- [ ] Ready for production (for the general-purpose use case)
+- [ ] Code reviewed
+- [ ] Ready for production
 
-**Risks:** None technical — this is a scoping gap, not a defect. **Dependencies:** None new (reuses the existing class). **Recommended Next Steps:** Exactly Stage 4 as already planned — wire `CodebaseAnalystAgent`, `TaskExecutor`, and `Outcome Memory` to populate `project`/`agent`/`task` nodes into a shared graph.
+**Risks:** None significant — best-effort writes wrapped in try/catch so a graph failure never breaks an agent's actual task. **Dependencies:** None new (reuses the existing class). **Recommended Next Steps:** Dashboard graph visualization; `repository`-kind nodes from `RepositoryAnalystAgent`.
 
 ---
 
@@ -915,39 +919,42 @@ The North Star vision names 11 specialist roles (Architect, Planner, Researcher,
 
 ### Verification Gate
 
-**Status:** 🔴 NOT IMPLEMENTED
+**Status:** ✅ COMPLETE
 **Priority:** High
 
 **Description**
-North Star goal #1 ("Become an AI Employee") explicitly requires AshOS to "verify results," not just execute and report success. Today, `TestingAgent` exists and can be routed to by capability, but nothing in `TaskExecutor`'s DAG construction makes verification a *required* step after a code-producing task — it only runs if the Planner's LLM output happens to include a testing task, which is not guaranteed.
+North Star goal #1 ("Become an AI Employee") explicitly requires AshOS to "verify results," not just execute and report success. `TaskExecutor` now makes verification a *required* step after every code-producing task, not something that only runs if the Planner's LLM output happens to include a testing task.
 
-**Evidence (of absence)**
-- `planner/executor.ts` — `TaskExecutor.execute()` builds one `DagNode` per `PlannedTask` with no automatic insertion of a verification step
-- No code anywhere makes `TestingAgent`/a reviewer mandatory after `code`-capability tasks
+**Evidence**
+- `planner/executor.ts` — exports `CODE_PRODUCING_CAPABILITIES` (`["code"]`) and `VERIFICATION_CAPABILITY` (`"verify"`); inside the DAG node's `run()` closure, right after the primary agent succeeds, a `"code"`-capability task runs `this.verify(task.id, task.title)`, which looks up the registered `"verify"`-capability agent (`TestingAgent` by default) via `AgentRegistry.findByCapability` and throws on failure — the throw happens inside the same closure `DagExecutor` already retries on, so retry/fail/skip-dependents semantics apply with zero changes to `kernel/dag.ts`
+- `kernel/event-bus.ts` — `task:verified`/`task:verification-failed` events added
+- `planner/executor.test.ts` (new, 6 tests) — verification runs and passes; verification runs and fails (task fails with the verification error, `attempts` reflects the retry); non-code capabilities skip verification; a missing verify-capable agent no-ops instead of failing; `verify: false` disables the gate entirely
+- Live-verified outside the test suite: a real `TaskExecutor` wired to real `CodeAgent`/`TestingAgent`/`ShellTool`/`FsTool` against a throwaway temp git repo — success case emitted `task:verified` and returned `status: "success"`; flipping the repo's `npm test` script to `exit 1` produced `task:verification-failed`, `attempts: 2` (one retry), and `status: "failed"` with an error distinguishing "verification failed" from "agent failed"
+- Confirmed safe against the existing suite: `Planner.plan()`'s fallback (used by every test, since `MockProvider`'s echo response is never parseable JSON) always emits capability `"generic"`, never `"code"` — so the gate never fires during `npm test` itself; the full 331-test suite passes with the gate on by default
 
-**Completed:** Nothing.
-**Remaining:** Everything — this is Stage 5 of the North Star staged plan (`docs/roadmap-v2.md`), tracked as task #61, not yet started.
+**Completed:** Full implementation, tests, live verification, docs (`docs/verification-gate.md`).
+**Remaining:** Nothing for the scope defined by goal #1's "verify results." Optional future extension: a dedicated `ReviewerAgent` also registered under `"verify"` (Tier 2 of `docs/roadmap-v2.md`), and verification for non-code capabilities.
 
 **Definition of Done**
-- [ ] Functional implementation complete
-- [ ] Architecture follows project standards
-- [ ] Integrated with existing modules
-- [ ] Error handling implemented
-- [ ] Logging added
-- [ ] Configuration supported
-- [ ] Documentation written
-- [ ] Unit tests added
-- [ ] Integration tests added
+- [x] Functional implementation complete
+- [x] Architecture follows project standards
+- [x] Integrated with existing modules
+- [x] Error handling implemented
+- [x] Logging added
+- [x] Configuration supported (`verify: false` opt-out)
+- [x] Documentation written (`docs/verification-gate.md`)
+- [x] Unit tests added
+- [x] Integration tests added (live temp-repo verification, both pass and fail paths)
 - [ ] Performance validated
 - [ ] Security reviewed
-- [ ] Works with local models
-- [ ] Works with cloud models
-- [ ] UX completed
-- [x] No TODOs remain (nothing half-built to leave a TODO in)
+- [x] Works with local models (agent-agnostic — no provider call in the gate itself)
+- [x] Works with cloud models (same)
+- [ ] UX completed (no dashboard surface for verification events yet — visible only via `ash logs`/event bus)
+- [x] No TODOs remain
 - [ ] Code reviewed
 - [ ] Ready for production
 
-**Risks:** Without this, "AshOS completed a task" and "AshOS verified the task actually works" remain conflated — a real correctness gap for anything beyond trivial goals. **Dependencies:** `TestingAgent` (exists), `TaskExecutor` (exists, needs modification). **Recommended Next Steps:** Build next — see Next Milestone.
+**Risks:** None significant — the gate is additive and off-switchable, and no-ops safely when no verifier is registered. **Dependencies:** `TestingAgent` (exists), `TaskExecutor` (modified). **Recommended Next Steps:** Optional — dashboard surfacing of `task:verified`/`task:verification-failed`; a `ReviewerAgent` for code-quality checks beyond test-suite pass/fail.
 
 ---
 
@@ -999,8 +1006,6 @@ A prior version of this repository had a full "Evolution Engine" subsystem: muta
 | Docker as an agent Tool | Low | Low-Medium | Docker daemon access | Explicitly deferred; only deployment-time Docker exists |
 | Generic Web Search/Fetch Tool | Medium | Low | None new | `ResearchAgent` currently reasons model-only; no tool for arbitrary live lookups |
 | Reviewer / Security Auditor / DevOps / UI Designer / Architect agents | High | Low each | None new | Backlog item, no technical blocker — see "Multi-Agent Specialist Roles" above |
-| General Knowledge Graph population | High | Medium | Reuses existing `KnowledgeGraph` class | Scoping gap — see detailed report above |
-| Verification Gate in TaskExecutor | High | Medium | `TestingAgent` (exists) | Not yet built — see detailed report above |
 | Self-Improvement / Evaluation Framework | High (conditional) | High | User decision required | Deliberately removed, rebuild gated on user choice |
 | Authentication | Low | Medium | An auth library | Not needed for current single-user local-tool scope; would be required before any multi-user or public deployment |
 | Creative Studio (image/video/voice generation) | Low | High | New provider types entirely | Deliberately deprioritized — least aligned with "local-first, free APIs," most commoditized space |
@@ -1031,11 +1036,11 @@ A prior version of this repository had a full "Evolution Engine" subsystem: muta
 
 **Phase 2 (already done):** Innovation Intelligence, Event Normalization, Repository Intelligence (external), Local Codebase Intelligence, Technology Radar, Model Router, Outcome Memory.
 
-**Phase 3 (next — closes out v2 and starts v3/v4):**
-1. Verification Gate in `TaskExecutor` (closes the "AI Employee" correctness gap)
-2. General Knowledge Graph population (ties Codebase Intelligence + Repository Intelligence + Outcome Memory into one connected structure)
-3. Reviewer, Security Auditor, DevOps Engineer, UI Designer, Architect agents (closes Multi-Agent Collaboration)
-4. Generic Web Search/Fetch tool + generalize `ResearchAgent` (closes Autonomous Research beyond AI-ecosystem scope)
+**Phase 3a (already done — North Star Tier 1, Stages 1-5):** Local Codebase Intelligence, Model Router, Outcome Memory, General Knowledge Graph population, Verification Gate in `TaskExecutor`. This closes v2 to ~97%.
+
+**Phase 3b (next — v2's remaining gap and into v3/v4):**
+1. Reviewer, Security Auditor, DevOps Engineer, UI Designer, Architect agents (closes Multi-Agent Collaboration, v2's last gap)
+2. Generic Web Search/Fetch tool + generalize `ResearchAgent` (closes Autonomous Research beyond AI-ecosystem scope)
 
 **Phase 4 (self-optimization, pending user decision):**
 5. Decide on Evolution Engine revival (or formally defer goals #9/#10/#14)
@@ -1051,14 +1056,14 @@ A prior version of this repository had a full "Evolution Engine" subsystem: muta
 
 | Metric | Value |
 |---|---|
-| Total source files (backend, non-test, non-dashboard) | 104 |
-| Total backend source lines (non-test) | 6,537 |
-| Total test files | 48 |
-| Total test lines | 4,527 |
-| Total tests passing | 313 / 313 |
-| Statement coverage | 84.23% |
-| Branch coverage | 82.53% |
-| Function coverage | 85.87% |
+| Total source files (backend, non-test, non-dashboard) | 106 |
+| Total backend source lines (non-test) | 6,738 |
+| Total test files | 49 |
+| Total test lines | 4,842 |
+| Total tests passing | 331 / 331 |
+| Statement coverage | 84.51% |
+| Branch coverage | 82.49% |
+| Function coverage | 86.02% |
 | Dashboard files (`.ts`/`.tsx`) | 16 |
 | Dashboard lines | 2,015 |
 | Dashboard automated tests | 0 |
@@ -1067,7 +1072,7 @@ A prior version of this repository had a full "Evolution Engine" subsystem: muta
 | TODO comments | 0 |
 | FIXME comments | 0 |
 | Registered agents | 15 |
-| REST API routes | 38 |
+| REST API routes | 43 |
 | CLI command groups | 11 |
 | Languages | TypeScript (backend + dashboard), JSON (config/manifests/workflows), Markdown (docs) |
 | Largest source file | `api/server.ts` (371 lines) |
@@ -1080,34 +1085,32 @@ A prior version of this repository had a full "Evolution Engine" subsystem: muta
 
 | Category | Score | Justification |
 |---|---|---|
-| Architecture | 9/10 | Consistently layered (kernel → providers/tools/agents → planner/workflow → SDK → CLI/API), every new subsystem follows established patterns exactly (registries, JSON-file-per-record stores, capability routing). Loses one point only because two subsystems (Innovation's `KnowledgeGraph` and general project intelligence) haven't yet been unified as originally designed. |
+| Architecture | 9/10 | Consistently layered (kernel → providers/tools/agents → planner/workflow → SDK → CLI/API), every new subsystem follows established patterns exactly (registries, JSON-file-per-record stores, capability routing). `KnowledgeGraph` is now genuinely unified (namespace-aware, one class backing both Innovation's and the general-purpose instance) — the gap that held this category back is closed. |
 | Code Quality | 8/10 | Zero TODO/FIXME debt, consistent error handling, strict TypeScript throughout, no unnecessary dependencies. Loses points for two oversized files (`App.tsx`, `server.ts`) that should be split before they grow further. |
 | Scalability | 6/10 | Fine for its actual target (single user/small team, local-first). JSON-file-per-scope persistence with full read-modify-write on every memory write (now amplified by automatic Outcome Memory on every task) is an honest, documented scaling limit, not a hidden one. |
 | Maintainability | 8/10 | Extremely consistent conventions documented in `CLAUDE.md`, colocated tests, no dead abstractions found. Two empty leftover directories (`evolution/`, `tests/`) and the two oversized files are the only real maintainability drags found. |
-| Documentation | 9/10 | 14 markdown docs, each subsystem has either a dedicated doc or a clear section in `docs/architecture.md`; `docs/roadmap.md`/`docs/roadmap-v2.md` are unusually honest about what's NOT built. Loses one point for `MemoryManager` lacking its own dedicated doc. |
-| Testing | 8/10 | 313 passing tests, 84% statement coverage, real (not mocked) git/filesystem operations used where feasible. Loses two points for the dashboard's zero automated test coverage — the single most significant gap found in this audit. |
-| Production Readiness | 6/10 | Solid for a local developer tool: CI green, Docker deployment path exists, no crashes found. Not ready for any multi-user/public deployment: zero authentication, no rate limiting, and several "real" integrations (4 of 5 collectors) have never been proven against a live network. |
-| **Overall** | **77/100** | A genuinely well-built, well-tested system for its actual current scope (local-first, single-user AI agent platform), with clearly documented and honestly-scoped gaps rather than hidden or overstated ones. The score is held back primarily by the dashboard's testing gap, the still-partial "AI Employee" correctness loop (no verification gate), and the intentionally-paused self-improvement subsystem. |
+| Documentation | 9/10 | 14 markdown docs (plus this file), each subsystem has either a dedicated doc or a clear section in `docs/architecture.md`; `docs/roadmap.md`/`docs/roadmap-v2.md` are unusually honest about what's NOT built. Loses one point for `MemoryManager` lacking its own dedicated doc. |
+| Testing | 8/10 | 331 passing tests, 84.5% statement coverage, real (not mocked) git/filesystem operations used where feasible, plus a live (non-suite) verification of the new Verification Gate's pass and fail paths. Loses two points for the dashboard's zero automated test coverage — the single most significant gap found in this audit. |
+| Production Readiness | 7/10 | Solid for a local developer tool: CI green, Docker deployment path exists, no crashes found, and code-producing tasks are now verified before being reported done rather than trusted blindly. Not ready for any multi-user/public deployment: zero authentication, no rate limiting, and several "real" integrations (4 of 5 collectors) have never been proven against a live network. |
+| **Overall** | **78/100** | A genuinely well-built, well-tested system for its actual current scope (local-first, single-user AI agent platform), with clearly documented and honestly-scoped gaps rather than hidden or overstated ones. All five North Star Tier 1 stages (Codebase Intelligence, Model Router, Outcome Memory, General Knowledge Graph, Verification Gate) are now shipped, closing v2 to ~97%. The score is held back primarily by the dashboard's testing gap, the still-partial Multi-Agent Collaboration roster (5 of 11 named roles), and the intentionally-paused self-improvement subsystem. |
 
 ---
 
 ## Next Milestone
 
-**Recommended single highest-impact milestone: Verification Gate + General Knowledge Graph (Phase 3, items 1-2 above).**
+**Recommended single highest-impact milestone: named specialist agents (Reviewer, Security Auditor, DevOps Engineer, UI Designer, Architect).**
 
-**Why it matters:** These two together are what stand between the current system and an honest claim of "v2 complete" on the user's own milestone scale. The Verification Gate closes the most conceptually important gap in the whole project — right now AshOS can report a task "succeeded" without anything having actually checked that the result works, which undermines the "AI Employee" framing at its core. The General Knowledge Graph is the connective tissue that turns three already-built, currently-isolated subsystems (Local Codebase Intelligence, external Repository Intelligence, and Outcome Memory) into one persistent, queryable structure — which is literally the wording of the user's own v2 milestone ("persistent repository intelligence").
+**Why it matters:** With the Verification Gate and General Knowledge Graph now both shipped, this is v2's one remaining named gap (goal #5, Multi-Agent Collaboration) — closing it would put v2 at essentially 100% on the user's own milestone scale. Each of the five needs no new tools or providers: they're role-specific system prompts over the existing `BaseAgent`/`CodeAgent`-style pattern, registered under new capabilities (`review`, `security-audit`, `devops`, `ui-design`, `architecture`). A `ReviewerAgent` in particular composes naturally with the Verification Gate just shipped — it could register under `VERIFICATION_CAPABILITY` alongside `TestingAgent` for a richer "does this actually look right," not just "does it pass," check.
 
-**Dependencies:** Both build entirely on code that already exists and is already tested (`TestingAgent`, `TaskExecutor`, `KnowledgeGraph`, `CodebaseAnalystAgent`, `agents/outcome.ts`) — no new infrastructure, no new dependencies, no user decision required (unlike the Evolution Engine question).
+**Dependencies:** None new — reuses `BaseAgent`, `AgentRegistry`, existing tools (shell/git/fs), and the active provider. No user decision required (unlike the Evolution Engine question).
 
-**Estimated effort:** Verification Gate: small-to-medium (modify `TaskExecutor`'s DAG construction to insert a mandatory review/test step after code-producing capabilities, plus tests). General Knowledge Graph: medium (wire three existing subsystems to write into one shared graph instance, plus a query surface).
+**Estimated effort:** Low-to-medium per agent — each is a `BaseAgent` subclass with a role-specific prompt and `capabilities` array, plus registration in `sdk/ashos.ts` and tests following the existing `agents/agents.test.ts` pattern.
 
-**Expected outcome:** Every `ashos.run()` call that produces code gets checked before being reported as done, and a single `GET /graph` (or `ash graph query`) view can answer "what do I know about this project" by tracing real edges between files, repos, agents, and past task outcomes — not just three separate JSON stores a user has to check individually.
+**Expected outcome:** A goal that the Planner decomposes into review/security/devops/design/architecture tasks has a real specialist to route to instead of falling back to the generic Code/Research agents — closing the last named gap in v2 and materially advancing v3's "autonomous execution of complex projects."
 
 **Definition of Done**
-- [ ] `TaskExecutor` inserts a verification step after any task routed to a code-producing capability
-- [ ] Verification failures are surfaced distinctly from execution failures
-- [ ] A shared `KnowledgeGraph` instance (or generalized existing one) is populated by `CodebaseAnalystAgent`, `RepositoryAnalystAgent`, and `agents/outcome.ts`
-- [ ] `project`/`agent`/`task` node kinds are actually created, not just defined in the type
-- [ ] CLI + REST surfaces for querying the general graph
-- [ ] Full test coverage for both
-- [ ] Documentation updated (`docs/roadmap-v2.md` Stage 4/5 marked shipped, new doc for the general graph)
+- [ ] `ReviewerAgent`, `SecurityAuditorAgent`, `DevOpsAgent`, `UIDesignerAgent`, `ArchitectAgent` each exist as `BaseAgent` subclasses with distinct `capabilities`
+- [ ] Each is registered by default in `sdk/ashos.ts`'s `AgentRegistry`
+- [ ] `ReviewerAgent` optionally registers under `VERIFICATION_CAPABILITY` alongside `TestingAgent` so the Verification Gate can pick either/both
+- [ ] Full unit test coverage for all five, following `agents/agents.test.ts`'s existing pattern
+- [ ] `docs/roadmap-v2.md` goal #5 and Tier 2 item #6 marked shipped

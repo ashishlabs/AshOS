@@ -29,6 +29,8 @@ export type AshOSEventName =
   | "innovation:repository-analyzed"
   | "innovation:radar-updated"
   | "codebase:indexed"
+  | "task:verified"
+  | "task:verification-failed"
   | "log";
 
 export interface AshOSEvent<T = unknown> {

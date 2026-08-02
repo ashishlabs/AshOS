@@ -150,7 +150,15 @@ task graph (`{ tasks: [{ id, title, description, capability, dependsOn }] }`)
 and falls back to a single-task graph if the response isn't parseable JSON —
 planning never hard-fails. `TaskExecutor` converts the graph into
 `DagNode`s, routes each task by `capability` through `AgentRegistry`, and
-runs it via `DagExecutor`.
+runs it via `DagExecutor`. It's also the Verification Gate
+(`docs/verification-gate.md`): a task routed to a code-producing
+capability (`CODE_PRODUCING_CAPABILITIES`, currently just `["code"]`)
+that succeeds isn't done yet — the registered `verify`-capability agent
+(`TestingAgent` by default) runs immediately after, inside the same DAG
+node, and a verification failure throws so `DagExecutor`'s existing
+retry/fail/skip-dependents behavior applies with zero changes to
+`kernel/dag.ts`. On by default (`verify: false` to disable); no-ops if no
+verify-capable agent is registered.
 
 **`workflow/`** (`WorkflowEngine`) is the same pattern for user-authored,
 static JSON workflows (see `examples/workflows/`) instead of LLM-generated

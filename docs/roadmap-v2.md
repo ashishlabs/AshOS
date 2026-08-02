@@ -22,7 +22,7 @@ subsystem's own detailed design.
 | Stage | Goal | Actual completeness |
 |---|---|---|
 | v1 | AI workspace with chat, tools, memory, and local/cloud models | **~100%** — already shipped |
-| v2 | Multi-agent orchestration and persistent repository intelligence | **~92%** — orchestration ✅, local + external repo intelligence ✅, now genuinely *persistent* and connected via the General Knowledge Graph (Stage 4, shipped). Remaining gap: named specialist agent roles (goal #5) and the Verification Gate (goal #1) — see Stage 5 below. |
+| v2 | Multi-agent orchestration and persistent repository intelligence | **~97%** — orchestration ✅, local + external repo intelligence ✅, genuinely *persistent* and connected via the General Knowledge Graph (Stage 4, shipped), and code-producing tasks are now verified before being reported done (Stage 5, shipped). Remaining gap: named specialist agent roles beyond the 15 already registered (goal #5) — see Tier 2 below. |
 | v3 | Autonomous research, planning, and execution of complex projects | **~50%** — planning/execution ✅, general-purpose research ❌ (only AI-ecosystem-scoped) |
 | v4 | Continuous learning, innovation discovery, and self-optimization | **~30%** — innovation discovery ✅ (fully shipped), learning/self-optimization ❌ |
 | v5 | A true AI OS managing dev, knowledge, automation, and creative production end-to-end | **~10%** — automation infra ✅, creative production ❌, full autonomy loop ❌ |
@@ -31,7 +31,7 @@ subsystem's own detailed design.
 
 | # | Goal | State | Notes |
 |---|---|---|---|
-| 1 | Become an AI Employee | 🟡 Partial | `Planner`→`TaskExecutor`→`AgentRegistry` already understands objectives, breaks into tasks, and assigns specialized agents by capability. Missing: a verification gate after execution, and any "improve over time" feedback loop. |
+| 1 | Become an AI Employee | 🟡 Partial | `Planner`→`TaskExecutor`→`AgentRegistry` already understands objectives, breaks into tasks, and assigns specialized agents by capability. The Verification Gate (Stage 5, shipped) now runs `TestingAgent` after every code-producing task and fails/retries the task if verification fails — see `docs/verification-gate.md`. Still missing: any "improve over time" feedback loop beyond Outcome Memory's passive logging. |
 | 2 | Unified AI Workspace | 🟡 Partial | Local (Ollama/LM Studio) + cloud (Anthropic/OpenAI) providers, plus shell/git/fs tools, all exist. Missing: MCP client, Docker tool, browser automation — all three already named "deferred" in `docs/roadmap.md`. |
 | 3 | Persistent Memory | ✅ Done | `MemoryManager` (4 scopes + semantic vector search) is a solid substrate, and Outcome Memory (Stage 3, shipped) now auto-writes every agent task's attempt — success/failure, error, duration — with no opt-in needed. See `docs/outcome-memory.md`. |
 | 4 | Repository Intelligence | ✅ Done | `RepositoryAnalystAgent` analyzes **external** GitHub repos (stars, license, deps) for Innovation Intelligence. `codebase/`'s `CodebaseAnalystAgent` (Stage 1, shipped) now covers the other half: deep-indexing the **local working repository** — file tree, modules, symbols, git-commit-cached — so an agent can answer "where does feature X live" without re-scanning. See `docs/codebase-intelligence.md`. |
@@ -79,7 +79,7 @@ much new architecture it requires.
 | 2 ✅ | **Model Router** — task-aware provider selection: cheap/local by default, escalate to frontier models only when a task needs it. **Shipped**: `providers/router.ts` (`ModelRouter`), wired into `BaseAgent.execute()` so every existing agent is routing-aware for free, `ash provider router status/enable/disable/set`, `/providers/router`. Off by default. See `docs/model-router.md`. | #6 |
 | 3 ✅ | **Outcome Memory / Reflection hook** — after every agent task, auto-write `{goal, approach, outcome, error?}` into project memory. **Shipped**: `agents/outcome.ts` (`TaskOutcome`, `buildOutcome`), wired into `BaseAgent.execute()` (same integration point as the router) — no opt-in needed, since writing a record has no behavioral effect. `ash memory list --tag outcome/failure/<agent>`. See `docs/outcome-memory.md`. | #3 (failures/successes), feeds #10 |
 | 4 ✅ | **General Knowledge Graph** — reuse the existing `KnowledgeGraph` class for a second instance tracking Projects/Agents/Tasks. **Shipped**: `KnowledgeGraph` moved to a shared `graph/` package with a namespace option (Innovation's own graph unchanged); `AshOS.knowledgeGraph` populated automatically by every agent via `BaseAgent` (`task --produced-by--> agent`, `task --part-of--> project`) and enriched by `CodebaseAnalystAgent` with real language/module data; `ash graph stats/nodes/neighbors`, `/graph*`. Verified live: the same project node accumulates data from two independent agents across separate runs. See `docs/knowledge-graph.md`. | #12 |
-| 5 | **Verification gate** — make `TestingAgent`/a new `ReviewerAgent` a required DAG step after code-producing tasks, not just an available capability an LLM might route to. | #1 ("verify results") |
+| 5 ✅ | **Verification gate** — make `TestingAgent` a required step after code-producing tasks, not just an available capability an LLM might route to. **Shipped**: `planner/executor.ts`'s `TaskExecutor` runs the registered `verify`-capability agent inside the same DAG node right after a `"code"`-capability task succeeds, throwing (and so triggering the existing retry mechanism) on verification failure. On by default, disable via `verify: false`; no-ops if no verify-capable agent is registered. `task:verified`/`task:verification-failed` events. See `docs/verification-gate.md`. | #1 ("verify results") |
 
 ### Tier 2 — new agents/tools, moderate effort, no new architecture
 
@@ -107,4 +107,8 @@ up after Tier 1 lands.
 - Stage 2 (Model Router) — **shipped**.
 - Stage 3 (Outcome Memory) — **shipped**.
 - Stage 4 (General Knowledge Graph) — **shipped**.
-- Stage 5 (Verification Gate) — pending.
+- Stage 5 (Verification Gate) — **shipped**.
+
+All five Tier 1 stages are now shipped, closing v2 to ~97% (the remaining
+gap — named specialist agent roles beyond the 15 already registered — is
+Tier 2 item #6, not scheduled as a task yet).
