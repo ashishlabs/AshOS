@@ -13,6 +13,8 @@ Start it with `npm run api`.
 | POST | `/workflow` | a `WorkflowDefinition` | Runs a workflow (see `examples/workflows/`); returns `{ results }`. |
 | GET | `/agents` | — | Registered agents and their capabilities. |
 | GET | `/providers` | — | Active provider + all available provider names. |
+| GET | `/providers/router` | — | Current `RouterConfig` (task-aware provider selection, off by default). |
+| PATCH | `/providers/router` | partial `RouterConfig` | Merges into and persists the router config. See `docs/model-router.md`. |
 | GET | `/tools` | — | Registered tools and their capabilities. |
 | GET | `/tasks` | — | Recent `task:*` events from the event bus. |
 | GET | `/events?prefix=` | — | Full event bus history, optionally filtered by name prefix (e.g. `agent:`, `workflow:`). Powers the dashboard's Recent Activity feed. |

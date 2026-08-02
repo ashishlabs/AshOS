@@ -6,6 +6,9 @@ ash doctor                               Check tool health + provider connectivi
 ash status                               Show provider/agents/tools summary
 ash provider list                        List available providers
 ash provider set <name>                  Set the active provider
+ash provider router status               Show task-aware provider routing config (off by default)
+ash provider router enable|disable       Turn routing on/off
+ash provider router set <tier> <name>    Set which provider handles simple|standard|complex tasks
 ash plugin list                          List loaded plugins
 ash plugin install <name>                Load a plugin from ./plugins/<name>
 ash plan <goal...>                       Decompose a goal into a task graph (no execution)

@@ -96,6 +96,16 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     res.json({ active: ashos.providers.active().name(), available: ashos.providers.list() });
   });
 
+  app.get("/providers/router", (_req, res) => {
+    res.json(ashos.kernel.config.router);
+  });
+
+  app.patch("/providers/router", (req, res) => {
+    const updated = { ...ashos.kernel.config.router, ...(req.body ?? {}) };
+    ashos.kernel.updateConfig({ router: updated });
+    res.json(updated);
+  });
+
   app.get("/tools", async (_req, res) => {
     res.json(ashos.tools.list().map((t) => t.capabilities()));
   });

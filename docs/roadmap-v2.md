@@ -36,7 +36,7 @@ subsystem's own detailed design.
 | 3 | Persistent Memory | 🟡 Partial | `MemoryManager` (4 scopes + semantic vector search) is a solid substrate, but nothing auto-writes decisions/failures/successes — everything must be told to remember explicitly. |
 | 4 | Repository Intelligence | ✅ Done | `RepositoryAnalystAgent` analyzes **external** GitHub repos (stars, license, deps) for Innovation Intelligence. `codebase/`'s `CodebaseAnalystAgent` (Stage 1, shipped) now covers the other half: deep-indexing the **local working repository** — file tree, modules, symbols, git-commit-cached — so an agent can answer "where does feature X live" without re-scanning. See `docs/codebase-intelligence.md`. |
 | 5 | Multi-Agent Collaboration | 🟡 Partial | 14 agents registered today (Generic/Code/Research/Git/Testing/GitHubTrending + 8 Innovation agents). Missing named roles: Reviewer, Security Auditor, DevOps, UI Designer, Architect, Video Creator. |
-| 6 | Local-First AI | 🟡 Partial | Local providers exist, but nothing automatically *prefers* them — there's no router that defaults routine work to cheap/local models and escalates only when needed. |
+| 6 | Local-First AI | ✅ Done | Local providers exist, and `ModelRouter` (Stage 2, shipped) now defaults routine work to a configured cheap/local model and escalates only when a task is tagged (or defaults to) a higher tier. Off by default — see `docs/model-router.md`. |
 | 7 | Innovation Engine | ✅ Done | GitHub/HN/Reddit/arXiv/Hugging Face collectors, event dedup, knowledge graph, opportunity scoring, Daily Brief, and a Markdown news digest are all shipped. Only Product Hunt (explicitly named) is missing, same collector pattern as the rest. |
 | 8 | Autonomous Research | 🟡 Partial | `ResearchAgent` exists but has no web search/fetch tool — it reasons from the model alone. The Innovation collectors prove the multi-source pattern works; it's just scoped to AI-ecosystem signals, not arbitrary topics. |
 | 9 | Build Software End-to-End | 🟡 Partial | `ashos.run(goal)` already does research→plan→code→test→git for one pass. Design, deploy, monitor, and iterate are all missing. **Overlaps with the removed Evolution Engine** — see below. |
@@ -76,7 +76,7 @@ much new architecture it requires.
 | Stage | Feature | Closes |
 |---|---|---|
 | 1 ✅ | **Local Codebase Intelligence** — index the actual working repository (file tree, module map, lightweight symbol extraction, "where does X live"), separate from the external-repo `RepositoryAnalystAgent`, cached and invalidated by git commit hash. **Shipped**: `codebase/` package, `CodebaseAnalystAgent`, `ash codebase index/find/list`, `/codebase/*`. See `docs/codebase-intelligence.md`. | #4, unlocks #1/#9 |
-| 2 | **Model Router** — task-aware provider selection: cheap/local by default, escalate to frontier models only when a task needs it. | #6 |
+| 2 ✅ | **Model Router** — task-aware provider selection: cheap/local by default, escalate to frontier models only when a task needs it. **Shipped**: `providers/router.ts` (`ModelRouter`), wired into `BaseAgent.execute()` so every existing agent is routing-aware for free, `ash provider router status/enable/disable/set`, `/providers/router`. Off by default. See `docs/model-router.md`. | #6 |
 | 3 | **Outcome Memory / Reflection hook** — after every agent task, auto-write `{goal, approach, outcome, error?}` into project memory via a `TaskExecutor`/`DagExecutor` hook. | #3 (failures/successes), feeds #10 |
 | 4 | **General Knowledge Graph** — reuse the existing `KnowledgeGraph` class for a second instance tracking Projects/Files/Agents/Tasks/Decisions, using the node kinds that already exist in the type but are unpopulated. | #12 |
 | 5 | **Verification gate** — make `TestingAgent`/a new `ReviewerAgent` a required DAG step after code-producing tasks, not just an available capability an LLM might route to. | #1 ("verify results") |
@@ -104,4 +104,5 @@ moving to the next). Tier 2/3 items are not yet scheduled as tasks — pick
 up after Tier 1 lands.
 
 - Stage 1 (Local Codebase Intelligence) — **shipped**.
-- Stages 2-5 — pending.
+- Stage 2 (Model Router) — **shipped**.
+- Stages 3-5 — pending.

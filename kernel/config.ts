@@ -16,6 +16,20 @@ export interface InnovationConfig {
 
 export type IntelligenceDomain = "market" | "github" | "community" | "research" | "workflow" | "competitor";
 
+/** How demanding a task is — the unit `ModelRouter` selects a provider by. Deliberately just three tiers, not a numeric score: coarse enough to configure once and forget, per `docs/model-router.md`. */
+export type TaskComplexity = "simple" | "standard" | "complex";
+
+export interface RouterConfig {
+  /** Off by default — `providers.active()` (today's fixed single-provider behavior) is used unchanged unless a project explicitly opts in. */
+  enabled: boolean;
+  /** Provider name (as registered in ProviderRegistry) for routine, low-stakes tasks — a local/free model is the intended default once enabled. */
+  simpleProvider: string;
+  /** Provider name for everyday work that isn't trivial but doesn't need a frontier model. */
+  standardProvider: string;
+  /** Provider name for tasks that genuinely need the strongest available model. */
+  complexProvider: string;
+}
+
 export interface AshOSConfig {
   provider: "anthropic" | "openai" | "ollama" | "lmstudio" | "mock";
   providers: {
@@ -26,6 +40,7 @@ export interface AshOSConfig {
   };
   plugins: string[];
   innovation: InnovationConfig;
+  router: RouterConfig;
   createdAt: string;
 }
 
@@ -60,6 +75,12 @@ export function defaultConfig(): AshOSConfig {
       domains: ["market", "github", "community", "research", "workflow", "competitor"],
       mergeThreshold: 0.5,
       briefSize: 5
+    },
+    router: {
+      enabled: false,
+      simpleProvider: "ollama",
+      standardProvider: "lmstudio",
+      complexProvider: "anthropic"
     },
     createdAt: new Date().toISOString()
   };

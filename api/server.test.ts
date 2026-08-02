@@ -39,6 +39,29 @@ describe("AshOS API", () => {
     expect(body.provider).toBe("mock");
   });
 
+  it("GET /providers/router starts disabled; PATCH updates it", async () => {
+    const before = (await (await fetch(`${baseUrl}/providers/router`)).json()) as { enabled: boolean };
+    expect(before.enabled).toBe(false);
+
+    const patched = await fetch(`${baseUrl}/providers/router`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ enabled: true, simpleProvider: "mock" })
+    });
+    const patchedBody = (await patched.json()) as { enabled: boolean; simpleProvider: string; standardProvider: string };
+    expect(patchedBody.enabled).toBe(true);
+    expect(patchedBody.simpleProvider).toBe("mock");
+    // untouched fields survive the merge
+    expect(patchedBody.standardProvider).toBeTruthy();
+
+    // restore for other tests sharing this server instance
+    await fetch(`${baseUrl}/providers/router`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ enabled: false })
+    });
+  });
+
   it("GET /agents lists registered agents", async () => {
     const res = await fetch(`${baseUrl}/agents`);
     const body = (await res.json()) as any;

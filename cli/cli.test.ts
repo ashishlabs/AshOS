@@ -129,6 +129,46 @@ describe("CLI commands", () => {
     errorSpy.mockRestore();
   });
 
+  it("provider router is disabled by default and status reflects config changes", async () => {
+    const program = freshProgram();
+    registerProviderCommand(program);
+
+    await program.parseAsync(["node", "ash", "provider", "router", "status"]);
+    let output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Router: disabled");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "provider", "router", "enable"]);
+    await program.parseAsync(["node", "ash", "provider", "router", "set", "simple", "ollama"]);
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "provider", "router", "status"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Router: enabled");
+    expect(output).toContain("simple   -> ollama");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "provider", "router", "disable"]);
+    await program.parseAsync(["node", "ash", "provider", "router", "status"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Router: disabled");
+  });
+
+  it("provider router set rejects an unknown tier or provider", async () => {
+    const program = freshProgram();
+    registerProviderCommand(program);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await program.parseAsync(["node", "ash", "provider", "router", "set", "bogus-tier", "mock"]);
+    expect(errorSpy.mock.calls.join(" ")).toContain("Unknown tier");
+
+    errorSpy.mockClear();
+    await program.parseAsync(["node", "ash", "provider", "router", "set", "simple", "does-not-exist"]);
+    expect(errorSpy.mock.calls.join(" ")).toContain("Unknown provider");
+
+    errorSpy.mockRestore();
+  });
+
   it("memory list and forget round-trip a record written via the SDK", async () => {
     const ashos = new AshOS({ root: cwd });
     await ashos.memory.remember("project", "cli-note", "written by the sdk");

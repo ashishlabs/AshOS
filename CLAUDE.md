@@ -84,7 +84,11 @@ the default research provider for Innovation Intelligence, see `innovation/`
 below). `ProviderRegistry` resolves the active one from `AshOSConfig.provider` /
 `ASHOS_PROVIDER` env and lazily caches instances; `registerFactory` lets
 plugins add new providers. Nothing outside `providers/` should import a
-concrete provider class — always go through the registry.
+concrete provider class — always go through the registry. `providers/router.ts`'s
+`ModelRouter` (off by default, `config.router.enabled`) sits on top of the
+registry for task-aware provider selection — see `docs/model-router.md` and
+the `agents/` entry below for how it plugs into `BaseAgent` without any
+individual agent's code changing.
 
 **`tools/`** defines the `Tool` interface
 (`capabilities`/`requirements`/`permissions`/`healthCheck`/`execute`) and
@@ -109,7 +113,20 @@ failing/rate-limited topic) and is invoked on demand via
 rather than through the planner, since there's nothing for an LLM to
 decide. Its tests stub global `fetch` (`vi.stubGlobal`), the same
 convention `providers/lmstudio-provider.test.ts` uses — never make a test
-depend on live network access.
+depend on live network access. `BaseAgent.execute()` is also where
+`ModelRouter` integration lives (see `providers/` above): when
+`context.router` is present it swaps `context.provider` for the router's
+per-task pick before calling `run()`, so every agent gets routing for free
+without any agent's own code referencing the router.
+
+**`codebase/`** is Local Codebase Intelligence — indexes the actual local
+working repository (file tree, per-file language, lightweight regex-based
+symbol extraction), cached and invalidated by git commit hash, so
+`CodebaseAnalystAgent` (capability `"codebase-analyst"`) can answer "where
+does X live" without re-scanning every call. Deliberately distinct from
+`innovation/repository/`'s `RepositoryAnalystAgent`, which analyzes
+**external** GitHub repositories via their API — `codebase/` never makes a
+network call. See `docs/codebase-intelligence.md`.
 
 **`planner/`** (`Planner.plan(goal)`) prompts the active provider for a JSON
 task graph (`{ tasks: [{ id, title, description, capability, dependsOn }] }`)
@@ -166,9 +183,9 @@ listener block. Follow this pattern for any new route module.
   WebSocket/MCP transports, visual workflow builder, plugin registry
   installs, distributed execution). Check it before assuming a described
   capability from `docs/architecture.md` is missing by accident.
-- `AshOSConfig.innovation` is a required field (not optional) — `kernel/
-  config.ts`'s `defaultConfig()` always sets it, so don't add `?.` guards
-  for it in new code.
+- `AshOSConfig.innovation` and `AshOSConfig.router` are required fields
+  (not optional) — `kernel/config.ts`'s `defaultConfig()` always sets
+  both, so don't add `?.` guards for them in new code.
 - "AshOS Intelligence" (`docs/ashos-intelligence.md`) extends Innovation
   Intelligence (`docs/innovation.md`) rather than replacing it: raw
   `Signal`s are normalized/deduped into canonical `IntelligenceEvent`s

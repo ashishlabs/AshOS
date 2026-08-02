@@ -1,5 +1,6 @@
 import { Kernel } from "../kernel/kernel";
 import { ProviderRegistry } from "../providers/registry";
+import { ModelRouter } from "../providers/router";
 import { MemoryManager } from "../memory/memory-manager";
 import { ToolRegistry } from "../tools/registry";
 import { ShellTool } from "../tools/shell-tool";
@@ -38,6 +39,7 @@ export interface AshOSOptions {
 export class AshOS {
   readonly kernel: Kernel;
   readonly providers: ProviderRegistry;
+  readonly router: ModelRouter;
   readonly memory: MemoryManager;
   readonly tools: ToolRegistry;
   readonly agents: AgentRegistry;
@@ -48,6 +50,7 @@ export class AshOS {
   constructor(opts: AshOSOptions = {}) {
     this.kernel = new Kernel({ root: opts.root });
     this.providers = new ProviderRegistry(this.kernel.config);
+    this.router = new ModelRouter(this.providers, this.kernel.config.router);
     this.memory = new MemoryManager(this.kernel.root, { eventBus: this.kernel.eventBus, provider: this.providers.active() });
     this.scheduler = new Scheduler(this.kernel.eventBus);
     this.codebase = new CodebaseIndexStore(this.kernel.root);
@@ -75,7 +78,8 @@ export class AshOS {
       tools: this.tools,
       memory: this.memory,
       eventBus: this.kernel.eventBus,
-      cwd: this.kernel.root
+      cwd: this.kernel.root,
+      router: this.router
     };
   }
 

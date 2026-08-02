@@ -38,7 +38,7 @@
 | Path | Responsibility |
 |---|---|
 | `kernel/` | Composition root + cross-cutting primitives: event bus, logger, permission gate, plugin loader, agent router, context manager, generic DAG executor, config load/save. |
-| `providers/` | `AIProvider` interface plus Anthropic, OpenAI, Ollama, LM Studio (OpenAI-compatible, local) and Mock implementations, and a registry that resolves the active one from config/env. |
+| `providers/` | `AIProvider` interface plus Anthropic, OpenAI, Ollama, LM Studio (OpenAI-compatible, local) and Mock implementations, a registry that resolves the active one from config/env, and `ModelRouter` (opt-in, off by default) for task-aware provider selection — see `docs/model-router.md`. |
 | `tools/` | `Tool` interface plus shell, git and filesystem tools, each declaring capabilities/requirements/permissions and a health check. |
 | `memory/` | `MemoryManager` unifying short-term (in-process, TTL), session (in-process), project (`.ashos/memory/project.json`) and global (`~/.ashos/memory/global.json`) scopes, backed by a brute-force cosine-similarity `VectorStore` for semantic recall. |
 | `agents/` | `Agent` interface plus Code, Research, Git, Testing, Generic, and GitHub Trending agents, routed by capability tag. |
