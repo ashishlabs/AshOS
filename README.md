@@ -58,14 +58,17 @@ plugins/    reference plugins (git, shell) + plugin dev guide
 dashboard/  Vite + React + Tailwind v4 + shadcn/ui-style dashboard
 examples/   example workflow definitions
 docs/       architecture, plugin, provider, API, CLI, roadmap, innovation, ashos-intelligence, codebase-intelligence docs
+docs/features/  user-facing "what is this feature for, how do I use it" guide, one file per feature
 ```
 
 See [`docs/architecture.md`](docs/architecture.md) for the full picture,
 [`docs/PRD.md`](docs/PRD.md) for product vision/requirements/status,
 [`docs/roadmap.md`](docs/roadmap.md) for what's shipped vs. planned,
 [`docs/test-report.md`](docs/test-report.md) for the latest test results and
-known gaps, and [`docs/plugin-development.md`](docs/plugin-development.md)
-to add your own provider/tool/agent.
+known gaps, [`docs/plugin-development.md`](docs/plugin-development.md)
+to add your own provider/tool/agent, and
+[`docs/features/`](docs/features/README.md) for a user-facing, business-analyst-style
+guide to what every feature is for and how to actually use it.
 
 ## Switching providers
 
