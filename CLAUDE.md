@@ -15,6 +15,7 @@ npm run cli -- <args>       # run the `ash` CLI from source via tsx, e.g. npm ru
 npm run api                 # start the REST API (tsx api/server.ts) on :4700
 npm run dashboard:dev       # Vite dev server on :5173, proxies /api -> :4700
 npm run dashboard:build     # build the dashboard workspace
+npm run dev:full            # both api and dashboard:dev together (via concurrently)
 ```
 
 Run a single test file: `npx vitest run kernel/dag.test.ts`

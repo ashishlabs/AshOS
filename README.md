@@ -21,6 +21,12 @@ npm run cli -- run "Set up a health-check endpoint for this API"
 Start the REST API and dashboard:
 
 ```bash
+npm run dev:full          # both at once: API on :4700, dashboard on :5173
+```
+
+Or run them separately (e.g. to see each one's own log output):
+
+```bash
 npm run api               # http://localhost:4700
 npm run dashboard:dev     # http://localhost:5173 (proxies /api -> :4700)
 ```
