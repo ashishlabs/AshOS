@@ -1,10 +1,14 @@
-import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { BaseAgent } from "./base-agent";
 import type { AgentContext, AgentResult, AgentTask } from "./types";
 import { ModelRouter } from "../providers/router";
 import { ProviderRegistry } from "../providers/registry";
 import { defaultConfig, type RouterConfig } from "../kernel/config";
 import type { AIProvider, ChatMessage, ChatOptions, ChatResult, StreamChunk } from "../providers/types";
+import { MemoryManager } from "../memory/memory-manager";
 
 function fakeProvider(id: string): AIProvider {
   return {
@@ -94,5 +98,102 @@ describe("BaseAgent routing", () => {
 
     await agent.execute({ id: "t1", description: "d" }, context);
     expect(context.provider.name()).toBe("active-provider");
+  });
+});
+
+class FailingAgent extends BaseAgent {
+  name = "failing";
+  description = "always returns a failed result";
+  capabilities = ["testing"];
+
+  async run(): Promise<AgentResult> {
+    return { ok: false, error: "it broke" };
+  }
+}
+
+class ThrowingAgent extends BaseAgent {
+  name = "throwing";
+  description = "always throws";
+  capabilities = ["testing"];
+
+  async run(): Promise<AgentResult> {
+    throw new Error("kaboom");
+  }
+}
+
+describe("BaseAgent outcome memory", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "ashos-outcome-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  function contextWithMemory(): AgentContext {
+    const registry = new ProviderRegistry({ ...defaultConfig(), provider: "mock" });
+    return { provider: registry.active(), tools: undefined as never, cwd: root, memory: new MemoryManager(root) };
+  }
+
+  it("does nothing when the context has no memory", async () => {
+    const registry = new ProviderRegistry({ ...defaultConfig(), provider: "mock" });
+    const agent = new RecordingAgent();
+    await expect(agent.execute({ id: "t1", description: "d" }, { provider: registry.active(), tools: undefined as never, cwd: root })).resolves.toMatchObject({ ok: true });
+  });
+
+  it("records a successful outcome tagged with the agent name and 'success'", async () => {
+    const context = contextWithMemory();
+    const agent = new RecordingAgent();
+
+    await agent.execute({ id: "t1", description: "say hi" }, context);
+
+    const records = context.memory!.query({ tag: "outcome" });
+    expect(records).toHaveLength(1);
+    expect(records[0].value).toMatchObject({ agent: "recording", taskId: "t1", description: "say hi", outcome: "success" });
+    expect(context.memory!.query({ tag: "recording" })).toHaveLength(1);
+    expect(context.memory!.query({ tag: "success" })).toHaveLength(1);
+  });
+
+  it("records a failed outcome (agent returns ok:false) with the error message", async () => {
+    const context = contextWithMemory();
+    const agent = new FailingAgent();
+
+    await agent.execute({ id: "t1", description: "d" }, context);
+
+    const records = context.memory!.query({ tag: "outcome" });
+    expect(records[0].value).toMatchObject({ outcome: "failure", error: "it broke" });
+  });
+
+  it("records a failed outcome when the agent throws", async () => {
+    const context = contextWithMemory();
+    const agent = new ThrowingAgent();
+
+    const result = await agent.execute({ id: "t1", description: "d" }, context);
+
+    expect(result).toEqual({ ok: false, error: "kaboom" });
+    const records = context.memory!.query({ tag: "outcome" });
+    expect(records[0].value).toMatchObject({ outcome: "failure", error: "kaboom" });
+  });
+
+  it("still returns the task result even if writing to memory fails", async () => {
+    const context = contextWithMemory();
+    context.memory!.remember = async () => {
+      throw new Error("disk full");
+    };
+    const agent = new RecordingAgent();
+
+    await expect(agent.execute({ id: "t1", description: "d" }, context)).resolves.toEqual({ ok: true });
+  });
+
+  it("gives every attempt its own record instead of overwriting the previous one", async () => {
+    const context = contextWithMemory();
+    const agent = new RecordingAgent();
+
+    await agent.execute({ id: "t1", description: "attempt 1" }, context);
+    await agent.execute({ id: "t1", description: "attempt 2" }, context);
+
+    expect(context.memory!.query({ tag: "outcome" })).toHaveLength(2);
   });
 });

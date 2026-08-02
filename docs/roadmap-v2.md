@@ -33,7 +33,7 @@ subsystem's own detailed design.
 |---|---|---|---|
 | 1 | Become an AI Employee | 🟡 Partial | `Planner`→`TaskExecutor`→`AgentRegistry` already understands objectives, breaks into tasks, and assigns specialized agents by capability. Missing: a verification gate after execution, and any "improve over time" feedback loop. |
 | 2 | Unified AI Workspace | 🟡 Partial | Local (Ollama/LM Studio) + cloud (Anthropic/OpenAI) providers, plus shell/git/fs tools, all exist. Missing: MCP client, Docker tool, browser automation — all three already named "deferred" in `docs/roadmap.md`. |
-| 3 | Persistent Memory | 🟡 Partial | `MemoryManager` (4 scopes + semantic vector search) is a solid substrate, but nothing auto-writes decisions/failures/successes — everything must be told to remember explicitly. |
+| 3 | Persistent Memory | ✅ Done | `MemoryManager` (4 scopes + semantic vector search) is a solid substrate, and Outcome Memory (Stage 3, shipped) now auto-writes every agent task's attempt — success/failure, error, duration — with no opt-in needed. See `docs/outcome-memory.md`. |
 | 4 | Repository Intelligence | ✅ Done | `RepositoryAnalystAgent` analyzes **external** GitHub repos (stars, license, deps) for Innovation Intelligence. `codebase/`'s `CodebaseAnalystAgent` (Stage 1, shipped) now covers the other half: deep-indexing the **local working repository** — file tree, modules, symbols, git-commit-cached — so an agent can answer "where does feature X live" without re-scanning. See `docs/codebase-intelligence.md`. |
 | 5 | Multi-Agent Collaboration | 🟡 Partial | 14 agents registered today (Generic/Code/Research/Git/Testing/GitHubTrending + 8 Innovation agents). Missing named roles: Reviewer, Security Auditor, DevOps, UI Designer, Architect, Video Creator. |
 | 6 | Local-First AI | ✅ Done | Local providers exist, and `ModelRouter` (Stage 2, shipped) now defaults routine work to a configured cheap/local model and escalates only when a task is tagged (or defaults to) a higher tier. Off by default — see `docs/model-router.md`. |
@@ -77,7 +77,7 @@ much new architecture it requires.
 |---|---|---|
 | 1 ✅ | **Local Codebase Intelligence** — index the actual working repository (file tree, module map, lightweight symbol extraction, "where does X live"), separate from the external-repo `RepositoryAnalystAgent`, cached and invalidated by git commit hash. **Shipped**: `codebase/` package, `CodebaseAnalystAgent`, `ash codebase index/find/list`, `/codebase/*`. See `docs/codebase-intelligence.md`. | #4, unlocks #1/#9 |
 | 2 ✅ | **Model Router** — task-aware provider selection: cheap/local by default, escalate to frontier models only when a task needs it. **Shipped**: `providers/router.ts` (`ModelRouter`), wired into `BaseAgent.execute()` so every existing agent is routing-aware for free, `ash provider router status/enable/disable/set`, `/providers/router`. Off by default. See `docs/model-router.md`. | #6 |
-| 3 | **Outcome Memory / Reflection hook** — after every agent task, auto-write `{goal, approach, outcome, error?}` into project memory via a `TaskExecutor`/`DagExecutor` hook. | #3 (failures/successes), feeds #10 |
+| 3 ✅ | **Outcome Memory / Reflection hook** — after every agent task, auto-write `{goal, approach, outcome, error?}` into project memory. **Shipped**: `agents/outcome.ts` (`TaskOutcome`, `buildOutcome`), wired into `BaseAgent.execute()` (same integration point as the router) — no opt-in needed, since writing a record has no behavioral effect. `ash memory list --tag outcome/failure/<agent>`. See `docs/outcome-memory.md`. | #3 (failures/successes), feeds #10 |
 | 4 | **General Knowledge Graph** — reuse the existing `KnowledgeGraph` class for a second instance tracking Projects/Files/Agents/Tasks/Decisions, using the node kinds that already exist in the type but are unpopulated. | #12 |
 | 5 | **Verification gate** — make `TestingAgent`/a new `ReviewerAgent` a required DAG step after code-producing tasks, not just an available capability an LLM might route to. | #1 ("verify results") |
 
@@ -105,4 +105,5 @@ up after Tier 1 lands.
 
 - Stage 1 (Local Codebase Intelligence) — **shipped**.
 - Stage 2 (Model Router) — **shipped**.
-- Stages 3-5 — pending.
+- Stage 3 (Outcome Memory) — **shipped**.
+- Stages 4-5 — pending.

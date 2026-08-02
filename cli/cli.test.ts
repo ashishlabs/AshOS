@@ -186,6 +186,21 @@ describe("CLI commands", () => {
     expect(ashos.memory.recall("project", "cli-note")).toBeUndefined();
   });
 
+  it("memory list --tag filters, and running a goal auto-records an outcome an agent never wrote itself", async () => {
+    const ashos = new AshOS({ root: cwd });
+    await ashos.run("say hi");
+
+    const program = freshProgram();
+    registerMemoryCommand(program);
+    await program.parseAsync(["node", "ash", "memory", "list", "--tag", "outcome"]);
+    const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain('"outcome":"success"');
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "memory", "list", "--tag", "does-not-exist-tag"]);
+    expect(logSpy.mock.calls.map((c) => c.join(" ")).join("\n")).toContain("No memory records found");
+  });
+
   it("innovation collectors lists one collector per default domain", async () => {
     const program = freshProgram();
     registerInnovationCommand(program);

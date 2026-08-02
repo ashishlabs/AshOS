@@ -117,7 +117,13 @@ depend on live network access. `BaseAgent.execute()` is also where
 `ModelRouter` integration lives (see `providers/` above): when
 `context.router` is present it swaps `context.provider` for the router's
 per-task pick before calling `run()`, so every agent gets routing for free
-without any agent's own code referencing the router.
+without any agent's own code referencing the router. The same method also
+auto-records a `TaskOutcome` (`agents/outcome.ts`) into `context.memory`
+after every attempt, success or failure — no opt-in flag, since writing a
+record never changes what an agent does or returns; a context that
+shouldn't be recorded (e.g. `InnovationModule`'s own high-frequency
+internal sweep) simply doesn't pass `memory` in. See
+`docs/outcome-memory.md`.
 
 **`codebase/`** is Local Codebase Intelligence — indexes the actual local
 working repository (file tree, per-file language, lightweight regex-based

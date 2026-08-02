@@ -8,9 +8,10 @@ export function registerMemoryCommand(program: Command): void {
   cmd
     .command("list")
     .option("-s, --scope <scope>", "short-term|session|project|global")
+    .option("-t, --tag <tag>", 'filter by tag, e.g. "outcome", "failure", or an agent name')
     .action((opts) => {
       const ashos = new AshOS();
-      const records = ashos.memory.query({ scope: opts.scope as MemoryScope | undefined });
+      const records = ashos.memory.query({ scope: opts.scope as MemoryScope | undefined, tag: opts.tag });
       if (records.length === 0) {
         console.log("No memory records found.");
         return;
