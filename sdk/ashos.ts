@@ -17,6 +17,8 @@ import { TaskExecutor } from "../planner/executor";
 import { WorkflowEngine } from "../workflow/workflow-engine";
 import { Scheduler } from "../scheduler/scheduler";
 import { InnovationModule } from "../innovation/innovation-module";
+import { CodebaseAnalystAgent } from "../codebase/agents/codebase-analyst-agent";
+import { CodebaseIndexStore } from "../codebase/codebase-store";
 import type { Agent, AgentContext, AgentResult } from "../agents/types";
 import type { WorkflowDefinition } from "../workflow/types";
 import type { TaskGraph } from "../planner/types";
@@ -41,12 +43,14 @@ export class AshOS {
   readonly agents: AgentRegistry;
   readonly scheduler: Scheduler;
   readonly innovation: InnovationModule;
+  readonly codebase: CodebaseIndexStore;
 
   constructor(opts: AshOSOptions = {}) {
     this.kernel = new Kernel({ root: opts.root });
     this.providers = new ProviderRegistry(this.kernel.config);
     this.memory = new MemoryManager(this.kernel.root, { eventBus: this.kernel.eventBus, provider: this.providers.active() });
     this.scheduler = new Scheduler(this.kernel.eventBus);
+    this.codebase = new CodebaseIndexStore(this.kernel.root);
 
     this.tools = new ToolRegistry();
     this.tools.register(new ShellTool(this.kernel.permissions));
@@ -60,6 +64,7 @@ export class AshOS {
     this.agents.register(new GitAgent());
     this.agents.register(new TestingAgent());
     this.agents.register(new GitHubTrendingAgent());
+    this.agents.register(new CodebaseAnalystAgent(this.codebase));
 
     this.innovation = new InnovationModule({ kernel: this.kernel, providers: this.providers, agents: this.agents, tools: this.tools });
   }

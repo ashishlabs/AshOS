@@ -28,6 +28,7 @@ export type AshOSEventName =
   | "innovation:event-merged"
   | "innovation:repository-analyzed"
   | "innovation:radar-updated"
+  | "codebase:indexed"
   | "log";
 
 export interface AshOSEvent<T = unknown> {

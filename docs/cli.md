@@ -25,6 +25,9 @@ ash innovation events [-l <n>] [-c <category>]   List canonical, deduplicated ev
 ash innovation repo analyze <owner/repo> Analyze a repository into a structured, cached profile (real API)
 ash innovation repo list [-l <n>]        List every previously analyzed repository
 ash innovation radar [-r]                Show the Technology Radar (-r/--refresh recomputes it first)
+ash codebase index [path] [-f]           Index a local repository (defaults to cwd), cached by git commit hash
+ash codebase find <query> [-p <path>]    Search a previously indexed repository by symbol or file path
+ash codebase list                        List every repository indexed so far
 ```
 
 Run `npm run cli -- <command>` during development, or `ash <command>`

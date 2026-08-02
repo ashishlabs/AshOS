@@ -1,5 +1,11 @@
 # Roadmap
 
+See `docs/roadmap-v2.md` for the user-defined "North Star" vision (15
+goals, v1-v5 milestones), a gap analysis against the current codebase,
+and the staged Tier 1/2/3 feature plan currently being worked
+sequentially (tasks #56-#61 onward). This file remains the record of
+what's shipped vs. explicitly deferred at the subsystem level.
+
 ## Shipped in v0.1 (this repository)
 
 - Kernel: event bus, structured logger, permission manager, plugin loader, agent router, context manager, generic DAG executor, config.
@@ -19,6 +25,7 @@
 - CI (GitHub Actions: typecheck + test), Docker + docker-compose (with an Ollama sidecar).
 - **Innovation Intelligence**: continuous opportunity discovery — one `IntelligenceAgent` per domain (market, GitHub, community, research, workflow, competitor), each backed by a deterministic offline mock `Collector` by default (pluggable for a real network-backed one, same extension path as tools/providers); signals feed a JSON-backed `KnowledgeGraph`; an `OpportunityEngine` merges related signals (tag-overlap similarity) into ranked `Opportunity` records scored across all 15 dimensions from the design spec via a pure, dependency-free `ScoringEngine`; a `BuilderProfileStore` learns which categories the user favors (with a `reinforce()` hook for the Learning Loop); an idea lifecycle state machine (`captured -> ... -> released`, with archive/revive); a `DailyBriefGenerator` ranks opportunities and asks the configured research provider for a narrative, falling back gracefully offline. CLI (`ash innovation discover/list/show/brief/profile/collectors`) and REST API (`/innovation/*`). See `docs/innovation.md`.
 - **AshOS Intelligence — first real slice**: event normalization/dedup (`innovation/events/`) between raw signals and opportunities, with confidence combination across corroborating sources; five real, opt-in collectors (GitHub, Hacker News, Reddit, arXiv, Hugging Face — `ash innovation discover --live`) that never run by default and are isolated per-source so one failing/blocked collector never stops the others; a deterministic Markdown "today's AI news" digest (`ash innovation digest`, `POST /innovation/digest`) built straight from those collectors and saved to `.ashos/innovation/digests/<date>.md`; `RepositoryAnalystAgent` producing cached, structured Repository Intelligence (languages, contributors, dependencies, maintenance/innovation/production-readiness/adoption scores, AshOS-compatibility notes) with pushed-at-based caching so expensive analysis is never repeated needlessly; `TechnologyRadarAgent` classifying every knowledge-graph technology node into emerging/growing/stable/declining/obsolete via a deterministic, evidence-based heuristic. CLI (`ash innovation events/repo/radar/digest`) and REST API (`/innovation/events`, `/innovation/repositories`, `/innovation/radar`, `/innovation/digest`, `/innovation/live-collectors`) and a dashboard Technology Radar + Repository Intelligence + Recent events UI. Full 20-part target architecture and roadmap in `docs/ashos-intelligence.md`.
+- **Local Codebase Intelligence** (`codebase/`, North Star roadmap Stage 1 — see `docs/roadmap-v2.md`): indexes the actual local working repository (file tree, per-file language, lightweight regex-based symbol extraction across TypeScript/JavaScript/Python/Go), cached and invalidated by git commit hash so a full re-scan only happens when the repository actually changed. `CodebaseAnalystAgent` (capability `codebase-analyst`) answers "where does X live" via deterministic substring search over the cached index, ranking symbol-name matches ahead of path-only matches. Deliberately distinct from `innovation/repository/`'s external-GitHub-API analysis. CLI (`ash codebase index/find/list`) and REST API (`/codebase/*`). See `docs/codebase-intelligence.md`.
 
 ## Explicitly deferred (not in this repository yet)
 

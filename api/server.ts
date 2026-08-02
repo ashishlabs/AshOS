@@ -319,6 +319,36 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     res.json(updated);
   });
 
+  app.get("/codebase", (_req, res) => {
+    res.json(ashos.codebase.list());
+  });
+
+  app.post("/codebase/index", async (req, res) => {
+    const root = typeof req.body?.root === "string" ? req.body.root : ashos.kernel.root;
+    const force = Boolean(req.body?.force);
+    try {
+      const result = await ashos.runAgent("codebase-analyst", { description: `index ${root}`, input: { root, force } });
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  app.get("/codebase/search", async (req, res) => {
+    const root = typeof req.query.root === "string" ? req.query.root : ashos.kernel.root;
+    const query = req.query.q as string | undefined;
+    if (!query) {
+      res.status(400).json({ error: "'q' query parameter is required" });
+      return;
+    }
+    try {
+      const result = await ashos.runAgent("codebase-analyst", { description: `find ${query}`, input: { root, query } });
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
   return app;
 }
 

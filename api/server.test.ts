@@ -360,6 +360,40 @@ describe("AshOS API", () => {
     }
   });
 
+  it("GET /codebase starts empty; POST /codebase/index then GET /codebase/search find a real file on disk", async () => {
+    const repoDir = fs.mkdtempSync(path.join(os.tmpdir(), "ashos-api-codebase-"));
+    try {
+      fs.writeFileSync(path.join(repoDir, "widget.ts"), "export function buildWidget() {}\n");
+
+      const before = (await (await fetch(`${baseUrl}/codebase`)).json()) as unknown[];
+      expect(before).toEqual([]);
+
+      const indexRes = await fetch(`${baseUrl}/codebase/index`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ root: repoDir })
+      });
+      const indexBody = (await indexRes.json()) as { ok: boolean; output: string };
+      expect(indexBody.ok).toBe(true);
+      expect(indexBody.output).toContain("Indexed 1 file(s)");
+
+      const searchRes = await fetch(`${baseUrl}/codebase/search?q=buildWidget&root=${encodeURIComponent(repoDir)}`);
+      const searchBody = (await searchRes.json()) as { ok: boolean; output: string };
+      expect(searchBody.ok).toBe(true);
+      expect(searchBody.output).toContain("widget.ts");
+
+      const after = (await (await fetch(`${baseUrl}/codebase`)).json()) as { root: string }[];
+      expect(after.some((i) => i.root === repoDir)).toBe(true);
+    } finally {
+      fs.rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
+  it("GET /codebase/search 400s without a 'q' query parameter", async () => {
+    const res = await fetch(`${baseUrl}/codebase/search`);
+    expect(res.status).toBe(400);
+  });
+
   it("GET /innovation/repositories starts empty; POST /innovation/repositories/analyze runs the agent and caches the result", async () => {
     // A stub RepositoryAnalystAgent so this never touches the real network.
     const stubRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ashos-api-repo-"));

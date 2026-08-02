@@ -11,6 +11,7 @@ import { registerRunCommand } from "./commands/run";
 import { registerProviderCommand } from "./commands/provider";
 import { registerMemoryCommand } from "./commands/memory";
 import { registerInnovationCommand } from "./commands/innovation";
+import { registerCodebaseCommand } from "./commands/codebase";
 import { isInitialized, configPath } from "../kernel/config";
 import { AshOS } from "../sdk/ashos";
 
@@ -260,5 +261,35 @@ describe("CLI commands", () => {
     const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
     expect(output).toContain("Radar:");
     expect(output).toMatch(/\[(emerging|growing|stable|declining|obsolete)\]/);
+  });
+
+  it("codebase list reports nothing indexed yet", async () => {
+    const program = freshProgram();
+    registerCodebaseCommand(program);
+    await program.parseAsync(["node", "ash", "codebase", "list"]);
+
+    const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("No repositories indexed yet");
+  });
+
+  it("codebase index then find surfaces a real file written to disk", async () => {
+    fs.writeFileSync(path.join(cwd, "widget.ts"), "export function buildWidget() {}\n");
+
+    const program = freshProgram();
+    registerCodebaseCommand(program);
+    await program.parseAsync(["node", "ash", "codebase", "index"]);
+
+    let output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Indexed 1 file(s)");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "codebase", "find", "buildWidget"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("widget.ts");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "codebase", "list"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("1 file(s)");
   });
 });

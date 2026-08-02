@@ -52,4 +52,14 @@ profile, repository intelligence, technology radar, daily brief) that
 these routes expose, and `docs/ashos-intelligence.md` for the broader
 AshOS Intelligence architecture this is the first slice of.
 
+### Local Codebase Intelligence (`/codebase/*`)
+
+| Method | Path | Body | Description |
+|---|---|---|---|
+| GET | `/codebase` | — | Every repository indexed so far. |
+| POST | `/codebase/index` | `{ root?, force? }` | Index (or re-index) a local repository — defaults to the AshOS project root; cached by git commit hash unless `force: true`. |
+| GET | `/codebase/search?q=&root=` | — | Search a previously indexed repository by symbol name or file path; `400` if `q` is missing. |
+
+See `docs/codebase-intelligence.md`. Distinct from `/innovation/repositories/*` above, which analyzes external GitHub repos rather than the local filesystem.
+
 GraphQL, WebSocket, and MCP transports are on the roadmap (`docs/roadmap.md`) — the REST surface above is the current source of truth and is what the dashboard and CLI consume.
