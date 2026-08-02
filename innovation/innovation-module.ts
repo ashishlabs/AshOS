@@ -15,7 +15,7 @@ import { createHuggingFaceCollector } from "./collectors/huggingface-collector";
 import { createDefaultIntelligenceAgents } from "./agents/index";
 import { RepositoryAnalystAgent } from "./agents/repository-analyst-agent";
 import { TechnologyRadarAgent } from "./agents/technology-radar-agent";
-import { KnowledgeGraph } from "./graph/knowledge-graph";
+import { KnowledgeGraph } from "../graph/knowledge-graph";
 import { OpportunityStore } from "./history/opportunity-store";
 import { BuilderProfileStore } from "./profile/builder-profile-store";
 import { ScoringEngine } from "./opportunity/scoring";
@@ -114,7 +114,7 @@ export class InnovationModule {
     options.agents.register(new RepositoryAnalystAgent());
     options.agents.register(new TechnologyRadarAgent());
 
-    this.graph = new KnowledgeGraph(options.kernel.root);
+    this.graph = new KnowledgeGraph(options.kernel.root, { namespace: "innovation" });
     this.opportunities = new OpportunityStore(options.kernel.root);
     this.profile = new BuilderProfileStore(options.kernel.root);
     this.events = new EventStore(options.kernel.root);

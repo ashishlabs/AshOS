@@ -17,11 +17,29 @@ describe("KnowledgeGraph", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  it("creates a node on first upsert and persists it to disk", () => {
+  it("creates a node on first upsert and persists it to disk at the general, project-wide path", () => {
     const node = graph.upsertNode({ kind: "repository", label: "ashos/ashos", tags: ["ai"] });
     expect(node.id).toBeTruthy();
     expect(graph.listNodes()).toHaveLength(1);
+    expect(fs.existsSync(path.join(root, ".ashos", "graph.json"))).toBe(true);
+  });
+
+  it("persists to a namespaced sub-path when a namespace is given, e.g. Innovation Intelligence's own graph", () => {
+    const namespaced = new KnowledgeGraph(root, { namespace: "innovation" });
+    namespaced.upsertNode({ kind: "problem", label: "manual invoicing" });
+
     expect(fs.existsSync(path.join(root, ".ashos", "innovation", "graph.json"))).toBe(true);
+    expect(fs.existsSync(path.join(root, ".ashos", "graph.json"))).toBe(false);
+  });
+
+  it("keeps a namespaced graph and the general graph fully independent", () => {
+    const namespaced = new KnowledgeGraph(root, { namespace: "innovation" });
+    namespaced.upsertNode({ kind: "problem", label: "only in innovation" });
+    graph.upsertNode({ kind: "project", label: "only in general" });
+
+    expect(namespaced.listNodes()).toHaveLength(1);
+    expect(graph.listNodes()).toHaveLength(1);
+    expect(namespaced.listNodes()[0].label).toBe("only in innovation");
   });
 
   it("de-duplicates by (kind, label) case-insensitively and merges tags instead of cloning", () => {

@@ -1,26 +1,40 @@
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import type { KnowledgeEdge, KnowledgeEdgeKind, KnowledgeNode, KnowledgeNodeKind } from "../types";
+import type { KnowledgeEdge, KnowledgeEdgeKind, KnowledgeNode, KnowledgeNodeKind } from "./types";
 
 interface GraphFile {
   nodes: KnowledgeNode[];
   edges: KnowledgeEdge[];
 }
 
+export interface KnowledgeGraphOptions {
+  /** Sub-directory under `.ashos/` to store this graph's file in, e.g. `"innovation"` -> `.ashos/innovation/graph.json`. Omit for the general-purpose, project-wide graph at `.ashos/graph.json`. */
+  namespace?: string;
+}
+
 /**
- * Everything every intelligence agent discovers becomes one connected graph
- * instead of isolated documents — the "Unified Knowledge Graph" from the
- * design doc. Persisted as a single JSON file (`.ashos/innovation/graph.json`),
- * the same local-first, no-external-DB pattern as MemoryManager/ExperimentStore.
+ * A connected graph instead of isolated documents. Originally built as
+ * Innovation Intelligence's "Unified Knowledge Graph" (still used that way
+ * via `{ namespace: "innovation" }`, preserving its original
+ * `.ashos/innovation/graph.json` location), this class is domain-agnostic
+ * and also backs the General Knowledge Graph (no namespace ->
+ * `.ashos/graph.json`) tracking projects/agents/tasks — see
+ * `docs/knowledge-graph.md`. Persisted as a single JSON file, the same
+ * local-first, no-external-DB pattern as MemoryManager/ExperimentStore.
  * Nodes are de-duplicated by (kind, label) so repeated observations of the
- * same company/repo/idea strengthen it instead of cloning it.
+ * same company/repo/idea/project strengthen it instead of cloning it.
  */
 export class KnowledgeGraph {
-  constructor(private readonly root: string) {}
+  constructor(
+    private readonly root: string,
+    private readonly options: KnowledgeGraphOptions = {}
+  ) {}
 
   private file(): string {
-    return path.join(this.root, ".ashos", "innovation", "graph.json");
+    return this.options.namespace
+      ? path.join(this.root, ".ashos", this.options.namespace, "graph.json")
+      : path.join(this.root, ".ashos", "graph.json");
   }
 
   private read(): GraphFile {

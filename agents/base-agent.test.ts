@@ -9,6 +9,7 @@ import { ProviderRegistry } from "../providers/registry";
 import { defaultConfig, type RouterConfig } from "../kernel/config";
 import type { AIProvider, ChatMessage, ChatOptions, ChatResult, StreamChunk } from "../providers/types";
 import { MemoryManager } from "../memory/memory-manager";
+import { KnowledgeGraph } from "../graph/knowledge-graph";
 
 function fakeProvider(id: string): AIProvider {
   return {
@@ -195,5 +196,82 @@ describe("BaseAgent outcome memory", () => {
     await agent.execute({ id: "t1", description: "attempt 2" }, context);
 
     expect(context.memory!.query({ tag: "outcome" })).toHaveLength(2);
+  });
+});
+
+describe("BaseAgent graph activity", () => {
+  let root: string;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "ashos-graph-activity-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  function contextWithGraph(): AgentContext {
+    const registry = new ProviderRegistry({ ...defaultConfig(), provider: "mock" });
+    return { provider: registry.active(), tools: undefined as never, cwd: root, graph: new KnowledgeGraph(root) };
+  }
+
+  it("does nothing when the context has no graph", async () => {
+    const registry = new ProviderRegistry({ ...defaultConfig(), provider: "mock" });
+    const agent = new RecordingAgent();
+    await expect(agent.execute({ id: "t1", description: "d" }, { provider: registry.active(), tools: undefined as never, cwd: root })).resolves.toMatchObject({ ok: true });
+  });
+
+  it("connects an agent, a task, and a project node for a successful attempt", async () => {
+    const context = contextWithGraph();
+    const agent = new RecordingAgent();
+
+    await agent.execute({ id: "t1", description: "say hi" }, context);
+
+    const agentNode = context.graph!.listNodes({ kind: "agent" }).find((n) => n.label === "recording");
+    const taskNode = context.graph!.listNodes({ kind: "task" }).find((n) => n.label === "t1");
+    const projectNode = context.graph!.listNodes({ kind: "project" }).find((n) => n.label === root);
+
+    expect(agentNode).toBeDefined();
+    expect(taskNode).toBeDefined();
+    expect(taskNode!.data).toMatchObject({ description: "say hi", outcome: "success" });
+    expect(projectNode).toBeDefined();
+
+    const neighbors = context.graph!.neighbors(taskNode!.id).map((n) => n.node.id);
+    expect(neighbors).toEqual(expect.arrayContaining([agentNode!.id, projectNode!.id]));
+  });
+
+  it("records a failure outcome on the task node's tags and data", async () => {
+    const context = contextWithGraph();
+    const agent = new FailingAgent();
+
+    await agent.execute({ id: "t1", description: "d" }, context);
+
+    const taskNode = context.graph!.listNodes({ kind: "task" }).find((n) => n.label === "t1");
+    expect(taskNode!.tags).toContain("failure");
+    expect(taskNode!.data).toMatchObject({ outcome: "failure" });
+  });
+
+  it("strengthens the same task/agent/project edges on a repeat run of the same recurring task id", async () => {
+    const context = contextWithGraph();
+    const agent = new RecordingAgent();
+
+    await agent.execute({ id: "recurring-task", description: "attempt 1" }, context);
+    await agent.execute({ id: "recurring-task", description: "attempt 2" }, context);
+
+    expect(context.graph!.listNodes({ kind: "task" })).toHaveLength(1);
+    const taskNode = context.graph!.listNodes({ kind: "task" })[0];
+    expect(taskNode.data).toMatchObject({ description: "attempt 2" });
+    const producedByEdge = context.graph!.listEdges().find((e) => e.kind === "produced-by");
+    expect(producedByEdge!.weight).toBe(2);
+  });
+
+  it("still returns the task result even if writing to the graph fails", async () => {
+    const context = contextWithGraph();
+    context.graph!.upsertNode = () => {
+      throw new Error("disk full");
+    };
+    const agent = new RecordingAgent();
+
+    await expect(agent.execute({ id: "t1", description: "d" }, context)).resolves.toEqual({ ok: true });
   });
 });

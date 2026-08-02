@@ -5,6 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CodebaseAnalystAgent } from "./codebase-analyst-agent";
 import { CodebaseIndexStore } from "../codebase-store";
+import { KnowledgeGraph } from "../../graph/knowledge-graph";
 import type { AgentContext } from "../../agents/types";
 
 function git(args: string[], cwd: string): void {
@@ -130,5 +131,36 @@ describe("CodebaseAnalystAgent", () => {
 
     expect(result.ok).toBe(true);
     expect(result.output).toContain("No matches");
+  });
+
+  it("enriches the general Knowledge Graph's project node with real languages and modules", async () => {
+    initGitRepo();
+    fs.mkdirSync(path.join(repoRoot, "kernel"));
+    fs.writeFileSync(path.join(repoRoot, "kernel", "a.ts"), "export const a = 1;\n");
+    commitAll(repoRoot, "init");
+
+    const graph = new KnowledgeGraph(storeRoot);
+    const agent = new CodebaseAnalystAgent(new CodebaseIndexStore(storeRoot));
+    await agent.execute({ id: "t1", description: "index" }, { ...context, graph });
+
+    const projectNode = graph.listNodes({ kind: "project" }).find((n) => n.label === repoRoot);
+    expect(projectNode).toBeDefined();
+    expect(projectNode!.tags).toContain("typescript");
+    expect(projectNode!.data).toMatchObject({ path: repoRoot, fileCount: 1, modules: ["kernel"] });
+  });
+
+  it("does not fail indexing when graph enrichment throws", async () => {
+    initGitRepo();
+    fs.writeFileSync(path.join(repoRoot, "a.ts"), "export const a = 1;\n");
+    commitAll(repoRoot, "init");
+
+    const graph = new KnowledgeGraph(storeRoot);
+    graph.upsertNode = () => {
+      throw new Error("disk full");
+    };
+    const agent = new CodebaseAnalystAgent(new CodebaseIndexStore(storeRoot));
+    const result = await agent.execute({ id: "t1", description: "index" }, { ...context, graph });
+
+    expect(result.ok).toBe(true);
   });
 });

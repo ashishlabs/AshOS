@@ -329,6 +329,19 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     res.json(updated);
   });
 
+  app.get("/graph", (_req, res) => {
+    res.json(ashos.knowledgeGraph.stats());
+  });
+
+  app.get("/graph/nodes", (req, res) => {
+    const kind = req.query.kind as never;
+    res.json(kind ? ashos.knowledgeGraph.listNodes({ kind }) : ashos.knowledgeGraph.listNodes());
+  });
+
+  app.get("/graph/nodes/:id/neighbors", (req, res) => {
+    res.json(ashos.knowledgeGraph.neighbors(req.params.id));
+  });
+
   app.get("/codebase", (_req, res) => {
     res.json(ashos.codebase.list());
   });

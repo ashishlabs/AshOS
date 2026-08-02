@@ -412,6 +412,39 @@ describe("AshOS API", () => {
     }
   });
 
+  it("GET /graph starts empty; running a goal populates agent/task/project nodes with real edges", async () => {
+    const graphRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ashos-api-graph-"));
+    try {
+      const graphAshos = new AshOS({ root: graphRoot });
+      const graphApp = createServer(graphAshos);
+      const graphServer = await new Promise<Server>((resolve) => {
+        const s = graphApp.listen(0, () => resolve(s));
+      });
+      try {
+        const address = graphServer.address();
+        const graphBaseUrl = `http://127.0.0.1:${typeof address === "object" && address ? address.port : 0}`;
+
+        const before = (await (await fetch(`${graphBaseUrl}/graph`)).json()) as { nodeCount: number };
+        expect(before.nodeCount).toBe(0);
+
+        await graphAshos.run("say hi");
+
+        const after = (await (await fetch(`${graphBaseUrl}/graph`)).json()) as { nodeCount: number; byKind: Record<string, number> };
+        expect(after.byKind).toMatchObject({ agent: 1, task: 1, project: 1 });
+
+        const agentNodes = (await (await fetch(`${graphBaseUrl}/graph/nodes?kind=agent`)).json()) as { id: string; label: string }[];
+        expect(agentNodes).toHaveLength(1);
+
+        const neighbors = (await (await fetch(`${graphBaseUrl}/graph/nodes/${agentNodes[0].id}/neighbors`)).json()) as { edge: { kind: string } }[];
+        expect(neighbors.some((n) => n.edge.kind === "produced-by")).toBe(true);
+      } finally {
+        graphServer.close();
+      }
+    } finally {
+      fs.rmSync(graphRoot, { recursive: true, force: true });
+    }
+  });
+
   it("GET /codebase/search 400s without a 'q' query parameter", async () => {
     const res = await fetch(`${baseUrl}/codebase/search`);
     expect(res.status).toBe(400);

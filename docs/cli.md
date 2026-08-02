@@ -31,6 +31,9 @@ ash innovation radar [-r]                Show the Technology Radar (-r/--refresh
 ash codebase index [path] [-f]           Index a local repository (defaults to cwd), cached by git commit hash
 ash codebase find <query> [-p <path>]    Search a previously indexed repository by symbol or file path
 ash codebase list                        List every repository indexed so far
+ash graph stats                          Show general Knowledge Graph node/edge counts, grouped by kind
+ash graph nodes [-k <kind>]              List nodes, optionally filtered by kind (project|agent|task|...)
+ash graph neighbors <id>                 Show every node directly connected to the given node id
 ```
 
 Run `npm run cli -- <command>` during development, or `ash <command>`

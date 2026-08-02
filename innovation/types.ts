@@ -1,5 +1,8 @@
 import type { IntelligenceDomain } from "../kernel/config";
 
+/** Re-exported for backward compatibility — the canonical definitions now live in `graph/types.ts`, since the knowledge graph is no longer Innovation-scoped. See `docs/knowledge-graph.md`. */
+export type { KnowledgeNodeKind, KnowledgeNode, KnowledgeEdgeKind, KnowledgeEdge } from "../graph/types";
+
 export type SignalKind =
   | "startup"
   | "funding"
@@ -31,50 +34,6 @@ export interface Signal {
   confidence: number;
   observedAt: string;
   raw?: unknown;
-}
-
-export type KnowledgeNodeKind =
-  | "person"
-  | "company"
-  | "repository"
-  | "product"
-  | "idea"
-  | "problem"
-  | "industry"
-  | "technology"
-  | "community"
-  | "language"
-  | "framework"
-  | "market"
-  | "startup"
-  | "paper"
-  | "workflow"
-  | "agent"
-  | "project"
-  | "skill"
-  | "tool";
-
-export interface KnowledgeNode {
-  id: string;
-  kind: KnowledgeNodeKind;
-  label: string;
-  tags: string[];
-  createdAt: string;
-  updatedAt: string;
-  data?: Record<string, unknown>;
-}
-
-export type KnowledgeEdgeKind = "relates-to" | "produced-by" | "competes-with" | "part-of" | "mentions" | "solves";
-
-export interface KnowledgeEdge {
-  id: string;
-  from: string;
-  to: string;
-  kind: KnowledgeEdgeKind;
-  /** Strengthens every time the same edge is observed again. */
-  weight: number;
-  createdAt: string;
-  updatedAt: string;
 }
 
 /** See docs/innovation.md#idea-lifecycle for the allowed transition graph. */

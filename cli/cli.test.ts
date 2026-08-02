@@ -12,6 +12,7 @@ import { registerProviderCommand } from "./commands/provider";
 import { registerMemoryCommand } from "./commands/memory";
 import { registerInnovationCommand } from "./commands/innovation";
 import { registerCodebaseCommand } from "./commands/codebase";
+import { registerGraphCommand } from "./commands/graph";
 import { isInitialized, configPath } from "../kernel/config";
 import { AshOS } from "../sdk/ashos";
 
@@ -346,5 +347,43 @@ describe("CLI commands", () => {
     await program.parseAsync(["node", "ash", "codebase", "list"]);
     output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
     expect(output).toContain("1 file(s)");
+  });
+
+  it("graph stats starts empty, then reflects real agent activity after running a goal", async () => {
+    const program = freshProgram();
+    registerGraphCommand(program);
+    await program.parseAsync(["node", "ash", "graph", "stats"]);
+    let output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("0 node(s), 0 edge(s)");
+
+    const ashos = new AshOS({ root: cwd });
+    await ashos.run("say hi");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "graph", "stats"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("agent: 1");
+    expect(output).toContain("task: 1");
+    expect(output).toContain("project: 1");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "graph", "nodes", "--kind", "agent"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("[agent]");
+    const agentNodeId = output.split(/\s+/)[1];
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "graph", "neighbors", agentNodeId]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("produced-by");
+  });
+
+  it("graph nodes reports nothing when no kind matches", async () => {
+    const program = freshProgram();
+    registerGraphCommand(program);
+    await program.parseAsync(["node", "ash", "graph", "nodes", "--kind", "project"]);
+
+    const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("No nodes recorded yet");
   });
 });

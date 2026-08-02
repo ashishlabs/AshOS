@@ -17,11 +17,13 @@ export abstract class BaseAgent implements Agent {
       const result = await this.run(task, this.resolveContext(task, context));
       context.eventBus?.emit(result.ok ? "agent:finished" : "agent:failed", { agent: this.name, task: task.id, result });
       await this.recordOutcome(task, context, result, Date.now() - startedAt);
+      this.recordGraphActivity(task, context, result);
       return result;
     } catch (error) {
       const result: AgentResult = { ok: false, error: (error as Error).message };
       context.eventBus?.emit("agent:failed", { agent: this.name, task: task.id, result });
       await this.recordOutcome(task, context, result, Date.now() - startedAt);
+      this.recordGraphActivity(task, context, result);
       return result;
     }
   }
@@ -47,6 +49,35 @@ export abstract class BaseAgent implements Agent {
       });
     } catch {
       // best-effort — never let outcome logging fail the task it's describing
+    }
+  }
+
+  /**
+   * When `context.graph` is present, connects this attempt into the
+   * general, project-wide Knowledge Graph — an `agent` node, a `task` node
+   * (identity = `task.id`, so repeated runs of the same recurring task
+   * strengthen one node instead of cloning it — a different, coarser-
+   * grained semantic than Outcome Memory's one-record-per-attempt log),
+   * and a `project` node (identity = `context.cwd`), connected
+   * `task --produced-by--> agent` and `task --part-of--> project`. See
+   * `docs/knowledge-graph.md`. Best-effort and synchronous-safe to skip:
+   * a graph-write failure never surfaces as a failure of the task itself.
+   */
+  private recordGraphActivity(task: AgentTask, context: AgentContext, result: AgentResult): void {
+    if (!context.graph) return;
+    try {
+      const agentNode = context.graph.upsertNode({ kind: "agent", label: this.name, tags: [this.capabilities[0] ?? "unknown"] });
+      const projectNode = context.graph.upsertNode({ kind: "project", label: context.cwd, data: { path: context.cwd } });
+      const taskNode = context.graph.upsertNode({
+        kind: "task",
+        label: task.id,
+        tags: [result.ok ? "success" : "failure"],
+        data: { description: task.description, capability: this.capabilities[0] ?? "unknown", outcome: result.ok ? "success" : "failure" }
+      });
+      context.graph.addEdge(taskNode.id, agentNode.id, "produced-by");
+      context.graph.addEdge(taskNode.id, projectNode.id, "part-of");
+    } catch {
+      // best-effort — never let graph logging fail the task it's describing
     }
   }
 

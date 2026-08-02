@@ -61,6 +61,8 @@ export class CodebaseAnalystAgent extends BaseAgent {
       index = cached;
     }
 
+    this.enrichProjectNode(root, index, context);
+
     if (query) {
       const matches = searchIndex(index, query);
       const output = matches.length
@@ -75,5 +77,28 @@ export class CodebaseAnalystAgent extends BaseAgent {
       output: `Indexed ${index.fileCount} file(s) across ${index.modules.length} module(s): ${summary}`,
       data: { index, cached: !needsIndex }
     };
+  }
+
+  /**
+   * When `context.graph` is present, enriches the general Knowledge
+   * Graph's `project` node (identity = the indexed `root`, not
+   * necessarily `context.cwd` — indexing another repository gets its own
+   * node) with real codebase structure: languages and module names. This
+   * is on top of `BaseAgent`'s own generic per-attempt recording, which
+   * only knows `context.cwd` — best-effort, never fails the actual index.
+   */
+  private enrichProjectNode(root: string, index: CodebaseIndex, context: AgentContext): void {
+    if (!context.graph) return;
+    try {
+      const languages = [...new Set(index.files.map((f) => f.language).filter((l): l is string => Boolean(l)))];
+      context.graph.upsertNode({
+        kind: "project",
+        label: root,
+        tags: languages,
+        data: { path: root, fileCount: index.fileCount, modules: index.modules.map((m) => m.name) }
+      });
+    } catch {
+      // best-effort — never let graph enrichment fail the actual index
+    }
   }
 }

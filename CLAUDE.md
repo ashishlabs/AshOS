@@ -135,6 +135,16 @@ does X live" without re-scanning every call. Deliberately distinct from
 **external** GitHub repositories via their API — `codebase/` never makes a
 network call. See `docs/codebase-intelligence.md`.
 
+**`graph/`** holds `KnowledgeGraph` — moved here from `innovation/graph/`
+so the same domain-agnostic node/edge store can back two independent
+instances: Innovation Intelligence's own graph (`{ namespace: "innovation" }`,
+unchanged `.ashos/innovation/graph.json` location) and the General
+Knowledge Graph (`AshOS.knowledgeGraph`, no namespace, `.ashos/graph.json`)
+connecting Projects/Agents/Tasks. `BaseAgent.execute()` populates it
+automatically for every agent (same integration point as routing and
+Outcome Memory); `CodebaseAnalystAgent` additionally enriches project
+nodes with real language/module data. See `docs/knowledge-graph.md`.
+
 **`planner/`** (`Planner.plan(goal)`) prompts the active provider for a JSON
 task graph (`{ tasks: [{ id, title, description, capability, dependsOn }] }`)
 and falls back to a single-task graph if the response isn't parseable JSON —

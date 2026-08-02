@@ -64,4 +64,14 @@ AshOS Intelligence architecture this is the first slice of.
 
 See `docs/codebase-intelligence.md`. Distinct from `/innovation/repositories/*` above, which analyzes external GitHub repos rather than the local filesystem.
 
+### General Knowledge Graph (`/graph*`)
+
+| Method | Path | Body | Description |
+|---|---|---|---|
+| GET | `/graph` | — | Node/edge counts, grouped by kind, for the general project-wide graph (distinct from `/innovation/graph`, which reports Innovation Intelligence's own namespaced graph). |
+| GET | `/graph/nodes?kind=` | — | List nodes, optionally filtered by kind (`project`, `agent`, `task`, ...). |
+| GET | `/graph/nodes/:id/neighbors` | — | Every node directly connected to the given node id, with the connecting edge. |
+
+Populated automatically by every agent execution (`BaseAgent`) and enriched by `CodebaseAnalystAgent` — see `docs/knowledge-graph.md`.
+
 GraphQL, WebSocket, and MCP transports are on the roadmap (`docs/roadmap.md`) — the REST surface above is the current source of truth and is what the dashboard and CLI consume.

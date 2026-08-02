@@ -1,6 +1,6 @@
 import { BaseAgent } from "../../agents/base-agent";
 import type { AgentContext, AgentResult, AgentTask } from "../../agents/types";
-import { KnowledgeGraph } from "../graph/knowledge-graph";
+import { KnowledgeGraph } from "../../graph/knowledge-graph";
 import { RadarStore } from "../radar/radar-store";
 import { buildRadarEntry } from "../radar/classify";
 import type { RadarEntry } from "../radar/types";
@@ -19,7 +19,7 @@ export class TechnologyRadarAgent extends BaseAgent {
   capabilities = ["technology-radar"];
 
   async run(_task: AgentTask, context: AgentContext): Promise<AgentResult> {
-    const graph = new KnowledgeGraph(context.cwd);
+    const graph = new KnowledgeGraph(context.cwd, { namespace: "innovation" });
     const store = new RadarStore(context.cwd);
 
     const technologyNodes = graph.listNodes({ kind: "technology" });

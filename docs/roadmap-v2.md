@@ -22,7 +22,7 @@ subsystem's own detailed design.
 | Stage | Goal | Actual completeness |
 |---|---|---|
 | v1 | AI workspace with chat, tools, memory, and local/cloud models | **~100%** — already shipped |
-| v2 | Multi-agent orchestration and persistent repository intelligence | **~85%** — orchestration ✅, local repo intelligence ✅ (`codebase/`, Stage 1, shipped) alongside the existing external-repo analysis |
+| v2 | Multi-agent orchestration and persistent repository intelligence | **~92%** — orchestration ✅, local + external repo intelligence ✅, now genuinely *persistent* and connected via the General Knowledge Graph (Stage 4, shipped). Remaining gap: named specialist agent roles (goal #5) and the Verification Gate (goal #1) — see Stage 5 below. |
 | v3 | Autonomous research, planning, and execution of complex projects | **~50%** — planning/execution ✅, general-purpose research ❌ (only AI-ecosystem-scoped) |
 | v4 | Continuous learning, innovation discovery, and self-optimization | **~30%** — innovation discovery ✅ (fully shipped), learning/self-optimization ❌ |
 | v5 | A true AI OS managing dev, knowledge, automation, and creative production end-to-end | **~10%** — automation infra ✅, creative production ❌, full autonomy loop ❌ |
@@ -42,7 +42,7 @@ subsystem's own detailed design.
 | 9 | Build Software End-to-End | 🟡 Partial | `ashos.run(goal)` already does research→plan→code→test→git for one pass. Design, deploy, monitor, and iterate are all missing. **Overlaps with the removed Evolution Engine** — see below. |
 | 10 | Continuous Learning | ❌ Missing | `BuilderProfileStore` learns narrowly for Innovation category weights only; nothing learns from general task outcomes. **Overlaps with the removed Evolution Engine.** |
 | 11 | Workflow Automation | ✅ Infra done | `WorkflowEngine` + `Scheduler` fully support this — "daily AI news" is literally the digest already built. Needs more workflow definitions + a couple of new tools (email, calendar) for the other named examples. |
-| 12 | Knowledge Graph | 🟡 Partial | `KnowledgeGraph` (`innovation/graph/`) is already domain-agnostic — it has unused node kinds for `"project"`, `"agent"`, `"workflow"`, `"skill"`, `"tool"` sitting in the type today, never populated. It only tracks Innovation signals, not the user's own projects/tasks/decisions. |
+| 12 | Knowledge Graph | ✅ Done | `KnowledgeGraph` moved to a shared `graph/` package (Stage 4, shipped) and now backs a second, general-purpose instance (`AshOS.knowledgeGraph`) that every agent populates automatically with `project`/`agent`/`task` nodes and real edges. Innovation Intelligence's own namespaced graph is unchanged. See `docs/knowledge-graph.md`. |
 | 13 | Creative Studio | ❌ Missing | Zero media generation. Text content (blog/docs) is achievable today with existing agents; images/video/voice need entirely new provider types. Least aligned with "local-first, free APIs" and the most commoditized space — **recommend deprioritizing**. |
 | 14 | Self-Improving Platform | ❌ Missing | Nothing built. **Overlaps with the removed Evolution Engine.** |
 | 15 | Personal Operating System | ❌ Missing | Calendar/finance/home-server pulls toward a different product than the rest of this list (general life-management app vs. developer-focused AI operating system). **Flagged as scope-creep risk**, not scheduled. |
@@ -78,7 +78,7 @@ much new architecture it requires.
 | 1 ✅ | **Local Codebase Intelligence** — index the actual working repository (file tree, module map, lightweight symbol extraction, "where does X live"), separate from the external-repo `RepositoryAnalystAgent`, cached and invalidated by git commit hash. **Shipped**: `codebase/` package, `CodebaseAnalystAgent`, `ash codebase index/find/list`, `/codebase/*`. See `docs/codebase-intelligence.md`. | #4, unlocks #1/#9 |
 | 2 ✅ | **Model Router** — task-aware provider selection: cheap/local by default, escalate to frontier models only when a task needs it. **Shipped**: `providers/router.ts` (`ModelRouter`), wired into `BaseAgent.execute()` so every existing agent is routing-aware for free, `ash provider router status/enable/disable/set`, `/providers/router`. Off by default. See `docs/model-router.md`. | #6 |
 | 3 ✅ | **Outcome Memory / Reflection hook** — after every agent task, auto-write `{goal, approach, outcome, error?}` into project memory. **Shipped**: `agents/outcome.ts` (`TaskOutcome`, `buildOutcome`), wired into `BaseAgent.execute()` (same integration point as the router) — no opt-in needed, since writing a record has no behavioral effect. `ash memory list --tag outcome/failure/<agent>`. See `docs/outcome-memory.md`. | #3 (failures/successes), feeds #10 |
-| 4 | **General Knowledge Graph** — reuse the existing `KnowledgeGraph` class for a second instance tracking Projects/Files/Agents/Tasks/Decisions, using the node kinds that already exist in the type but are unpopulated. | #12 |
+| 4 ✅ | **General Knowledge Graph** — reuse the existing `KnowledgeGraph` class for a second instance tracking Projects/Agents/Tasks. **Shipped**: `KnowledgeGraph` moved to a shared `graph/` package with a namespace option (Innovation's own graph unchanged); `AshOS.knowledgeGraph` populated automatically by every agent via `BaseAgent` (`task --produced-by--> agent`, `task --part-of--> project`) and enriched by `CodebaseAnalystAgent` with real language/module data; `ash graph stats/nodes/neighbors`, `/graph*`. Verified live: the same project node accumulates data from two independent agents across separate runs. See `docs/knowledge-graph.md`. | #12 |
 | 5 | **Verification gate** — make `TestingAgent`/a new `ReviewerAgent` a required DAG step after code-producing tasks, not just an available capability an LLM might route to. | #1 ("verify results") |
 
 ### Tier 2 — new agents/tools, moderate effort, no new architecture
@@ -106,4 +106,5 @@ up after Tier 1 lands.
 - Stage 1 (Local Codebase Intelligence) — **shipped**.
 - Stage 2 (Model Router) — **shipped**.
 - Stage 3 (Outcome Memory) — **shipped**.
-- Stages 4-5 — pending.
+- Stage 4 (General Knowledge Graph) — **shipped**.
+- Stage 5 (Verification Gate) — pending.

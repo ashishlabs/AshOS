@@ -4,6 +4,7 @@ import type { ToolRegistry } from "../tools/registry";
 import type { MemoryManager } from "../memory/memory-manager";
 import type { EventBus } from "../kernel/event-bus";
 import type { TaskComplexity } from "../kernel/config";
+import type { KnowledgeGraph } from "../graph/knowledge-graph";
 
 export interface AgentTask {
   id: string;
@@ -21,6 +22,8 @@ export interface AgentContext {
   cwd: string;
   /** When present, `BaseAgent.execute()` resolves the effective provider per task via `router.select(task.complexity ?? <agent's default>)` instead of always using `provider` — see `docs/model-router.md`. */
   router?: ModelRouter;
+  /** The general-purpose, project-wide Knowledge Graph (`.ashos/graph.json`, distinct from Innovation Intelligence's own namespaced graph). When present, `BaseAgent.execute()` records agent/task/project nodes for every attempt — see `docs/knowledge-graph.md`. */
+  graph?: KnowledgeGraph;
 }
 
 export interface AgentResult {
