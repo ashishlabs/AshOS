@@ -707,7 +707,7 @@ function InnovationTab() {
             </Button>
             <Button onClick={() => runDiscovery(true)} disabled={running || liveStarting} variant="outline" className="w-full">
               <Search className="h-4 w-4" />
-              {liveStarting ? "Starting…" : "Run live GitHub discovery"}
+              {liveStarting ? "Starting…" : "Run live discovery (all sources)"}
             </Button>
             <LoadError error={runError} />
           </CardContent>

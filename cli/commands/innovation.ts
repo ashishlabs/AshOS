@@ -23,14 +23,14 @@ export function registerInnovationCommand(program: Command): void {
     .command("discover")
     .description("Run one discovery cycle: collect signals, update the knowledge graph, merge into opportunities")
     .option("-d, --domains <domains>", "comma-separated domains to restrict this cycle to (market,github,community,research,workflow,competitor)")
-    .option("--live", "use the real GitHub Search API instead of the offline mock collectors (github domain only)")
+    .option("--live", "use every real collector (GitHub/HN/Reddit/arXiv/Hugging Face) instead of the offline mock collectors")
     .action(async (opts) => {
       const ashos = new AshOS();
       const domains = opts.domains ? (String(opts.domains).split(",") as IntelligenceDomain[]) : undefined;
 
-      console.log(opts.live ? "Running live GitHub discovery..." : "Running discovery cycle...");
+      console.log(opts.live ? "Running live discovery across every real source..." : "Running discovery cycle...");
       const { opportunities, signalCount } = opts.live
-        ? await ashos.innovation.runLiveGithubDiscovery()
+        ? await ashos.innovation.runLiveDiscovery()
         : await ashos.innovation.runDiscoveryCycle(domains);
       console.log(`\nCaptured ${signalCount} signal(s) across ${opportunities.length} opportunit${opportunities.length === 1 ? "y" : "ies"} total.`);
     });
@@ -111,7 +111,26 @@ export function registerInnovationCommand(program: Command): void {
       for (const collector of ashos.innovation.collectors.list()) {
         console.log(`${collector.id} [${collector.domain}] — ${collector.description}`);
       }
-      console.log(`${ashos.innovation.liveGithubCollector.id} [${ashos.innovation.liveGithubCollector.domain}] (opt-in via --live) — ${ashos.innovation.liveGithubCollector.description}`);
+      for (const collector of ashos.innovation.liveCollectors) {
+        console.log(`${collector.id} [${collector.domain}] (opt-in via --live) — ${collector.description}`);
+      }
+    });
+
+  cmd
+    .command("digest")
+    .description("Run every real, opt-in collector (GitHub/HN/Reddit/arXiv/Hugging Face) and save today's AI news as a Markdown file")
+    .option("-s, --sources <ids>", "comma-separated collector ids to restrict to (default: all live collectors)")
+    .action(async (opts) => {
+      const ashos = new AshOS();
+      const sourceIds = opts.sources ? String(opts.sources).split(",") : undefined;
+
+      console.log("Running live discovery across every real source...");
+      const { markdown, path: filePath, result } = await ashos.innovation.generateDigest(sourceIds);
+      const failed = result.sources.filter((s) => s.error).map((s) => s.id);
+
+      console.log(`\nSaved ${filePath}`);
+      console.log(`Captured ${result.signalCount} item(s) across ${result.sources.length} source(s)${failed.length ? ` (${failed.join(", ")} unavailable)` : ""}.\n`);
+      console.log(markdown);
     });
 
   cmd

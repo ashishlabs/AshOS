@@ -14,7 +14,8 @@ ash chat                                 Interactive chat session
 ash memory list [--scope <scope>]        Inspect memory records
 ash memory forget <scope> <key>          Delete a memory record
 ash logs                                 Show recent log entries
-ash innovation discover [-d <domains>] [--live]   Run one discovery cycle (--live uses the real GitHub Search API)
+ash innovation discover [-d <domains>] [--live]   Run one discovery cycle (--live uses every real collector: GitHub/HN/Reddit/arXiv/Hugging Face)
+ash innovation digest [-s <sources>]     Run live collectors and save today's AI news as a Markdown file (.ashos/innovation/digests/)
 ash innovation list [-l <n>] [-s <stage>]  List opportunities, highest-scoring first
 ash innovation show <id>                 Show full detail for one opportunity
 ash innovation brief                     Generate today's Daily Innovation Brief

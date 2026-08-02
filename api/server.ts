@@ -176,7 +176,7 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     const live = Boolean(req.body?.live);
     const domains = Array.isArray(req.body?.domains) ? req.body.domains : undefined;
     innovationDiscoveryRunning = true;
-    const run = live ? ashos.innovation.runLiveGithubDiscovery() : ashos.innovation.runDiscoveryCycle(domains);
+    const run = live ? ashos.innovation.runLiveDiscovery() : ashos.innovation.runDiscoveryCycle(domains);
     run
       .catch((error) => {
         ashos.kernel.logger.error(`innovation discovery cycle failed: ${(error as Error).message}`);
@@ -222,6 +222,28 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
 
   app.get("/innovation/collectors", (_req, res) => {
     res.json(ashos.innovation.collectors.list().map((c) => ({ id: c.id, domain: c.domain, description: c.description })));
+  });
+
+  app.get("/innovation/live-collectors", (_req, res) => {
+    res.json(ashos.innovation.liveCollectors.map((c) => ({ id: c.id, domain: c.domain, description: c.description })));
+  });
+
+  let innovationDigestRunning = false;
+
+  app.post("/innovation/digest", (req, res) => {
+    if (innovationDigestRunning) {
+      res.status(409).json({ error: "a digest run is already in progress" });
+      return;
+    }
+    const sourceIds = Array.isArray(req.body?.sources) ? req.body.sources : undefined;
+    innovationDigestRunning = true;
+    ashos.innovation
+      .generateDigest(sourceIds)
+      .then((digest) => res.json(digest))
+      .catch((error) => res.status(500).json({ error: (error as Error).message }))
+      .finally(() => {
+        innovationDigestRunning = false;
+      });
   });
 
   app.get("/innovation/graph", (_req, res) => {

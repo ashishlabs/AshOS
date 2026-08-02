@@ -211,13 +211,15 @@ describe("CLI commands", () => {
     expect(output).toContain("weight=");
   });
 
-  it("innovation collectors also lists the opt-in live GitHub collector", async () => {
+  it("innovation collectors also lists every opt-in live collector", async () => {
     const program = freshProgram();
     registerInnovationCommand(program);
     await program.parseAsync(["node", "ash", "innovation", "collectors"]);
 
     const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
-    expect(output).toContain("github-live");
+    for (const id of ["github-live", "hn-live", "reddit-live", "arxiv-live", "huggingface-live"]) {
+      expect(output).toContain(id);
+    }
     expect(output).toContain("opt-in via --live");
   });
 

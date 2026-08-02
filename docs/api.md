@@ -26,13 +26,15 @@ Start it with `npm run api`.
 
 | Method | Path | Body | Description |
 |---|---|---|---|
-| POST | `/innovation/discover` | `{ domains?, live? }` | Fire-and-forget: starts a discovery cycle in the background and returns `202 { started: true, live }` immediately, or `409` if one is already running. `domains` restricts the cycle to a subset (defaults to `config.innovation.domains`); `live: true` runs the real GitHub Search API collector instead of the offline mock collectors. |
+| POST | `/innovation/discover` | `{ domains?, live? }` | Fire-and-forget: starts a discovery cycle in the background and returns `202 { started: true, live }` immediately, or `409` if one is already running. `domains` restricts the cycle to a subset (defaults to `config.innovation.domains`); `live: true` runs every real live collector (GitHub/HN/Reddit/arXiv/Hugging Face) instead of the offline mock collectors. |
 | GET | `/innovation/status` | — | `{ running, config }` — whether a cycle is in flight plus the active `InnovationConfig`. |
 | GET | `/innovation/opportunities?stage=&limit=` | — | Opportunities, highest-scoring first (or filtered by lifecycle stage). |
 | GET | `/innovation/opportunities/:id` | — | Full record for one opportunity (score, evidence signals, history), or `404`. |
 | GET | `/innovation/brief` | — | Generates today's Daily Innovation Brief on demand. |
 | GET | `/innovation/profile?limit=` | — | Top Builder Profile categories by learned weight. |
-| GET | `/innovation/collectors` | — | Registered (offline-by-default) collectors (`id`, `domain`, `description`). Does not include the opt-in `liveGithubCollector` — that only runs via `/innovation/discover` with `live: true`. |
+| GET | `/innovation/collectors` | — | Registered (offline-by-default) collectors (`id`, `domain`, `description`). Does not include the opt-in `liveCollectors` — see below. |
+| GET | `/innovation/live-collectors` | — | The five real, opt-in collectors (GitHub, Hacker News, Reddit, arXiv, Hugging Face) — never swept by a default discovery cycle, only run via `live: true` / `/innovation/digest`. |
+| POST | `/innovation/digest` | `{ sources? }` | Runs `runLiveDiscovery()` across every (or a selected subset of, by collector id) live collector and returns `{ markdown, path, result }` — a Markdown "today's AI news" report, also saved to `.ashos/innovation/digests/<date>.md`. `409` if a digest run is already in progress. |
 | GET | `/innovation/graph` | — | Knowledge graph stats (`nodeCount`, `edgeCount`, `byKind`). |
 | GET | `/innovation/events?category=&limit=` | — | Canonical, deduplicated `IntelligenceEvent`s, optionally filtered by category. |
 | GET | `/innovation/events/:id` | — | One event by id, or `404`. |

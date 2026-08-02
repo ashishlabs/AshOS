@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import type { Kernel } from "../kernel/kernel";
 import type { ProviderRegistry } from "../providers/registry";
 import type { AgentRegistry } from "../agents/registry";
@@ -6,6 +8,10 @@ import type { AgentContext } from "../agents/types";
 import type { IntelligenceDomain } from "../kernel/config";
 import { CollectorRegistry } from "./collectors/registry";
 import { createGithubReleasesCollector } from "./collectors/github-releases-collector";
+import { createHnCollector } from "./collectors/hn-collector";
+import { createRedditCollector } from "./collectors/reddit-collector";
+import { createArxivCollector } from "./collectors/arxiv-collector";
+import { createHuggingFaceCollector } from "./collectors/huggingface-collector";
 import { createDefaultIntelligenceAgents } from "./agents/index";
 import { RepositoryAnalystAgent } from "./agents/repository-analyst-agent";
 import { TechnologyRadarAgent } from "./agents/technology-radar-agent";
@@ -15,6 +21,7 @@ import { BuilderProfileStore } from "./profile/builder-profile-store";
 import { ScoringEngine } from "./opportunity/scoring";
 import { OpportunityEngine } from "./opportunity/opportunity-engine";
 import { DailyBriefGenerator } from "./brief/daily-brief";
+import { buildMarkdownDigest } from "./brief/markdown-digest";
 import { EventStore } from "./events/event-store";
 import { RepositoryProfileStore } from "./repository/repository-profile-store";
 import { RadarStore } from "./radar/radar-store";
@@ -31,6 +38,25 @@ export interface InnovationModuleOptions {
 export interface DiscoveryCycleResult {
   opportunities: Opportunity[];
   signalCount: number;
+}
+
+/** Per-collector outcome of one `runLiveDiscovery()` run — the raw material a Markdown digest is built from. */
+export interface LiveSourceResult {
+  id: string;
+  domain: IntelligenceDomain;
+  description: string;
+  signals: Signal[];
+  error?: string;
+}
+
+export interface LiveDiscoveryResult extends DiscoveryCycleResult {
+  sources: LiveSourceResult[];
+}
+
+export interface GeneratedDigest {
+  markdown: string;
+  path: string;
+  result: LiveDiscoveryResult;
 }
 
 /**
@@ -59,16 +85,27 @@ export class InnovationModule {
   readonly engine: OpportunityEngine;
   readonly briefGenerator = new DailyBriefGenerator();
   /**
-   * Real, network-backed GitHub collector — deliberately NOT registered on
+   * Real, network-backed collectors — deliberately NOT registered on
    * `this.collectors` (which only ever holds the deterministic, offline-by-
    * default collectors `IntelligenceAgent` sweeps automatically for its
-   * domain). Registering it there would make every `ash innovation
+   * domain). Registering them there would make every `ash innovation
    * discover`/`POST /innovation/discover` call hit the real network by
    * default, breaking the "offline unless you opt in" guarantee the rest of
-   * AshOS relies on for tests and zero-setup use. It only runs via the
-   * explicit `runLiveGithubDiscovery()` entry point below.
+   * AshOS relies on for tests and zero-setup use. They only run via the
+   * explicit `runLiveDiscovery()`/`generateDigest()` entry points below.
    */
-  readonly liveGithubCollector: Collector = createGithubReleasesCollector();
+  readonly liveCollectors: Collector[] = [
+    createGithubReleasesCollector(),
+    createHnCollector(),
+    createRedditCollector(),
+    createArxivCollector(),
+    createHuggingFaceCollector()
+  ];
+
+  /** @deprecated kept for backward compatibility — use `liveCollectors` (or `runLiveDiscovery(["github-live"])`) instead. */
+  get liveGithubCollector(): Collector {
+    return this.liveCollectors.find((c) => c.id === "github-live")!;
+  }
 
   constructor(private readonly options: InnovationModuleOptions) {
     for (const agent of createDefaultIntelligenceAgents(this.collectors)) {
@@ -158,26 +195,63 @@ export class InnovationModule {
   }
 
   /**
-   * Opt-in real-network counterpart to `runDiscoveryCycle`: runs only
-   * `liveGithubCollector` (a genuine GitHub Search API call) through the
-   * exact same normalize -> graph -> profile -> opportunity pipeline.
-   * Never runs automatically — invoked explicitly via `ash innovation
-   * discover --live` or `POST /innovation/discover` with `{ live: true }`.
+   * Opt-in real-network counterpart to `runDiscoveryCycle`: runs every (or a
+   * selected subset of) `liveCollectors` — genuine GitHub/HN/Reddit/arXiv/
+   * Hugging Face API calls — through the exact same normalize -> graph ->
+   * profile -> opportunity pipeline as a normal cycle. Each collector is
+   * isolated in its own try/catch so one failing source (rate-limited,
+   * network-blocked, ...) never stops the others from being ingested. Never
+   * runs automatically — invoked explicitly via `ash innovation discover
+   * --live`, `ash innovation digest`, or `POST /innovation/discover` with
+   * `{ live: true }`.
    */
-  async runLiveGithubDiscovery(): Promise<DiscoveryCycleResult> {
-    this.options.kernel.eventBus.emit("innovation:cycle-started", { domains: ["github"], live: true });
+  async runLiveDiscovery(sourceIds?: string[]): Promise<LiveDiscoveryResult> {
+    const targets = sourceIds ? this.liveCollectors.filter((c) => sourceIds.includes(c.id)) : this.liveCollectors;
+    this.options.kernel.eventBus.emit("innovation:cycle-started", { domains: [...new Set(targets.map((c) => c.domain))], live: true });
 
     let opportunities = this.opportunities.list();
     let signalCount = 0;
+    const sources: LiveSourceResult[] = [];
 
-    const signals = await this.liveGithubCollector.collect();
-    for (const signal of signals) {
-      opportunities = this.ingestSignal(signal, opportunities);
-      signalCount++;
+    for (const collector of targets) {
+      try {
+        const signals = await collector.collect();
+        for (const signal of signals) {
+          opportunities = this.ingestSignal(signal, opportunities);
+          signalCount++;
+        }
+        sources.push({ id: collector.id, domain: collector.domain, description: collector.description, signals });
+      } catch (error) {
+        sources.push({ id: collector.id, domain: collector.domain, description: collector.description, signals: [], error: (error as Error).message });
+      }
     }
 
     this.options.kernel.eventBus.emit("innovation:cycle-finished", { signalCount, opportunityCount: opportunities.length });
-    return { opportunities, signalCount };
+    return { opportunities, signalCount, sources };
+  }
+
+  /** @deprecated kept for backward compatibility — use `runLiveDiscovery(["github-live"])` instead. */
+  async runLiveGithubDiscovery(): Promise<DiscoveryCycleResult> {
+    return this.runLiveDiscovery(["github-live"]);
+  }
+
+  /**
+   * Runs `runLiveDiscovery()` and renders the result as a scannable Markdown
+   * report — "today's AI news," grouped by real source — saved under
+   * `.ashos/innovation/digests/<date>.md` and also returned as a string so
+   * the CLI/API can print or ship it directly.
+   */
+  async generateDigest(sourceIds?: string[]): Promise<GeneratedDigest> {
+    const result = await this.runLiveDiscovery(sourceIds);
+    const generatedAt = new Date().toISOString();
+    const markdown = buildMarkdownDigest({ generatedAt, sources: result.sources, topOpportunities: this.opportunities.topOpportunities(5) });
+
+    const dir = path.join(this.options.kernel.root, ".ashos", "innovation", "digests");
+    fs.mkdirSync(dir, { recursive: true });
+    const filePath = path.join(dir, `${generatedAt.slice(0, 10)}.md`);
+    fs.writeFileSync(filePath, markdown, "utf-8");
+
+    return { markdown, path: filePath, result };
   }
 
   async generateBrief(): Promise<DailyBrief> {

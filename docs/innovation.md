@@ -11,11 +11,12 @@ summarizing what's most worth building next.
 This is also the foundation of **AshOS Intelligence** — the broader
 "continuously monitor the AI ecosystem and decide what's worth building
 next" capability described in `docs/ashos-intelligence.md`. This document
-covers what's actually implemented today: event normalization/dedup,
-a real (opt-in) GitHub collector, Repository Intelligence, and a
-Technology Radar, all built as extensions of the pipeline below rather
-than a parallel system. `docs/ashos-intelligence.md` covers the full
-20-part architecture and the roadmap for the rest of it.
+covers what's actually implemented today: event normalization/dedup, five
+real (opt-in) collectors — GitHub, Hacker News, Reddit, arXiv, and Hugging
+Face — a daily Markdown news digest built from them, Repository
+Intelligence, and a Technology Radar, all built as extensions of the
+pipeline below rather than a parallel system. `docs/ashos-intelligence.md`
+covers the full 20-part architecture and the roadmap for the rest of it.
 
 It follows the same architectural pattern as the rest of AshOS: everything
 is a registry (`CollectorRegistry`), everything is provider-agnostic (the
@@ -29,9 +30,10 @@ behavior.
 ## Quick start
 
 ```bash
-ash innovation collectors          # list registered collectors, one per domain
+ash innovation collectors          # list registered collectors, one per domain (+ opt-in live ones)
 ash innovation discover            # run one discovery cycle across all domains (offline, mock)
-ash innovation discover --live     # real GitHub Search API discovery instead
+ash innovation discover --live     # real discovery across every live collector instead
+ash innovation digest               # run every live collector and save today's news as a Markdown file
 ash innovation list                # see ranked opportunities
 ash innovation show <id>           # full detail: score, evidence, history
 ash innovation brief               # today's Daily Innovation Brief
@@ -112,24 +114,43 @@ either built-in (`InnovationModule`) or via a plugin
 (`host.innovation.collectors`, `kernel/types.ts`'s `PluginHost`). No engine
 code changes needed.
 
-One real collector ships today: `innovation/collectors/github-releases-collector.ts`
-(`id: "github-live"`, `domain: "github"`) queries GitHub's public Search
-API per topic (`ai`, `artificial-intelligence`, `llm`, `ai-agents`,
-`developer-tools` by default) for repositories pushed recently, converting
-each into a `repository` signal with confidence scaled by star count. It is
-deliberately **not** registered on the shared `CollectorRegistry` that
-`IntelligenceAgent`s sweep automatically — doing so would make every
-default `ash innovation discover` call hit the real network, breaking the
-offline-by-default guarantee the rest of AshOS relies on. Instead it's
-exposed as `InnovationModule.liveGithubCollector` and only runs through the
-explicit `runLiveGithubDiscovery()` method (`ash innovation discover --live`
-or `POST /innovation/discover` with `{ live: true }`) — same
+Five real collectors ship today, all under `innovation/collectors/`, all
+following the exact same shape:
+
+| Collector (`id`) | Domain | Source | Signal `kind` |
+|---|---|---|---|
+| `github-releases-collector.ts` (`github-live`) | `github` | GitHub public Search API, per topic | `repository` |
+| `hn-collector.ts` (`hn-live`) | `community` | Hacker News (Algolia Search API), per query | `discussion` |
+| `reddit-collector.ts` (`reddit-live`) | `community` | Reddit public JSON listings, per subreddit | `discussion` |
+| `arxiv-collector.ts` (`arxiv-live`) | `research` | arXiv Atom API, per category | `paper` |
+| `huggingface-collector.ts` (`huggingface-live`) | `research` | Hugging Face models API, trending | `model-release` |
+
+Every one of them is deliberately **not** registered on the shared
+`CollectorRegistry` that `IntelligenceAgent`s sweep automatically — doing so
+would make every default `ash innovation discover` call hit the real
+network, breaking the offline-by-default guarantee the rest of AshOS
+relies on. Instead they're exposed as `InnovationModule.liveCollectors`
+(an array) and only run through the explicit `runLiveDiscovery(sourceIds?)`
+method (`ash innovation discover --live`, `ash innovation digest`, or
+`POST /innovation/discover` with `{ live: true }`) — same
 normalize/graph/profile/opportunity pipeline as every other collector,
 just opt-in. This is the "offline by default, real via explicit opt-in"
-convention the rest of AshOS follows (see `CLAUDE.md`).
+convention the rest of AshOS follows (see `CLAUDE.md`). `runLiveDiscovery`
+isolates each collector in its own try/catch, so one source being
+rate-limited or network-blocked never stops the others from being
+ingested — `ash innovation collectors` lists all five with an "(opt-in via
+--live)" annotation, and `liveGithubCollector` remains as a deprecated
+backward-compatible getter over `liveCollectors`.
 
-Every other domain still ships only a mock collector — see "What's not
-implemented" below.
+**A note on this environment specifically**: only `api.github.com` is
+allowlisted by this sandbox's network policy — Hacker News, Reddit, arXiv,
+and Hugging Face are all blocked here (verified via the proxy's
+`connect_rejected` diagnostics), so in *this* environment only
+`github-live` actually returns data; the other four return zero signals
+gracefully (not an error — see `runLiveDiscovery`'s per-collector
+isolation) rather than crashing. All five are fully unit-tested with
+mocked `fetch` and will work as soon as AshOS runs somewhere with normal
+outbound internet access.
 
 ## Event Normalization & Deduplication
 
@@ -294,6 +315,43 @@ provider for a short narrative paragraph, same "never hard-fail" pattern as
 `Researcher`/`Planner`: an unreachable provider falls back to a plain,
 still-useful one-line summary instead of erroring.
 
+## Daily AI News Digest
+
+`ash innovation digest` (`POST /innovation/digest`) is a different kind of
+report from the Daily Brief above: instead of an LLM narrative over merged
+opportunities, it's a deterministic, source-by-source **fact sheet** — the
+closest thing to literally "today's AI news" AshOS produces. It calls
+`InnovationModule.generateDigest()`, which:
+
+1. Runs `runLiveDiscovery()` across every (or a selected subset of)
+   `liveCollectors` — the same real GitHub/HN/Reddit/arXiv/Hugging Face
+   sources described above — ingesting every signal through the normal
+   pipeline (events, graph, profile, opportunities) exactly like any other
+   discovery cycle.
+2. Passes the raw per-source results to `buildMarkdownDigest()`
+   (`innovation/brief/markdown-digest.ts`, a pure function, fully unit
+   tested) which renders one Markdown section per source — headline +
+   link + summary for every captured item, an honest "No new items in
+   this run" line for a source that had nothing today, and a `⚠️
+   Unavailable this run: <reason>` line for a source that genuinely
+   errored — plus a closing "Notable opportunities so far" section.
+3. Saves the result to `.ashos/innovation/digests/<YYYY-MM-DD>.md` and
+   returns both the Markdown string and the file path, so the CLI can
+   print it and the API can hand it back directly.
+
+```bash
+ash innovation digest                    # every live collector
+ash innovation digest --sources github-live,hn-live   # just a subset
+```
+
+Because it's built from real signals rather than an abstraction over them,
+this is the command to actually run daily if what you want is a literal
+news digest rather than a ranked opportunity narrative — the two reports
+are complementary, not competing: run `ash innovation digest` for "what
+happened," `ash innovation brief` for "what's worth building because of
+it." See `docs/ashos-intelligence.md` §7/§17 for how this fits the larger
+event-flow and daily-research-workflow design.
+
 ## Configuration
 
 ```json
@@ -317,16 +375,19 @@ changes to any innovation/* code.
 
 The **Innovation** tab (`dashboard/src/App.tsx`) shows: research
 provider/model and monitored domains, live running/idle status with both a
-"run discovery cycle" action and a "run live GitHub discovery" action,
-knowledge-base counters (opportunities, knowledge nodes, relationships,
-categories tracked), the Builder Profile as weighted bars, the top-scoring
-opportunities with their lifecycle stage and tags, the registered
-collectors, a **Technology Radar** card (ring + evidence per technology,
-with a refresh action), a **Repository Intelligence** card (analyze any
-`owner/repo` by name, see cached profiles), a **Recent events** card (the
-canonical, deduplicated event layer), and an on-demand Daily Innovation
-Brief. All of it reads from the REST endpoints below, polling every few
-seconds.
+"run discovery cycle" action and a "run live discovery (all sources)"
+action, knowledge-base counters (opportunities, knowledge nodes,
+relationships, categories tracked), the Builder Profile as weighted bars,
+the top-scoring opportunities with their lifecycle stage and tags, the
+registered collectors, a **Technology Radar** card (ring + evidence per
+technology, with a refresh action), a **Repository Intelligence** card
+(analyze any `owner/repo` by name, see cached profiles), a **Recent
+events** card (the canonical, deduplicated event layer), and an on-demand
+Daily Innovation Brief. All of it reads from the REST endpoints below,
+polling every few seconds. The Markdown news digest (`ash innovation
+digest` / `POST /innovation/digest`) is CLI/API-only today — it produces a
+file rather than an in-page view, so it isn't yet surfaced as its own
+dashboard card (roadmap item).
 
 ## REST API
 
@@ -334,27 +395,30 @@ See `docs/api.md` for the full table. Summary: `POST /innovation/discover`
 (`{ domains?, live? }`, fire-and-forget, 202/409), `GET
 /innovation/status`, `GET /innovation/opportunities[/:id]`, `GET
 /innovation/brief`, `GET /innovation/profile`, `GET /innovation/collectors`,
-`GET /innovation/graph`, `GET /innovation/events[/:id]`, `GET
+`GET /innovation/live-collectors`, `POST /innovation/digest`, `GET
+/innovation/graph`, `GET /innovation/events[/:id]`, `GET
 /innovation/repositories[/:owner/:repo]`, `POST
 /innovation/repositories/analyze`, `GET /innovation/radar`, `POST
 /innovation/radar/refresh`, `GET`/`PATCH /innovation/config`.
 
 ## CLI
 
-See `docs/cli.md`. Summary: `ash innovation discover [--live]|list|show
-<id>|brief|profile|collectors|events|repo analyze <o/r>|repo list|radar
-[--refresh]`.
+See `docs/cli.md`. Summary: `ash innovation discover [--live]|digest
+[--sources]|list|show <id>|brief|profile|collectors|events|repo analyze
+<o/r>|repo list|radar [--refresh]`.
 
 ## What's not implemented (see `docs/roadmap.md` and `docs/ashos-intelligence.md`)
 
-- **Most collectors are still mock-only.** Only GitHub has a real,
-  opt-in collector (`github-releases-collector.ts`). Market, community,
-  research, workflow, and competitor domains — plus other real sources
-  named in the AshOS Intelligence spec (HuggingFace, arXiv, Papers With
-  Code, Hacker News, Reddit, package registries, YouTube, X) — still ship
-  only deterministic mocks; this environment's network sandbox only
-  allowlists `api.github.com` today, which is why GitHub was the first
-  real slice. Each follows the same `Collector` interface.
+- **Most domains are still mock-only.** Five real, opt-in collectors ship
+  today (GitHub, Hacker News, Reddit, arXiv, Hugging Face — see
+  "Collectors" above), but market, workflow, and competitor domains — plus
+  other real sources named in the AshOS Intelligence spec (Papers With
+  Code, package registries, YouTube, X, company blogs) — still ship only
+  deterministic mocks. This environment's network sandbox only allowlists
+  `api.github.com` today, so only `github-live` actually returns data
+  here; the other four are real, tested code waiting on an unrestricted
+  environment to prove themselves live. Each follows the same `Collector`
+  interface, so adding the rest is the same pattern again.
 - **Specialized research agents beyond Repository Analyst and Technology
   Radar aren't built yet** — Research Paper Analyst, Startup Analyst,
   Benchmark Analyst, Documentation Analyst, API Change Analyst, Security

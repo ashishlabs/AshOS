@@ -293,14 +293,14 @@ describe("AshOS API", () => {
     expect(res.status).toBe(404);
   });
 
-  it("POST /innovation/discover with live:true runs runLiveGithubDiscovery instead of the domain cycle", async () => {
-    // Overriding runLiveGithubDiscovery on a dedicated instance keeps this test off the real network.
+  it("POST /innovation/discover with live:true runs runLiveDiscovery instead of the domain cycle", async () => {
+    // Overriding runLiveDiscovery on a dedicated instance keeps this test off the real network.
     const stubRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ashos-api-live-discover-"));
     const stubAshos = new AshOS({ root: stubRoot });
     let called = false;
-    stubAshos.innovation.runLiveGithubDiscovery = async () => {
+    stubAshos.innovation.runLiveDiscovery = async () => {
       called = true;
-      return { opportunities: [], signalCount: 0 };
+      return { opportunities: [], signalCount: 0, sources: [] };
     };
     const stubApp = createServer(stubAshos);
     const stubServer = await new Promise<Server>((resolve) => {
@@ -320,6 +320,40 @@ describe("AshOS API", () => {
 
       await new Promise((resolve) => setTimeout(resolve, 100));
       expect(called).toBe(true);
+    } finally {
+      stubServer.close();
+      fs.rmSync(stubRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("GET /innovation/live-collectors lists every real opt-in collector, not the offline mocks", async () => {
+    const res = await fetch(`${baseUrl}/innovation/live-collectors`);
+    const list = (await res.json()) as { id: string }[];
+    const ids = list.map((c) => c.id).sort();
+    expect(ids).toEqual(["arxiv-live", "github-live", "hn-live", "huggingface-live", "reddit-live"]);
+  });
+
+  it("POST /innovation/digest runs live discovery and returns the generated markdown + path", async () => {
+    // Overriding generateDigest on a dedicated instance keeps this test off the real network.
+    const stubRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ashos-api-digest-"));
+    const stubAshos = new AshOS({ root: stubRoot });
+    stubAshos.innovation.generateDigest = async () => ({
+      markdown: "# AshOS Daily AI News Digest — 2026-08-02\n",
+      path: "/tmp/fake-digest.md",
+      result: { opportunities: [], signalCount: 0, sources: [] }
+    });
+    const stubApp = createServer(stubAshos);
+    const stubServer = await new Promise<Server>((resolve) => {
+      const s = stubApp.listen(0, () => resolve(s));
+    });
+    try {
+      const address = stubServer.address();
+      const stubBaseUrl = `http://127.0.0.1:${typeof address === "object" && address ? address.port : 0}`;
+
+      const res = await fetch(`${stubBaseUrl}/innovation/digest`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+      const body = (await res.json()) as { markdown: string; path: string };
+      expect(body.markdown).toContain("AshOS Daily AI News Digest");
+      expect(body.path).toBe("/tmp/fake-digest.md");
     } finally {
       stubServer.close();
       fs.rmSync(stubRoot, { recursive: true, force: true });

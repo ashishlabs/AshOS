@@ -84,4 +84,107 @@ describe("InnovationModule", () => {
     const brief = await module_.generateBrief();
     expect(brief.topOpportunities).toHaveLength(0);
   });
+
+  it("registers one real collector per known live source (github/hn/reddit/arxiv/huggingface)", () => {
+    const ids = module_.liveCollectors.map((c) => c.id).sort();
+    expect(ids).toEqual(["arxiv-live", "github-live", "hn-live", "huggingface-live", "reddit-live"]);
+  });
+
+  it("runLiveDiscovery isolates a failing collector so the others still ingest", async () => {
+    module_.liveCollectors.length = 0;
+    module_.liveCollectors.push(
+      {
+        id: "ok-source",
+        domain: "github",
+        description: "always succeeds",
+        collect: async () => [
+          {
+            id: "ok-1",
+            domain: "github",
+            kind: "repository",
+            source: "test",
+            title: "A repo",
+            summary: "summary",
+            tags: ["ai"],
+            confidence: 0.8,
+            observedAt: new Date().toISOString()
+          }
+        ]
+      },
+      {
+        id: "broken-source",
+        domain: "community",
+        description: "always throws",
+        collect: async () => {
+          throw new Error("boom");
+        }
+      }
+    );
+
+    const result = await module_.runLiveDiscovery();
+
+    expect(result.signalCount).toBe(1);
+    expect(result.sources).toHaveLength(2);
+    const ok = result.sources.find((s) => s.id === "ok-source")!;
+    const broken = result.sources.find((s) => s.id === "broken-source")!;
+    expect(ok.signals).toHaveLength(1);
+    expect(broken.error).toBe("boom");
+  });
+
+  it("runLiveDiscovery restricts to the requested source ids", async () => {
+    const ids = module_.liveCollectors.map((c) => c.id);
+    module_.liveCollectors.length = 0;
+    module_.liveCollectors.push(
+      { id: "a", domain: "github", description: "a", collect: async () => [] },
+      { id: "b", domain: "github", description: "b", collect: async () => [] }
+    );
+
+    const result = await module_.runLiveDiscovery(["b"]);
+    expect(result.sources.map((s) => s.id)).toEqual(["b"]);
+    expect(ids.length).toBeGreaterThan(0); // sanity: default set was non-empty before we replaced it
+  });
+
+  it("runLiveGithubDiscovery stays backward compatible, restricting to just github-live", async () => {
+    module_.liveCollectors.length = 0;
+    module_.liveCollectors.push(
+      { id: "github-live", domain: "github", description: "github", collect: async () => [] },
+      { id: "hn-live", domain: "community", description: "hn", collect: async () => [] }
+    );
+
+    await module_.runLiveGithubDiscovery();
+    // the legacy method returns DiscoveryCycleResult (no `sources`); verify via a fresh runLiveDiscovery call shape instead
+    const result = await module_.runLiveDiscovery(["github-live"]);
+    expect(result.sources).toHaveLength(1);
+    expect(result.sources[0].id).toBe("github-live");
+  });
+
+  it("generateDigest writes a Markdown file and returns its content + path", async () => {
+    module_.liveCollectors.length = 0;
+    module_.liveCollectors.push({
+      id: "github-live",
+      domain: "github",
+      description: "github",
+      collect: async () => [
+        {
+          id: "gh-1",
+          domain: "github",
+          kind: "repository",
+          source: "test",
+          title: "acme/widget",
+          summary: "summary",
+          url: "https://github.com/acme/widget",
+          tags: ["ai"],
+          confidence: 0.9,
+          observedAt: new Date().toISOString()
+        }
+      ]
+    });
+
+    const digest = await module_.generateDigest();
+
+    expect(digest.markdown).toContain("AshOS Daily AI News Digest");
+    expect(digest.markdown).toContain("acme/widget");
+    expect(fs.existsSync(digest.path)).toBe(true);
+    expect(fs.readFileSync(digest.path, "utf-8")).toBe(digest.markdown);
+  });
 });

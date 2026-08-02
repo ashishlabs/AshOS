@@ -120,9 +120,15 @@ innovation/
 │   ├── types.ts                   Collector interface                                [shipped]
 │   ├── registry.ts                CollectorRegistry                                  [shipped]
 │   ├── mock-collector.ts          Deterministic offline collector, one per domain     [shipped]
-│   └── github-releases-collector.ts   Real GitHub Search API collector (opt-in)       [shipped]
-│       (roadmap: hn-collector.ts, arxiv-collector.ts, huggingface-collector.ts,
-│        reddit-collector.ts, package-registry-collector.ts, ... — same interface)
+│   ├── github-releases-collector.ts   Real GitHub Search API collector (opt-in)       [shipped]
+│   ├── hn-collector.ts                Real Hacker News (Algolia API) collector        [shipped]
+│   ├── reddit-collector.ts            Real Reddit (public JSON) collector             [shipped]
+│   ├── arxiv-collector.ts             Real arXiv (Atom API) collector                 [shipped]
+│   └── huggingface-collector.ts       Real Hugging Face (models API) collector        [shipped]
+│       (roadmap: package-registry-collector.ts, product-hunt-collector.ts, ... — same
+│        interface; each of the five above is real, tested code, but this sandbox's
+│        network policy only allowlists api.github.com, so only github-live is
+│        live-verified here — see §12)
 ├── events/                        Event Normalization & Deduplication                 [shipped]
 │   ├── types.ts                   EventCategory, IntelligenceEvent, EventSource
 │   ├── normalizer.ts              categorize(), similarity(), mergeSignalIntoEvent()
@@ -155,7 +161,9 @@ innovation/
 ├── profile/
 │   └── builder-profile-store.ts   BuilderProfileStore — learned category weights       [shipped]
 ├── brief/
-│   └── daily-brief.ts             DailyBriefGenerator                                  [shipped]
+│   ├── daily-brief.ts             DailyBriefGenerator                                  [shipped]
+│   └── markdown-digest.ts         buildMarkdownDigest() — deterministic multi-source    [shipped]
+│                                   Markdown "today's AI news" fact sheet
 │       (roadmap) weekly-brief.ts, monthly-brief.ts — same pattern, longer window
 └── (roadmap) recommendation/
     ├── project-matcher.ts         Match opportunities/radar movements to real projects
@@ -353,18 +361,25 @@ Wiring a recurring discovery cycle is:
 scheduler.schedule({
   id: "daily-intelligence-sweep",
   cron: "0 7 * * *", // every morning at 07:00
-  run: () => ashos.innovation.runDiscoveryCycle()
+  run: () => ashos.innovation.generateDigest() // or runDiscoveryCycle() for the offline mock sweep
 });
 ```
 
+`generateDigest()` is the natural thing to put on a daily schedule if the
+goal is literally "check AI news every morning" — it runs every live
+collector and leaves a dated Markdown file behind, so a scheduled job
+needs no further wiring to be useful (see §17).
+
 **Rate limits, retries, incremental sync** are each collector's own
 responsibility, not the scheduler's — `github-releases-collector.ts`
-demonstrates the pattern: a bounded per-topic query with a `pushed:>DATE`
-filter (incremental — only recently-changed repos), tolerant of a single
-failing/rate-limited topic (returns partial results rather than failing
-the whole collector), and no built-in retry-with-backoff yet (**[roadmap]**
-— a real 403/429 from GitHub's secondary rate limit today just fails that
-one collection cleanly; a shared `withRetry()` helper for all real
+demonstrates the pattern (the other four live collectors follow the same
+shape): a bounded per-topic/query/category/subreddit fetch with a recency
+filter where the source supports one (incremental — only recently-changed
+items), tolerant of a single failing sub-query (returns partial results
+rather than failing the whole collector), and no built-in retry-with-backoff
+yet (**[roadmap]** — a real 403/429 today just fails that one collection
+cleanly, surfaced in `runLiveDiscovery()`'s per-source isolation rather than
+crashing the run; a shared `withRetry()` helper for all real
 collectors is a natural small addition once a second real collector
 exists, to avoid duplicating backoff logic per collector).
 
@@ -488,7 +503,8 @@ on an unchanged repository costs one API call, not four.
 
 ## 17. Daily research workflow
 
-**[shipped, as "Daily Innovation Brief"]**:
+Two complementary reports are **[shipped]** today, covering the two halves
+of "what changed and what's worth doing about it":
 
 ```
 ash innovation discover   (or scheduled)
@@ -497,12 +513,26 @@ ash innovation brief      (or scheduled, after discover)
   → DailyBriefGenerator ranks opportunities by score.overall,
     asks the research provider for a short narrative,
     falls back to a plain summary if the provider is unreachable
+
+ash innovation digest     (or scheduled — see §12)
+  → runLiveDiscovery() across every real collector (§7 flow B, generalized)
+  → buildMarkdownDigest() renders a per-source Markdown fact sheet,
+    saved to .ashos/innovation/digests/<date>.md
 ```
 
+The Brief answers "what's worth building"; the Digest answers "what
+happened" — a literal, source-attributed news file, not an abstraction
+over merged opportunities. Both read from (and the Digest also writes
+into) the same underlying pipeline, so nothing is duplicated infrastructure
+— `buildMarkdownDigest()` is a pure rendering function over
+`runLiveDiscovery()`'s output, the same relationship `DailyBriefGenerator`
+has to `OpportunityStore`.
+
 **[roadmap] Full daily workflow** as originally specified — discovery →
-radar refresh → repository re-analysis for tracked repos → brief
-generation, as one scheduled, ordered unit (see §12) — is not wired up as
-a single job yet; each piece works today but is triggered independently.
+radar refresh → repository re-analysis for tracked repos → brief +
+digest generation, as one scheduled, ordered unit (see §12) — is not wired
+up as a single job yet; each piece works today but is triggered
+independently.
 **[roadmap] Weekly/Monthly** rollups: same `DailyBriefGenerator` pattern
 over a longer window, additionally summarizing Technology Radar ring
 transitions and repository-portfolio deltas since the last report — a
@@ -545,12 +575,14 @@ table including non-Intelligence routes):
 
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/innovation/discover` | `{domains?, live?}` — start a discovery cycle |
+| POST | `/innovation/discover` | `{domains?, live?}` — start a discovery cycle (`live` runs every real collector) |
 | GET | `/innovation/status` | running state + config |
 | GET | `/innovation/opportunities[/:id]` | ranked opportunities / one detail |
 | GET | `/innovation/brief` | Daily Innovation Brief |
 | GET | `/innovation/profile` | Builder Profile |
 | GET | `/innovation/collectors` | registered (offline) collectors |
+| GET | `/innovation/live-collectors` | the five real, opt-in collectors |
+| POST | `/innovation/digest` | `{sources?}` — run live discovery, return `{markdown, path, result}` |
 | GET | `/innovation/graph` | knowledge graph stats |
 | GET | `/innovation/events[/:id]` | canonical deduplicated events |
 | GET | `/innovation/repositories[/:owner/:repo]` | cached Repository Intelligence |
@@ -559,9 +591,9 @@ table including non-Intelligence routes):
 | POST | `/innovation/radar/refresh` | reclassify the radar |
 | GET/PATCH | `/innovation/config` | Intelligence configuration |
 
-**CLI** (see `docs/cli.md`): `ash innovation discover [--live] | list |
-show <id> | brief | profile | collectors | events | repo analyze <o/r> |
-repo list | radar [--refresh]`.
+**CLI** (see `docs/cli.md`): `ash innovation discover [--live] | digest
+[--sources] | list | show <id> | brief | profile | collectors | events |
+repo analyze <o/r> | repo list | radar [--refresh]`.
 
 ## 20. Internal APIs
 
@@ -620,16 +652,29 @@ Everything else (`RepositoryProfileStore`, `RadarStore`,
 
 ## 22. Development roadmap (milestones)
 
-- **M1 — Foundation [shipped, this document's slice]**: Event
-  normalization + dedup; real opt-in GitHub collector; Repository
-  Intelligence (`RepositoryAnalystAgent` + cache); Technology Radar
+- **M1 — Foundation [shipped]**: Event normalization + dedup; a real
+  opt-in GitHub collector; Repository Intelligence
+  (`RepositoryAnalystAgent` + cache); Technology Radar
   (`TechnologyRadarAgent` + classification); REST/CLI/dashboard surfaces
   for all of the above; full test coverage, offline-safe by default.
-- **M2 — More real collectors**: Hacker News, Reddit, arXiv, Papers With
-  Code, package registries (npm/PyPI) — each following the exact
-  `github-releases-collector.ts` pattern, gated by this environment's
-  actual network reachability (verify before building, as GitHub was
-  verified here).
+- **M1.5 — Multi-source real collectors + news digest [shipped]**: Hacker
+  News, Reddit, arXiv, and Hugging Face collectors added alongside GitHub
+  (`innovation/collectors/{hn,reddit,arxiv,huggingface}-collector.ts`),
+  each unit-tested with mocked `fetch`; `InnovationModule.liveCollectors`
+  generalized from a single GitHub property to an array with per-source
+  error isolation (`runLiveDiscovery(sourceIds?)`); a deterministic
+  Markdown "today's AI news" digest (`buildMarkdownDigest()` +
+  `generateDigest()`) grouping captured items by source and saving to
+  `.ashos/innovation/digests/<date>.md`; `ash innovation digest` /
+  `POST /innovation/digest`. This sandbox's network policy only
+  allowlists `api.github.com`, so only `github-live` is live-verified
+  here — the other four are real, tested code awaiting an unrestricted
+  environment.
+- **M2 — More real collectors**: Papers With Code, package registries
+  (npm/PyPI), Product Hunt — each following the exact same `Collector`
+  pattern, gated by actual network reachability wherever AshOS runs
+  (verify before building, as GitHub/HN/Reddit/arXiv/Hugging Face were
+  here).
 - **M3 — Specialized research agents**: Research Paper Analyst, Startup
   Analyst, Benchmark Analyst, Documentation Analyst, API Change Analyst,
   Security Analyst, Trend Analyst, Opportunity Analyst — each a focused
