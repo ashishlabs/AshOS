@@ -75,9 +75,14 @@ second, parallel capture path.
    `memory:updated` (duplicates the richer memory record already shown),
    maps every other event name to a one-line human summary, and merges
    in Inbox captures for free (`inbox:captured` was already on the bus).
-3. **Dashboard "Today's Focus" widget** — surface unread Inbox count +
-   top Innovation opportunity + recent Outcome Memory failures on
-   `DashboardTab`. Pure composition of three already-shipped read APIs.
+3. ✅ **Dashboard "Today's Focus" widget** (shipped). Full-width card at
+   the top of `DashboardTab` surfacing unread Inbox count, the
+   top-scored Innovation opportunity, and the most recent Outcome Memory
+   failures — pure composition of three already-shipped read APIs
+   (`GET /inbox?status=unread`, `GET /innovation/opportunities?limit=1`,
+   `GET /memory?tag=failure`, the last needing a small `memoryQuery()`
+   addition to the dashboard's API client since the REST route already
+   supported a `tag` filter). No backend changes.
 
 ### Tier 2 — new agents/prompts over existing infra
 
@@ -117,3 +122,8 @@ second, parallel capture path.
   tab (`dashboard/src/App.tsx`'s `TimelineTab`) merging `GET /events`
   and `GET /memory` into one chronological, keyword-filterable feed. No
   backend changes.
+- **Tier 1 item 3 — "Today's Focus" widget**: `TodaysFocusCard` at the
+  top of `DashboardTab`, composing three existing read endpoints into
+  "what's waiting for you, right now" — unread Inbox count, the
+  top-scored Innovation opportunity, and the most recent Outcome Memory
+  failures. Tier 1 of the Second Brain roadmap is now fully shipped.

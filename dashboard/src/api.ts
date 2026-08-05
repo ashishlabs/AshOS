@@ -60,6 +60,18 @@ export interface MemoryRecord {
   createdAt: string;
 }
 export type MemoryScope = "short-term" | "session" | "project" | "global";
+/** Shape of a `MemoryRecord.value` written by `agents/outcome.ts`'s `buildOutcome()`, tagged `"outcome"`/`"failure"`/`"success"`/`<agent name>`. */
+export interface TaskOutcome {
+  agent: string;
+  capability: string;
+  taskId: string;
+  description: string;
+  outcome: "success" | "failure";
+  output?: string;
+  error?: string;
+  durationMs: number;
+  at: string;
+}
 export interface WorkflowStepResultDTO {
   id: string;
   status: "success" | "failed" | "skipped";
@@ -268,6 +280,14 @@ export const api = {
   chat: (message: string) => post<{ content: string }>("/chat", { messages: [{ role: "user", content: message }] }),
   runWorkflow: (definition: unknown) => post<{ results: Record<string, WorkflowStepResultDTO> }>("/workflow", definition),
   memoryList: (scope?: MemoryScope) => get<MemoryRecord[]>(`/memory${scope ? `?scope=${scope}` : ""}`),
+  memoryQuery: (opts: { scope?: MemoryScope; tag?: string; text?: string } = {}) => {
+    const params = new URLSearchParams();
+    if (opts.scope) params.set("scope", opts.scope);
+    if (opts.tag) params.set("tag", opts.tag);
+    if (opts.text) params.set("text", opts.text);
+    const qs = params.toString();
+    return get<MemoryRecord[]>(`/memory${qs ? `?${qs}` : ""}`);
+  },
   memoryRemember: (scope: MemoryScope, key: string, value: unknown, tags?: string[]) =>
     post<MemoryRecord>("/memory", { scope, key, value, tags }),
   memoryForget: (scope: MemoryScope, key: string) => post<{ ok: boolean }>("/memory/forget", { scope, key }),

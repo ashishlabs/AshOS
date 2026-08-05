@@ -55,6 +55,7 @@ import {
   type RadarRing,
   type RepositoryProfile,
   type TaskGraph,
+  type TaskOutcome,
   type TrendingReposResult,
   type WorkflowStepResultDTO
 } from "./api";
@@ -270,6 +271,101 @@ function EmptyState({ children }: { children: React.ReactNode }) {
   return <p className="py-6 text-center text-sm text-muted-foreground">{children}</p>;
 }
 
+interface TodaysFocusState {
+  unreadInboxCount: number;
+  topOpportunity: Opportunity | null;
+  recentFailures: MemoryRecord[];
+}
+
+/** "What should I work on today?" — pure composition of three already-shipped read APIs (Inbox, Innovation opportunities, Outcome Memory), no new backend. */
+function TodaysFocusCard() {
+  const [state, setState] = useState<TodaysFocusState | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = () =>
+      Promise.all([
+        api.inboxList("unread"),
+        api.innovationOpportunities(1).catch(() => [] as Opportunity[]),
+        api.memoryQuery({ tag: "failure" }).catch(() => [] as MemoryRecord[])
+      ])
+        .then(([unread, opportunities, failures]) => {
+          setState({
+            unreadInboxCount: unread.length,
+            topOpportunity: opportunities[0] ?? null,
+            recentFailures: [...failures].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3)
+          });
+          setError(null);
+        })
+        .catch((e) => setError(e.message));
+    load();
+    const interval = setInterval(load, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <Card className="sm:col-span-2">
+      <CardHeader>
+        <CardTitle>Today's Focus</CardTitle>
+        <CardDescription>What's waiting for you, right now.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <LoadError error={error} />
+        {!state && !error ? (
+          <Skeleton className="h-20 w-full" />
+        ) : state ? (
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Inbox</p>
+              {state.unreadInboxCount === 0 ? (
+                <p className="text-sm text-muted-foreground">Nothing unread.</p>
+              ) : (
+                <p className="text-sm">
+                  <span className="text-2xl font-semibold text-foreground">{state.unreadInboxCount}</span>{" "}
+                  unread item{state.unreadInboxCount === 1 ? "" : "s"}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Top opportunity</p>
+              {state.topOpportunity ? (
+                <>
+                  <p className="truncate text-sm font-medium">{state.topOpportunity.title}</p>
+                  <Badge variant="secondary">score {state.topOpportunity.score.overall.toFixed(1)}</Badge>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">No opportunities discovered yet.</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Recent failures</p>
+              {state.recentFailures.length === 0 ? (
+                <p className="text-sm text-muted-foreground">None — nice work.</p>
+              ) : (
+                <ul className="space-y-1">
+                  {state.recentFailures.map((record) => {
+                    const outcome = record.value as TaskOutcome;
+                    return (
+                      <li key={record.id} className="truncate text-sm">
+                        <Badge variant="destructive" className="mr-1 px-1.5 py-0 text-[10px]">
+                          {outcome.agent}
+                        </Badge>
+                        {outcome.description}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
 function DashboardTab() {
   const [health, setHealth] = useState<Health | null>(null);
   const [events, setEvents] = useState<AshOSEvent[]>([]);
@@ -289,6 +385,8 @@ function DashboardTab() {
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
+      <TodaysFocusCard />
+
       <Card>
         <CardHeader>
           <CardTitle>Status</CardTitle>
