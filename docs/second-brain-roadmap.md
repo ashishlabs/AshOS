@@ -108,9 +108,18 @@ second, parallel capture path.
    on-demand "Reflection" card on the Dashboard tab (period selector +
    Generate button, same pattern as the Daily Innovation Brief card so
    neither auto-polls a provider call).
-6. **Cross-store hybrid search** — extend `MemoryManager.searchSemantic()`
-   or add a thin aggregator that also queries `KnowledgeGraph.listNodes()`
-   and Inbox items, so "find everything about LangGraph" spans all three.
+6. ✅ **Cross-store hybrid search** (shipped). `HybridSearch`
+   (`search/hybrid-search.ts`, `AshOS.search`) is the thin aggregator —
+   queries `MemoryManager.query`/`searchSemantic()`,
+   `KnowledgeGraph.listNodes()`, and `InboxManager.list()` and merges the
+   results into one ranked list, deduping Inbox items out of the raw
+   Memory slice (they're the same underlying record — see
+   `docs/inbox.md`). `ash search <query> [--limit] [--semantic]`, `GET
+   /search?q=&limit=&semantic=`, and a dashboard Search tab. See
+   `docs/search.md`.
+
+Tier 2 is now fully shipped — every item (Idea Agent, Reflection Agent,
+Cross-store hybrid search) is live.
 
 ### Tier 3 — needs explicit scoping before building
 

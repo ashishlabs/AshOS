@@ -41,6 +41,7 @@ ash inbox list [-s <status>]             List inbox items, newest first
 ash inbox show <id>                      Show full detail for one inbox item
 ash inbox archive <id>                   Mark an inbox item archived
 ash reflect [period]                     Daily (default)/weekly/monthly review narrative from Outcome Memory + Inbox + Knowledge Graph activity
+ash search <query> [-l <n>] [-s]         Hybrid search across Memory, the Knowledge Graph, and the Inbox (-s/--semantic for embedding-based Memory search)
 ```
 
 Run `npm run cli -- <command>` during development, or `ash <command>`

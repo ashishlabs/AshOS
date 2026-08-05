@@ -23,6 +23,7 @@ import { CodebaseAnalystAgent } from "../codebase/agents/codebase-analyst-agent"
 import { CodebaseIndexStore } from "../codebase/codebase-store";
 import { KnowledgeGraph } from "../graph/knowledge-graph";
 import { InboxManager } from "../inbox/inbox-manager";
+import { HybridSearch } from "../search/hybrid-search";
 import type { Agent, AgentContext, AgentResult } from "../agents/types";
 import type { WorkflowDefinition } from "../workflow/types";
 import type { TaskGraph } from "../planner/types";
@@ -53,6 +54,8 @@ export class AshOS {
   readonly knowledgeGraph: KnowledgeGraph;
   /** Universal Inbox — the single capture point everything enters AshOS through. See `docs/inbox.md`. */
   readonly inbox: InboxManager;
+  /** Cross-store hybrid search over Memory, the general Knowledge Graph, and the Inbox. See `docs/search.md`. */
+  readonly search: HybridSearch;
 
   constructor(opts: AshOSOptions = {}) {
     this.kernel = new Kernel({ root: opts.root });
@@ -63,6 +66,7 @@ export class AshOS {
     this.codebase = new CodebaseIndexStore(this.kernel.root);
     this.knowledgeGraph = new KnowledgeGraph(this.kernel.root);
     this.inbox = new InboxManager(this.memory, { eventBus: this.kernel.eventBus, graph: this.knowledgeGraph });
+    this.search = new HybridSearch(this.memory, this.knowledgeGraph, this.inbox);
 
     this.tools = new ToolRegistry();
     this.tools.register(new ShellTool(this.kernel.permissions));

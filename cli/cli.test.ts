@@ -15,6 +15,7 @@ import { registerCodebaseCommand } from "./commands/codebase";
 import { registerGraphCommand } from "./commands/graph";
 import { registerInboxCommand } from "./commands/inbox";
 import { registerReflectCommand } from "./commands/reflect";
+import { registerSearchCommand } from "./commands/search";
 import { isInitialized, configPath } from "../kernel/config";
 import { AshOS } from "../sdk/ashos";
 
@@ -503,5 +504,30 @@ describe("CLI commands", () => {
     const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
     expect(output).toContain("Reflection (weekly)");
     expect(output).toContain("Inbox: 1 captured");
+  });
+
+  it("search reports no results for an empty store", async () => {
+    const program = freshProgram();
+    registerSearchCommand(program);
+    await program.parseAsync(["node", "ash", "search", "langgraph"]);
+
+    const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain('No results for "langgraph"');
+  });
+
+  it("search finds a real inbox item and a real graph node", async () => {
+    const program = freshProgram();
+    registerInboxCommand(program);
+    registerSearchCommand(program);
+
+    await program.parseAsync(["node", "ash", "inbox", "add", "Check out LangGraph for orchestration"]);
+    const ashos = new AshOS({ root: cwd });
+    ashos.knowledgeGraph.upsertNode({ kind: "technology", label: "LangGraph" });
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "search", "langgraph"]);
+    const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("[graph]");
+    expect(output).toContain("[inbox]");
   });
 });

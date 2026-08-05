@@ -267,6 +267,17 @@ export interface TrendingReposResult {
   error?: string;
 }
 
+export type SearchResultSource = "memory" | "graph" | "inbox";
+export interface SearchResult {
+  source: SearchResultSource;
+  id: string;
+  title: string;
+  snippet: string;
+  tags: string[];
+  createdAt: string;
+  score: number;
+}
+
 export type InboxSourceType = "text" | "note" | "url" | "article" | "github-repo" | "youtube" | "tweet" | "pdf";
 export type InboxStatus = "unread" | "reviewed" | "archived";
 export interface InboxItem {
@@ -310,6 +321,13 @@ export const api = {
     post<{ opportunity: Opportunity; created: boolean }>("/innovation/ideas", input),
 
   reflect: (period?: ReflectionPeriod) => get<ReflectionData>(`/reflect${period ? `?period=${period}` : ""}`),
+
+  search: (query: string, opts: { limit?: number; semantic?: boolean } = {}) => {
+    const params = new URLSearchParams({ q: query });
+    if (opts.limit) params.set("limit", String(opts.limit));
+    if (opts.semantic) params.set("semantic", "true");
+    return get<SearchResult[]>(`/search?${params.toString()}`);
+  },
 
   innovationStatus: () => get<InnovationStatus>("/innovation/status"),
   innovationOpportunities: (limit?: number, stage?: IdeaLifecycleStage) => {

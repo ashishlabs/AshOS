@@ -571,6 +571,31 @@ describe("AshOS API", () => {
     expect(body.inbox.captured).toBeGreaterThan(0);
   });
 
+  it("GET /search 400s without a 'q' query parameter", async () => {
+    const res = await fetch(`${baseUrl}/search`);
+    expect(res.status).toBe(400);
+  });
+
+  it("GET /search finds a real inbox item captured earlier on this shared server", async () => {
+    await fetch(`${baseUrl}/inbox`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content: "a note about zzzsearchable-marker-zzz" })
+    });
+
+    const res = await fetch(`${baseUrl}/search?q=zzzsearchable-marker-zzz`);
+    expect(res.status).toBe(200);
+    const results = (await res.json()) as { source: string; title: string }[];
+    expect(results.some((r) => r.source === "inbox")).toBe(true);
+  });
+
+  it("GET /search respects the limit parameter", async () => {
+    const res = await fetch(`${baseUrl}/search?q=a&limit=2`);
+    expect(res.status).toBe(200);
+    const results = (await res.json()) as unknown[];
+    expect(results.length).toBeLessThanOrEqual(2);
+  });
+
   it("GET /innovation/repositories starts empty; POST /innovation/repositories/analyze runs the agent and caches the result", async () => {
     // A stub RepositoryAnalystAgent so this never touches the real network.
     const stubRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ashos-api-repo-"));

@@ -400,6 +400,22 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     }
   });
 
+  app.get("/search", async (req, res) => {
+    const query = req.query.q as string | undefined;
+    if (!isNonEmptyString(query)) {
+      res.status(400).json({ error: "'q' query parameter is required" });
+      return;
+    }
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+    const semantic = req.query.semantic === "true";
+    try {
+      const results = await ashos.search.search(query, { limit, semantic });
+      res.json(results);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
   app.get("/reflect", async (req, res) => {
     const period = req.query.period as string | undefined;
     try {

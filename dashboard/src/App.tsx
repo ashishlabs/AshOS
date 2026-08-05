@@ -57,18 +57,20 @@ import {
   type ReflectionData,
   type ReflectionPeriod,
   type RepositoryProfile,
+  type SearchResult,
   type TaskGraph,
   type TaskOutcome,
   type TrendingReposResult,
   type WorkflowStepResultDTO
 } from "./api";
 
-type Tab = "dashboard" | "inbox" | "timeline" | "plan" | "workflow" | "innovation" | "trending" | "memory" | "logs" | "chat";
+type Tab = "dashboard" | "inbox" | "timeline" | "search" | "plan" | "workflow" | "innovation" | "trending" | "memory" | "logs" | "chat";
 
 const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "inbox", label: "Inbox", icon: InboxIcon },
   { id: "timeline", label: "Timeline", icon: Clock },
+  { id: "search", label: "Search", icon: Search },
   { id: "plan", label: "Plan", icon: ListTodo },
   { id: "workflow", label: "Workflow", icon: GitBranch },
   { id: "innovation", label: "Innovation", icon: Lightbulb },
@@ -134,6 +136,7 @@ const TAB_PANELS: Record<Tab, React.ComponentType> = {
   dashboard: DashboardTab,
   inbox: InboxTab,
   timeline: TimelineTab,
+  search: SearchTab,
   plan: PlanTab,
   workflow: WorkflowTab,
   innovation: InnovationTab,
@@ -1435,6 +1438,83 @@ function TimelineTab() {
               </li>
             ))}
           </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+const SEARCH_SOURCE_VARIANT: Record<SearchResult["source"], "secondary" | "outline" | "default"> = {
+  memory: "secondary",
+  graph: "outline",
+  inbox: "default"
+};
+
+function SearchTab() {
+  const [query, setQuery] = useState("");
+  const [semantic, setSemantic] = useState(false);
+  const [results, setResults] = useState<SearchResult[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const runSearch = async () => {
+    if (!query.trim()) return;
+    setLoading(true);
+    setError(null);
+    try {
+      setResults(await api.search(query, { semantic }));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Search</CardTitle>
+        <CardDescription>Hybrid search across Memory, the Knowledge Graph, and the Inbox — "find everything about X."</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && runSearch()}
+            placeholder="Find everything about..."
+            className="flex-1"
+          />
+          <Button onClick={runSearch} disabled={loading} className="shrink-0">
+            <Search className="h-4 w-4" />
+            {loading ? "…" : "Search"}
+          </Button>
+        </div>
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          <input type="checkbox" checked={semantic} onChange={(e) => setSemantic(e.target.checked)} className="h-3.5 w-3.5" />
+          Semantic search for Memory (embedding similarity instead of keyword matching)
+        </label>
+
+        <LoadError error={error} />
+        {results && results.length === 0 && !error ? (
+          <EmptyState>No results for "{query}".</EmptyState>
+        ) : (
+          results && (
+            <ul className="divide-y">
+              {results.map((r) => (
+                <li key={`${r.source}-${r.id}`} className="space-y-1 py-2.5 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Badge variant={SEARCH_SOURCE_VARIANT[r.source]} className="shrink-0">
+                      {r.source}
+                    </Badge>
+                    <span className="min-w-0 flex-1 truncate font-medium">{r.title}</span>
+                    <span className="shrink-0 font-mono text-xs text-muted-foreground">{r.score.toFixed(2)}</span>
+                  </div>
+                  <p className="break-words pl-0.5 text-xs text-muted-foreground">{r.snippet}</p>
+                </li>
+              ))}
+            </ul>
+          )
         )}
       </CardContent>
     </Card>

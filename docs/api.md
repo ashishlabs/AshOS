@@ -24,6 +24,7 @@ Start it with `npm run api`.
 | GET | `/logs` | — | Recent structured log entries. Every event bus emission (except `log` itself) is mirrored into the logger by `Kernel`, so this doubles as a live activity log even if no subsystem calls the logger directly. |
 | GET | `/agents/github-trending?limit=` | — | Runs the `github-trending` agent on demand (real GitHub Search API call, no caching) and returns its `AgentResult`, e.g. `{ ok, output, data: { repos, sinceDays, topics } }`. Powers the dashboard's Trending tab. |
 | GET | `/reflect?period=` | — | Runs the `reflection` agent: a daily (default)/weekly/monthly review narrative from Outcome Memory + Inbox + Knowledge Graph activity in that window. See `docs/second-brain-roadmap.md`'s Reflection Agent entry. |
+| GET | `/search?q=&limit=&semantic=` | — | Hybrid search: merges and ranks results from Memory, the Knowledge Graph, and the Inbox. `400` if `q` is missing. `semantic=true` uses embedding similarity for the Memory slice. See `docs/search.md`. |
 
 ### Innovation Intelligence (`/innovation/*`)
 
