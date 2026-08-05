@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { EventBus } from "../kernel/event-bus";
 import { MemoryManager } from "../memory/memory-manager";
 import { KnowledgeGraph } from "../graph/knowledge-graph";
+import { MockProvider } from "../providers/mock-provider";
+import type { AIProvider, ChatMessage, ChatResult } from "../providers/types";
 import { InboxManager } from "./inbox-manager";
 
 describe("InboxManager", () => {
@@ -111,5 +113,34 @@ describe("InboxManager", () => {
     const bare = new InboxManager(memory);
     const item = await bare.capture("no graph, no bus");
     expect(item.sourceType).toBe("text");
+  });
+
+  it("has no summary when no provider is configured", async () => {
+    const item = await inbox.capture("no provider here");
+    expect(item.summary).toBeUndefined();
+  });
+
+  it("best-effort summarizes captured content when a provider is configured", async () => {
+    const withProvider = new InboxManager(memory, { provider: new MockProvider() });
+    const item = await withProvider.capture("a long note about rate limiting strategies");
+    expect(item.summary).toContain("a long note about rate limiting strategies");
+  });
+
+  it("never fails capture when the provider throws", async () => {
+    class ThrowingProvider extends MockProvider implements AIProvider {
+      async chat(_messages: ChatMessage[]): Promise<ChatResult> {
+        throw new Error("provider unreachable");
+      }
+    }
+    const withBadProvider = new InboxManager(memory, { provider: new ThrowingProvider() });
+    const item = await withBadProvider.capture("still captured despite provider failure");
+    expect(item.summary).toBeUndefined();
+    expect(item.content).toBe("still captured despite provider failure");
+  });
+
+  it("round-trips the summary field through persist/get", async () => {
+    const withProvider = new InboxManager(memory, { provider: new MockProvider() });
+    const captured = await withProvider.capture("round trip check");
+    expect(withProvider.get(captured.id)?.summary).toBe(captured.summary);
   });
 });

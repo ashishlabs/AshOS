@@ -27,6 +27,8 @@ export interface InboxItem {
   createdAt: string;
   updatedAt: string;
   detectedUrl?: string;
+  /** Best-effort one-sentence AI summary of the captured text itself — not the linked page's content, since there's no fetch tool yet. Absent if no provider was configured or the call failed; capture never blocks on this. */
+  summary?: string;
 }
 
 export interface InboxClassification {

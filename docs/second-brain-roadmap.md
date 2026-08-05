@@ -151,3 +151,37 @@ Cross-store hybrid search) is live.
   "what's waiting for you, right now" — unread Inbox count, the
   top-scored Innovation opportunity, and the most recent Outcome Memory
   failures. Tier 1 of the Second Brain roadmap is now fully shipped.
+
+## Follow-up: closing the two biggest usability gaps in what's shipped
+
+Two gaps identified after Tier 1/2 shipped — the Inbox filed things
+without understanding them, and the daily Reflection required opening
+the dashboard and clicking "Generate" to ever see it. Both closed
+without new architecture:
+
+- **Inbox AI summarization**: `InboxManager`'s optional `provider`
+  (`AshOS.inbox` wires in `providers.active()`) best-effort asks the
+  active provider for a one-sentence summary of the *captured text
+  itself* (not the linked page's content — no fetch tool exists) and
+  stores it as `InboxItem.summary`, shown under each item in the
+  dashboard's Inbox tab. A missing/failing provider never blocks
+  capture — same graceful-degradation convention as everything else in
+  AshOS. See `docs/inbox.md`.
+- **Automatic daily reflection delivery**: `config.reflection` (on by
+  default) plus `AshOS.startScheduledJobs()` registers a cron job — only
+  when the API server process actually starts (`npm run api`), never
+  from a short-lived CLI call or from tests merely constructing an
+  `AshOS` instance — that generates and saves a daily reflection to
+  `.ashos/reflections/<period>-<date>.json` (`agents/reflection-store.ts`,
+  same "save the generated report" convention as
+  `InnovationModule.generateDigest()`). The dashboard's Reflection card
+  now checks for today's saved copy on load and shows it immediately —
+  no click needed if it was already generated — instead of only ever
+  offering a manual "Generate" button. `ash reflect [period] --save`
+  and `--cached`, and `GET /reflect?save=true`/`?cached=true`, expose the
+  same save/read-back behavior from the CLI and REST API.
+
+This still isn't a push notification or an email — it's "the answer is
+already sitting there the next time you open something," which is as far
+as automatic delivery goes without a notification channel AshOS doesn't
+have yet (see `docs/roadmap.md`'s deferred integrations).

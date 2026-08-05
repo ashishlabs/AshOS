@@ -40,7 +40,8 @@ ash inbox add <content...> [-t <tags>]   Capture and auto-classify text/a URL in
 ash inbox list [-s <status>]             List inbox items, newest first
 ash inbox show <id>                      Show full detail for one inbox item
 ash inbox archive <id>                   Mark an inbox item archived
-ash reflect [period]                     Daily (default)/weekly/monthly review narrative from Outcome Memory + Inbox + Knowledge Graph activity
+ash reflect [period] [--save] [--cached]  Daily (default)/weekly/monthly review narrative from Outcome Memory + Inbox + Knowledge Graph activity.
+                                          --save persists it to .ashos/reflections/ so a later --cached call reads it back without another LLM call.
 ash search <query> [-l <n>] [-s]         Hybrid search across Memory, the Knowledge Graph, and the Inbox (-s/--semantic for embedding-based Memory search)
 ```
 

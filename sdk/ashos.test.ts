@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { AshOS } from "./ashos";
+import { loadSavedReflection } from "../agents/reflection-store";
 
 describe("AshOS SDK facade", () => {
   let root: string;
@@ -61,5 +62,48 @@ describe("AshOS SDK facade", () => {
 
     const { opportunities } = await ashos.innovation.runDiscoveryCycle(["market"]);
     expect(opportunities.length).toBeGreaterThan(0);
+  });
+
+  it("generateAndSaveReflection() generates a reflection and persists it so loadSavedReflection() finds it", async () => {
+    const ashos = new AshOS({ root });
+    const saved = await ashos.generateAndSaveReflection("daily");
+    expect(saved.period).toBe("daily");
+    expect(typeof saved.narrative).toBe("string");
+    expect(loadSavedReflection(root, "daily")).toEqual(saved);
+  });
+
+  it("generateAndSaveReflection() emits reflection:generated on the event bus", async () => {
+    const ashos = new AshOS({ root });
+    const seen: unknown[] = [];
+    ashos.kernel.eventBus.on("reflection:generated", (e) => seen.push(e.payload));
+    await ashos.generateAndSaveReflection("weekly");
+    expect(seen).toEqual([{ period: "weekly" }]);
+  });
+
+  it("startScheduledJobs() registers the daily reflection job using config.reflection's cron, and does nothing when disabled", () => {
+    const enabled = new AshOS({ root });
+    enabled.startScheduledJobs();
+    try {
+      const job = enabled.scheduler.list().find((j) => j.id === "daily-reflection");
+      expect(job).toBeDefined();
+      expect(job?.cron).toBe(enabled.kernel.config.reflection.cron);
+    } finally {
+      enabled.scheduler.cancel("daily-reflection");
+    }
+
+    const disabledRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ashos-sdk-reflection-disabled-"));
+    try {
+      const disabled = new AshOS({ root: disabledRoot });
+      disabled.kernel.config.reflection.enabled = false;
+      disabled.startScheduledJobs();
+      expect(disabled.scheduler.list().find((j) => j.id === "daily-reflection")).toBeUndefined();
+    } finally {
+      fs.rmSync(disabledRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("does not schedule any jobs merely by being constructed", () => {
+    const ashos = new AshOS({ root });
+    expect(ashos.scheduler.list()).toHaveLength(0);
   });
 });

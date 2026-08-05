@@ -208,9 +208,18 @@ listener block. Follow this pattern for any new route module.
   WebSocket/MCP transports, visual workflow builder, plugin registry
   installs, distributed execution). Check it before assuming a described
   capability from `docs/architecture.md` is missing by accident.
-- `AshOSConfig.innovation` and `AshOSConfig.router` are required fields
-  (not optional) — `kernel/config.ts`'s `defaultConfig()` always sets
-  both, so don't add `?.` guards for them in new code.
+- `AshOSConfig.innovation`, `AshOSConfig.router`, and `AshOSConfig.reflection`
+  are required fields (not optional) — `kernel/config.ts`'s
+  `defaultConfig()` always sets all three, so don't add `?.` guards for
+  them in new code.
+- `AshOS.startScheduledJobs()` (registers `config.reflection`'s daily
+  cron job on `this.scheduler`) must never be called from the `AshOS`
+  constructor or from `createServer()` — both are constructed freely by
+  tests, and `node-cron`'s `schedule()` creates a real, persistent timer.
+  It's called exactly once, from `api/server.ts`'s
+  `require.main === module` block — the only code path that represents a
+  process actually staying alive long enough for a cron schedule to mean
+  anything.
 - "AshOS Intelligence" (`docs/ashos-intelligence.md`) extends Innovation
   Intelligence (`docs/innovation.md`) rather than replacing it: raw
   `Signal`s are normalized/deduped into canonical `IntelligenceEvent`s

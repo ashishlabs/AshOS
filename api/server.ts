@@ -2,6 +2,8 @@ import "dotenv/config";
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import { AshOS } from "../sdk/ashos";
+import { loadSavedReflection } from "../agents/reflection-store";
+import type { ReflectionPeriod } from "../agents/reflection";
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
@@ -417,8 +419,25 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
   });
 
   app.get("/reflect", async (req, res) => {
-    const period = req.query.period as string | undefined;
+    const period = (req.query.period as ReflectionPeriod | undefined) ?? "daily";
+    const cached = req.query.cached === "true";
+    const save = req.query.save === "true";
+
+    if (cached) {
+      const saved = loadSavedReflection(ashos.kernel.root, period);
+      if (!saved) {
+        res.status(404).json({ error: `no saved ${period} reflection for today yet — call without 'cached=true' to generate one` });
+        return;
+      }
+      res.json(saved);
+      return;
+    }
+
     try {
+      if (save) {
+        res.json(await ashos.generateAndSaveReflection(period));
+        return;
+      }
       const result = await ashos.runAgent("reflection", { description: "reflect", input: { period } });
       if (!result.ok) {
         res.status(500).json({ error: result.error });
@@ -465,7 +484,9 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
 
 if (require.main === module) {
   const port = Number(process.env.ASHOS_API_PORT ?? 4700);
-  const app = createServer();
+  const ashos = new AshOS();
+  const app = createServer(ashos);
+  ashos.startScheduledJobs();
   app.listen(port, () => {
     console.log(`AshOS API listening on http://localhost:${port}`);
   });

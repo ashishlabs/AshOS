@@ -24,6 +24,8 @@ import { CodebaseIndexStore } from "../codebase/codebase-store";
 import { KnowledgeGraph } from "../graph/knowledge-graph";
 import { InboxManager } from "../inbox/inbox-manager";
 import { HybridSearch } from "../search/hybrid-search";
+import { saveReflection, type SavedReflection } from "../agents/reflection-store";
+import type { ReflectionData, ReflectionPeriod } from "../agents/reflection";
 import type { Agent, AgentContext, AgentResult } from "../agents/types";
 import type { WorkflowDefinition } from "../workflow/types";
 import type { TaskGraph } from "../planner/types";
@@ -65,7 +67,7 @@ export class AshOS {
     this.scheduler = new Scheduler(this.kernel.eventBus);
     this.codebase = new CodebaseIndexStore(this.kernel.root);
     this.knowledgeGraph = new KnowledgeGraph(this.kernel.root);
-    this.inbox = new InboxManager(this.memory, { eventBus: this.kernel.eventBus, graph: this.knowledgeGraph });
+    this.inbox = new InboxManager(this.memory, { eventBus: this.kernel.eventBus, graph: this.knowledgeGraph, provider: this.providers.active() });
     this.search = new HybridSearch(this.memory, this.knowledgeGraph, this.inbox);
 
     this.tools = new ToolRegistry();
@@ -127,6 +129,44 @@ export class AshOS {
       eventBus: this.kernel.eventBus
     });
     return engine.run(definition);
+  }
+
+  /**
+   * Generates a reflection narrative (same as `runAgent("reflection", ...)`)
+   * and saves it to `.ashos/reflections/<period>-<date>.json` — see
+   * `agents/reflection-store.ts`. This is what `startScheduledJobs()`'s
+   * daily job calls, and what `GET /reflect`/`ash reflect` call when asked
+   * to save (`?save=true` / `--save`) instead of just printing.
+   */
+  async generateAndSaveReflection(period: ReflectionPeriod = "daily"): Promise<SavedReflection> {
+    const result = await this.runAgent("reflection", { description: `reflect (${period})`, input: { period } });
+    if (!result.ok) throw new Error(result.error ?? "reflection agent failed");
+    const data = result.data as ReflectionData & { narrative: string };
+    const saved: SavedReflection = { ...data, generatedAt: new Date().toISOString() };
+    saveReflection(this.kernel.root, saved);
+    this.kernel.eventBus.emit("reflection:generated", { period });
+    return saved;
+  }
+
+  /**
+   * Registers AshOS's default recurring jobs on `this.scheduler` — today,
+   * just the daily reflection (`config.reflection`, on by default). Not
+   * called from the constructor: cron-based scheduling only means anything
+   * for a process that stays alive (the API server), so this must be
+   * called explicitly from that long-running entry point, never from a
+   * short-lived CLI invocation or from test code that merely constructs an
+   * `AshOS` instance — see `api/server.ts`'s `require.main === module`
+   * block, the only real caller.
+   */
+  startScheduledJobs(): void {
+    if (!this.kernel.config.reflection.enabled) return;
+    this.scheduler.schedule({
+      id: "daily-reflection",
+      cron: this.kernel.config.reflection.cron,
+      run: async () => {
+        await this.generateAndSaveReflection("daily");
+      }
+    });
   }
 
   async loadPlugins(dir: string = `${this.kernel.root}/plugins`): Promise<string[]> {

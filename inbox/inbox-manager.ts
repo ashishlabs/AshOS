@@ -2,10 +2,14 @@ import { randomUUID } from "node:crypto";
 import type { EventBus } from "../kernel/event-bus";
 import type { MemoryManager } from "../memory/memory-manager";
 import type { KnowledgeGraph } from "../graph/knowledge-graph";
+import type { AIProvider } from "../providers/types";
 import { classify } from "./classifier";
 import type { InboxItem, InboxSourceType, InboxStatus } from "./types";
 
 const TAG = "inbox";
+
+const SUMMARY_SYSTEM_PROMPT =
+  "You are AshOS's Inbox summarizer. In one short sentence (under 20 words), describe what this captured item is about so it's recognizable at a glance later. No preamble, no quotes, just the sentence.";
 
 function statusTag(status: InboxStatus): string {
   return `inbox-status:${status}`;
@@ -19,6 +23,8 @@ export interface InboxManagerOptions {
   eventBus?: EventBus;
   /** General-purpose Knowledge Graph — best-effort only, capture never fails because of it (same convention as `CodebaseAnalystAgent.enrichProjectNode`). */
   graph?: KnowledgeGraph;
+  /** When present, `capture()` best-effort asks this provider for a one-sentence summary of the captured text (not the linked page's content — there's no fetch tool yet) and stores it as `InboxItem.summary`. Absent provider or a failed call never blocks capture. */
+  provider?: AIProvider;
 }
 
 /**
@@ -49,7 +55,8 @@ export class InboxManager {
       tags: [...new Set([...(opts.tags ?? []), ...classification.tags])],
       createdAt: now,
       updatedAt: now,
-      detectedUrl: classification.detectedUrl
+      detectedUrl: classification.detectedUrl,
+      summary: await this.summarize(trimmed)
     };
 
     await this.persist(item);
@@ -82,6 +89,23 @@ export class InboxManager {
 
   archive(id: string): Promise<InboxItem> {
     return this.updateStatus(id, "archived");
+  }
+
+  /** Best-effort — never let a slow/unreachable/misconfigured provider block capture. */
+  private async summarize(content: string): Promise<string | undefined> {
+    if (!this.options.provider) return undefined;
+    try {
+      const { content: summary } = await this.options.provider.chat(
+        [
+          { role: "system", content: SUMMARY_SYSTEM_PROMPT },
+          { role: "user", content }
+        ],
+        { temperature: 0.3 }
+      );
+      return summary.trim() || undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   private async persist(item: InboxItem): Promise<void> {

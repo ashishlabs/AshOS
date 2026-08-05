@@ -571,6 +571,49 @@ describe("AshOS API", () => {
     expect(body.inbox.captured).toBeGreaterThan(0);
   });
 
+  it("GET /reflect?cached=true 404s when nothing has been saved yet", async () => {
+    const stubRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ashos-api-reflect-cached-"));
+    const stubApp = createServer(new AshOS({ root: stubRoot }));
+    const stubServer = await new Promise<Server>((resolve) => {
+      const s = stubApp.listen(0, () => resolve(s));
+    });
+    try {
+      const address = stubServer.address();
+      const stubBaseUrl = `http://127.0.0.1:${typeof address === "object" && address ? address.port : 0}`;
+      const res = await fetch(`${stubBaseUrl}/reflect?cached=true`);
+      expect(res.status).toBe(404);
+    } finally {
+      stubServer.close();
+      fs.rmSync(stubRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("GET /reflect?save=true saves a reflection that a later ?cached=true call can read back without regenerating", async () => {
+    const stubRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ashos-api-reflect-save-"));
+    const stubApp = createServer(new AshOS({ root: stubRoot }));
+    const stubServer = await new Promise<Server>((resolve) => {
+      const s = stubApp.listen(0, () => resolve(s));
+    });
+    try {
+      const address = stubServer.address();
+      const stubBaseUrl = `http://127.0.0.1:${typeof address === "object" && address ? address.port : 0}`;
+
+      const saveRes = await fetch(`${stubBaseUrl}/reflect?save=true`);
+      expect(saveRes.status).toBe(200);
+      const saved = (await saveRes.json()) as { period: string; narrative: string; generatedAt: string };
+      expect(saved.period).toBe("daily");
+      expect(typeof saved.narrative).toBe("string");
+
+      const cachedRes = await fetch(`${stubBaseUrl}/reflect?cached=true`);
+      expect(cachedRes.status).toBe(200);
+      const cached = await cachedRes.json();
+      expect(cached).toEqual(saved);
+    } finally {
+      stubServer.close();
+      fs.rmSync(stubRoot, { recursive: true, force: true });
+    }
+  });
+
   it("GET /search 400s without a 'q' query parameter", async () => {
     const res = await fetch(`${baseUrl}/search`);
     expect(res.status).toBe(400);

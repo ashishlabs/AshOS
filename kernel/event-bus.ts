@@ -33,6 +33,7 @@ export type AshOSEventName =
   | "task:verification-failed"
   | "inbox:captured"
   | "inbox:updated"
+  | "reflection:generated"
   | "log";
 
 export interface AshOSEvent<T = unknown> {

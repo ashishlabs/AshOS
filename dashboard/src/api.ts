@@ -69,6 +69,8 @@ export interface ReflectionData {
   inbox: { captured: number; reviewed: number; archived: number };
   knowledgeGraph: { newNodes: number; byKind: Record<string, number> };
   narrative: string;
+  /** Only present on `?cached=true`/`?save=true` responses — when the saved copy was generated. */
+  generatedAt?: string;
 }
 /** Shape of a `MemoryRecord.value` written by `agents/outcome.ts`'s `buildOutcome()`, tagged `"outcome"`/`"failure"`/`"success"`/`<agent name>`. */
 export interface TaskOutcome {
@@ -289,6 +291,7 @@ export interface InboxItem {
   createdAt: string;
   updatedAt: string;
   detectedUrl?: string;
+  summary?: string;
 }
 
 export const api = {
@@ -321,6 +324,14 @@ export const api = {
     post<{ opportunity: Opportunity; created: boolean }>("/innovation/ideas", input),
 
   reflect: (period?: ReflectionPeriod) => get<ReflectionData>(`/reflect${period ? `?period=${period}` : ""}`),
+  /** Reads today's already-saved reflection without calling the LLM again — returns `undefined` if none has been saved yet (404), same "check before generating" pattern the Today's Focus card avoids duplicating. */
+  reflectCached: async (period: ReflectionPeriod = "daily"): Promise<ReflectionData | undefined> => {
+    const res = await fetch(`${BASE}/reflect?period=${period}&cached=true`);
+    if (res.status === 404) return undefined;
+    if (!res.ok) throw new Error(`GET /reflect?cached=true failed: ${res.status}`);
+    return res.json();
+  },
+  reflectSave: (period: ReflectionPeriod = "daily") => get<ReflectionData>(`/reflect?period=${period}&save=true`),
 
   search: (query: string, opts: { limit?: number; semantic?: boolean } = {}) => {
     const params = new URLSearchParams({ q: query });

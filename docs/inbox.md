@@ -37,7 +37,9 @@ InboxManager.capture(content)
 classify(content)  — deterministic, offline (regex-based URL detection:
         │             github.com/youtube/twitter-x/*.pdf/else-article)
         │
-InboxItem { id, content, sourceType, status: "unread", tags, ... }
+summarize(content) — best-effort LLM call (skipped if no provider configured)
+        │
+InboxItem { id, content, sourceType, status: "unread", tags, summary?, ... }
         │
 MemoryManager.remember("project", `inbox:<id>`, item, { tags: ["inbox", `inbox-status:<status>`, sourceType, ...tags] })
         │
@@ -55,6 +57,18 @@ buckets it: `github-repo`, `youtube`, `tweet`, `pdf`, or a generic
 `article` for any other link; content with no URL is `text`. Callers can
 still pass an explicit `sourceType` (used by the `note` type, which has
 no auto-detection path) or extra `tags`.
+
+## AI summarization
+
+`InboxManager`'s optional `provider` (`AshOS.inbox` wires in
+`providers.active()`) turns on a best-effort, one-sentence summary of the
+**captured text itself** — not the linked page's content, since there's
+no fetch tool yet. A bare URL with nothing else gets whatever the model
+can infer from the URL string alone; a note, or a URL pasted alongside
+your own commentary, gets a genuinely useful one-liner. A missing
+provider, a slow/unreachable one, or any thrown error all resolve to
+`summary: undefined` — capture is never blocked or failed by this. Shown
+in the dashboard's Inbox tab under each item's content.
 
 ## Status lifecycle
 
@@ -104,11 +118,14 @@ directly.
   this stage. Blocked on the same media-pipeline gap `docs/roadmap.md`
   already tracks for Video/Vision/Voice agents; see
   `docs/second-brain-roadmap.md` Tier 3.
-- **No LLM-generated summary on capture** — classification is
-  deterministic only, unlike `DailyBriefGenerator`'s narrative
-  generation. Adding a best-effort summary (same graceful-offline-fallback
-  pattern) is natural future work once the capture path itself is proven.
-- **No automatic promotion into Idea Lab / Knowledge Vault entities** —
-  an inbox item stays an inbox item; turning one into a scored
-  Innovation `Opportunity` or a richer Knowledge Vault page is Tier 2/3
-  work (`docs/second-brain-roadmap.md`).
+- **No fetching of a captured URL's actual content** — the AI summary
+  above summarizes whatever text was captured, not the linked page. A
+  bare link with no surrounding text produces a low-information summary,
+  since there's no web-fetch tool yet (`docs/roadmap-v2.md`'s Tier 2 item
+  7 tracks that gap).
+- **No automatic promotion into Knowledge Vault entities** — an inbox
+  item can already be promoted into a scored Innovation `Opportunity`
+  (`ash innovation idea capture`/the dashboard's "Promote to Idea"
+  button), but turning one into a richer Knowledge Vault page is Tier 3
+  work (`docs/second-brain-roadmap.md`) — Knowledge Vault itself doesn't
+  exist yet.

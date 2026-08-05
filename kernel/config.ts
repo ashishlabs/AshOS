@@ -19,6 +19,13 @@ export type IntelligenceDomain = "market" | "github" | "community" | "research" 
 /** How demanding a task is — the unit `ModelRouter` selects a provider by. Deliberately just three tiers, not a numeric score: coarse enough to configure once and forget, per `docs/model-router.md`. */
 export type TaskComplexity = "simple" | "standard" | "complex";
 
+export interface ReflectionConfig {
+  /** On by default: when the API server process actually starts (`npm run api`), a daily reflection is generated and saved automatically — see `AshOS.startScheduledJobs()`. Has no effect on short-lived CLI invocations, which exit before any cron schedule could fire. */
+  enabled: boolean;
+  /** Standard 5-field cron expression for the daily reflection job. */
+  cron: string;
+}
+
 export interface RouterConfig {
   /** Off by default — `providers.active()` (today's fixed single-provider behavior) is used unchanged unless a project explicitly opts in. */
   enabled: boolean;
@@ -41,6 +48,7 @@ export interface AshOSConfig {
   plugins: string[];
   innovation: InnovationConfig;
   router: RouterConfig;
+  reflection: ReflectionConfig;
   createdAt: string;
 }
 
@@ -81,6 +89,10 @@ export function defaultConfig(): AshOSConfig {
       simpleProvider: "ollama",
       standardProvider: "lmstudio",
       complexProvider: "anthropic"
+    },
+    reflection: {
+      enabled: true,
+      cron: "0 8 * * *"
     },
     createdAt: new Date().toISOString()
   };

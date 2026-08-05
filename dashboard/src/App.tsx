@@ -374,18 +374,40 @@ function TodaysFocusCard() {
 
 const REFLECTION_PERIODS: ReflectionPeriod[] = ["daily", "weekly", "monthly"];
 
-/** Daily/weekly/monthly review narrative — same on-demand-generate shape as the Daily Innovation Brief card, since both call a provider and shouldn't auto-poll. */
+/**
+ * Daily/weekly/monthly review narrative. Checks for an already-saved
+ * reflection on load/period-change (`?cached=true` — no LLM call) and
+ * shows it immediately, so opening the dashboard once a day is enough to
+ * see it — no click required, as long as it was generated earlier today
+ * (e.g. by the API server's scheduled daily job, see `AshOS.startScheduledJobs()`,
+ * or by an earlier manual "Generate" this session). "Generate" always
+ * saves too, so the next open of the dashboard today shows it for free.
+ */
 function ReflectionCard() {
   const [period, setPeriod] = useState<ReflectionPeriod>("daily");
   const [reflection, setReflection] = useState<ReflectionData | null>(null);
+  const [checkedCache, setCheckedCache] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCheckedCache(false);
+    setReflection(null);
+    api
+      .reflectCached(period)
+      .then((cached) => {
+        if (cached) setReflection(cached);
+        setError(null);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setCheckedCache(true));
+  }, [period]);
 
   const generate = async () => {
     setLoading(true);
     setError(null);
     try {
-      setReflection(await api.reflect(period));
+      setReflection(await api.reflectSave(period));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -415,11 +437,13 @@ function ReflectionCard() {
           </Select>
           <Button onClick={generate} disabled={loading} variant="outline">
             <BookOpen className="h-4 w-4" />
-            {loading ? "Generating…" : "Generate"}
+            {loading ? "Generating…" : reflection ? "Regenerate" : "Generate"}
           </Button>
         </div>
         <LoadError error={error} />
-        {reflection && (
+        {!checkedCache && !reflection ? (
+          <Skeleton className="h-16 w-full" />
+        ) : reflection ? (
           <div className="space-y-3 rounded-lg border p-3">
             <p className="text-sm whitespace-pre-wrap">{reflection.narrative}</p>
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
@@ -435,8 +459,16 @@ function ReflectionCard() {
               <span>
                 {reflection.knowledgeGraph.newNodes} new graph node{reflection.knowledgeGraph.newNodes === 1 ? "" : "s"}
               </span>
+              {reflection.generatedAt && (
+                <>
+                  <span>·</span>
+                  <span>saved {new Date(reflection.generatedAt).toLocaleTimeString()}</span>
+                </>
+              )}
             </div>
           </div>
+        ) : (
+          <EmptyState>No {period} reflection saved yet today — click Generate.</EmptyState>
         )}
       </CardContent>
     </Card>
@@ -1271,6 +1303,7 @@ function InboxTab() {
                     </Badge>
                     {item.content}
                   </span>
+                  {item.summary && <p className="mt-1 text-xs text-muted-foreground italic">{item.summary}</p>}
                   {promoted[item.id] && (
                     <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                       <Lightbulb className="h-3 w-3" />
