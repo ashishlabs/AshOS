@@ -41,4 +41,22 @@ export function registerGraphCommand(program: Command): void {
       }
       for (const { node, edge } of neighbors) console.log(`--${edge.kind}(${edge.weight})--> [${node.kind}] ${node.label}`);
     });
+
+  cmd
+    .command("edges")
+    .description("List every edge in the graph")
+    .action(() => {
+      const ashos = new AshOS();
+      const edges = ashos.knowledgeGraph.listEdges();
+      if (edges.length === 0) {
+        console.log("No edges recorded yet — edges are created automatically as agents run.");
+        return;
+      }
+      const byId = new Map(ashos.knowledgeGraph.listNodes().map((n) => [n.id, n]));
+      for (const edge of edges) {
+        const from = byId.get(edge.from);
+        const to = byId.get(edge.to);
+        console.log(`[${from?.kind ?? "?"}] ${from?.label ?? edge.from} --${edge.kind}(${edge.weight})--> [${to?.kind ?? "?"}] ${to?.label ?? edge.to}`);
+      }
+    });
 }

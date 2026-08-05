@@ -36,6 +36,7 @@ ash codebase list                        List every repository indexed so far
 ash graph stats                          Show general Knowledge Graph node/edge counts, grouped by kind
 ash graph nodes [-k <kind>]              List nodes, optionally filtered by kind (project|agent|task|...)
 ash graph neighbors <id>                 Show every node directly connected to the given node id
+ash graph edges                          List every edge in the graph
 ash inbox add <content...> [-t <tags>]   Capture and auto-classify text/a URL into the Universal Inbox
 ash inbox list [-s <status>]             List inbox items, newest first
 ash inbox show <id>                      Show full detail for one inbox item

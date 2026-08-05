@@ -8,20 +8,11 @@ behind every claim below.
 
 ---
 
-### Knowledge Graph (data model complete, no visual UI)
-
-- ✔ **Done:** namespace-aware `KnowledgeGraph` class, auto-population by
-  every `BaseAgent` execution and `InboxManager.enrichGraph()`, real
-  typed edges, CLI (`ash graph stats/nodes/neighbors`) and REST
-  (`/graph*`) surfaces, full test coverage.
-- ✖ **Missing:** any visual/interactive representation in the dashboard.
-  Zero graph-rendering code exists anywhere in `dashboard/`.
-- ⚠ **Should be improved:** node deletion has no referential-integrity
-  handling for orphaned edges (currently moot since nothing deletes
-  nodes, but latent).
-- 🚀 **Next implementation step:** build a dashboard graph view (client-
-  side node-link rendering) consuming the existing `GET /graph/nodes` and
-  `GET /graph/nodes/:id/neighbors` routes — zero backend changes needed.
+**Knowledge Graph** graduated out of this file — data model, population,
+and a dashboard visualization (`GraphTab`, force layout, click-to-highlight
+connections) are all now real; see `feature-matrix.md`. One latent item
+carried forward: node deletion still has no referential-integrity
+handling for orphaned edges (moot today since nothing deletes nodes).
 
 ---
 

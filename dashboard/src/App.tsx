@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
   Brain,
@@ -10,6 +10,7 @@ import {
   ListTodo,
   Menu,
   Moon,
+  Network,
   Newspaper,
   Play,
   Radar,
@@ -46,7 +47,10 @@ import {
   type InboxItem,
   type InboxStatus,
   type InnovationConfig,
+  type KnowledgeEdge,
   type KnowledgeGraphStats,
+  type KnowledgeNode,
+  type KnowledgeNodeKind,
   type LogEntry,
   type IntelligenceEvent,
   type MemoryRecord,
@@ -63,14 +67,16 @@ import {
   type TrendingReposResult,
   type WorkflowStepResultDTO
 } from "./api";
+import { computeForceLayout, kindColor } from "./graph-layout";
 
-type Tab = "dashboard" | "inbox" | "timeline" | "search" | "plan" | "workflow" | "innovation" | "trending" | "memory" | "logs" | "chat";
+type Tab = "dashboard" | "inbox" | "timeline" | "search" | "graph" | "plan" | "workflow" | "innovation" | "trending" | "memory" | "logs" | "chat";
 
 const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "inbox", label: "Inbox", icon: InboxIcon },
   { id: "timeline", label: "Timeline", icon: Clock },
   { id: "search", label: "Search", icon: Search },
+  { id: "graph", label: "Graph", icon: Network },
   { id: "plan", label: "Plan", icon: ListTodo },
   { id: "workflow", label: "Workflow", icon: GitBranch },
   { id: "innovation", label: "Innovation", icon: Lightbulb },
@@ -137,6 +143,7 @@ const TAB_PANELS: Record<Tab, React.ComponentType> = {
   inbox: InboxTab,
   timeline: TimelineTab,
   search: SearchTab,
+  graph: GraphTab,
   plan: PlanTab,
   workflow: WorkflowTab,
   innovation: InnovationTab,
@@ -1548,6 +1555,212 @@ function SearchTab() {
               ))}
             </ul>
           )
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+const GRAPH_WIDTH = 800;
+const GRAPH_HEIGHT = 520;
+
+/**
+ * Visualizes the general Knowledge Graph (`GET /graph/nodes` + `GET
+ * /graph/edges`) — projects, agents, tasks, and captured resources,
+ * populated automatically as you use AshOS (`docs/knowledge-graph.md`).
+ * Layout is computed once per node/edge-set change via a small
+ * dependency-free force simulation (`graph-layout.ts`), not on every
+ * render, so selecting a node highlights it without the whole graph
+ * jumping around. No auto-polling — the graph doesn't change fast enough
+ * to warrant it, and it'd be visually disruptive mid-interaction; use
+ * Refresh after running something that adds nodes.
+ */
+function GraphTab() {
+  const [nodes, setNodes] = useState<KnowledgeNode[]>([]);
+  const [edges, setEdges] = useState<KnowledgeEdge[]>([]);
+  const [kindFilter, setKindFilter] = useState<KnowledgeNodeKind | "all">("all");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    setLoading(true);
+    Promise.all([api.graphNodes(), api.graphEdges()])
+      .then(([n, e]) => {
+        setNodes(n);
+        setEdges(e);
+        setError(null);
+      })
+      .catch((e) => setError((e as Error).message))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const kinds = useMemo(() => [...new Set(nodes.map((n) => n.kind))].sort(), [nodes]);
+  const visibleNodes = kindFilter === "all" ? nodes : nodes.filter((n) => n.kind === kindFilter);
+  const visibleIds = useMemo(() => new Set(visibleNodes.map((n) => n.id)), [visibleNodes]);
+  const visibleEdges = edges.filter((e) => visibleIds.has(e.from) && visibleIds.has(e.to));
+
+  const nodeKey = visibleNodes.map((n) => n.id).join(",");
+  const edgeKey = visibleEdges.map((e) => e.id).join(",");
+  const positions = useMemo(
+    () => computeForceLayout(visibleNodes, visibleEdges, { width: GRAPH_WIDTH, height: GRAPH_HEIGHT }),
+    // Recompute only when the visible node/edge *set* actually changes, not on every render —
+    // otherwise clicking a node to select it would re-run the simulation and jump the whole layout.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [nodeKey, edgeKey]
+  );
+
+  const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
+  const selectedNode = selectedId ? (byId.get(selectedId) ?? null) : null;
+  const selectedNeighborIds = useMemo(() => {
+    if (!selectedId) return new Set<string>();
+    const ids = new Set<string>();
+    for (const e of edges) {
+      if (e.from === selectedId) ids.add(e.to);
+      if (e.to === selectedId) ids.add(e.from);
+    }
+    return ids;
+  }, [selectedId, edges]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Knowledge Graph</CardTitle>
+        <CardDescription>
+          How your projects, agents, tasks, and captured resources connect — populated automatically as you use AshOS.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            value={kindFilter}
+            onValueChange={(v) => {
+              setKindFilter(v as KnowledgeNodeKind | "all");
+              setSelectedId(null);
+            }}
+          >
+            <SelectTrigger className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">all kinds</SelectItem>
+              {kinds.map((k) => (
+                <SelectItem key={k} value={k}>
+                  {k}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" onClick={load} disabled={loading}>
+            <RefreshCw className="h-4 w-4" />
+            {loading ? "Loading…" : "Refresh"}
+          </Button>
+          <Badge variant="secondary">{nodes.length} nodes</Badge>
+          <Badge variant="secondary">{edges.length} edges</Badge>
+        </div>
+
+        <LoadError error={error} />
+
+        {loading && nodes.length === 0 ? (
+          <Skeleton className="h-[520px] w-full" />
+        ) : nodes.length === 0 && !error ? (
+          <EmptyState>No graph data yet — nodes are created automatically as agents run.</EmptyState>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
+            <div className="overflow-x-auto rounded-lg border bg-card/30">
+              <svg viewBox={`0 0 ${GRAPH_WIDTH} ${GRAPH_HEIGHT}`} className="h-[520px] w-full min-w-[500px]">
+                {visibleEdges.map((edge) => {
+                  const from = positions.get(edge.from);
+                  const to = positions.get(edge.to);
+                  if (!from || !to) return null;
+                  const dimmed = Boolean(selectedId) && edge.from !== selectedId && edge.to !== selectedId;
+                  return (
+                    <line
+                      key={edge.id}
+                      x1={from.x}
+                      y1={from.y}
+                      x2={to.x}
+                      y2={to.y}
+                      stroke="currentColor"
+                      className={dimmed ? "text-border/30" : "text-border"}
+                      strokeWidth={Math.min(1 + edge.weight * 0.5, 4)}
+                    />
+                  );
+                })}
+                {visibleNodes.map((node) => {
+                  const p = positions.get(node.id);
+                  if (!p) return null;
+                  const isSelected = node.id === selectedId;
+                  const isNeighbor = selectedNeighborIds.has(node.id);
+                  const dimmed = Boolean(selectedId) && !isSelected && !isNeighbor;
+                  return (
+                    <g
+                      key={node.id}
+                      transform={`translate(${p.x}, ${p.y})`}
+                      className="cursor-pointer"
+                      opacity={dimmed ? 0.35 : 1}
+                      onClick={() => setSelectedId(isSelected ? null : node.id)}
+                    >
+                      <circle r={isSelected ? 10 : 7} fill={kindColor(node.kind)} stroke={isSelected ? "currentColor" : "none"} strokeWidth={2} className="text-foreground" />
+                      <text y={isSelected ? 22 : 18} textAnchor="middle" className="fill-foreground text-[10px]" style={{ pointerEvents: "none" }}>
+                        {node.label.length > 18 ? `${node.label.slice(0, 16)}…` : node.label}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Legend</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {kinds.map((k) => (
+                    <span key={k} className="flex items-center gap-1 text-xs">
+                      <span className="h-2 w-2 rounded-full" style={{ background: kindColor(k) }} />
+                      {k}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <Separator />
+              {selectedNode ? (
+                <div className="space-y-2 text-sm">
+                  <p className="font-medium break-words">{selectedNode.label}</p>
+                  <Badge variant="outline">{selectedNode.kind}</Badge>
+                  {selectedNode.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {selectedNode.tags.map((t) => (
+                        <Badge key={t} variant="secondary" className="text-[10px]">
+                          {t}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {selectedNeighborIds.size} connection{selectedNeighborIds.size === 1 ? "" : "s"}
+                  </p>
+                  <ul className="space-y-1 text-xs">
+                    {[...selectedNeighborIds].slice(0, 20).map((id) => {
+                      const n = byId.get(id);
+                      return n ? (
+                        <li key={id} className="cursor-pointer truncate hover:text-primary" onClick={() => setSelectedId(id)}>
+                          [{n.kind}] {n.label}
+                        </li>
+                      ) : null;
+                    })}
+                  </ul>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">Click a node to see its details and connections.</p>
+              )}
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>

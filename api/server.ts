@@ -365,6 +365,10 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     res.json(ashos.knowledgeGraph.neighbors(req.params.id));
   });
 
+  app.get("/graph/edges", (_req, res) => {
+    res.json(ashos.knowledgeGraph.listEdges());
+  });
+
   app.post("/inbox", async (req, res) => {
     if (!isNonEmptyString(req.body?.content)) {
       res.status(400).json({ error: "'content' must be a non-empty string" });

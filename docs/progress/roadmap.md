@@ -16,8 +16,9 @@ intentionally small; resist folding Phase 3-shaped work into this phase.
 **Expected impact:** turns 4 currently-partial features into complete
 ones, and removes the single largest regression risk in the codebase.
 
-1. AI summarization in the Inbox capture path (reuse Reflection Agent's
-   "best-effort LLM call + graceful offline fallback" pattern).
+1. ✅ **Shipped** — AI summarization in the Inbox capture path, further
+   grounded in fetched page content via a new `WebFetchTool` for
+   captured URLs.
 2. Semantic search extended to the Graph and Inbox slices of
    `HybridSearch`, not just Memory.
 3. Dashboard automated test suite — start with the 4 newest tabs
@@ -28,24 +29,25 @@ ones, and removes the single largest regression risk in the codebase.
 
 ## Phase 2 — Close the last named North Star gap + visualize existing data
 
-**Estimated effort:** 2-3 weeks.
-**Dependencies:** none new for agents (reuses `BaseAgent`); a graph
-visualization needs a client-side graph-rendering approach (canvas/SVG
-node-link — no new backend dependency).
-**Risks:** low-medium — the graph visualization is the one item here
-with real design work (layout algorithm, interaction model), not just
-wiring.
-**Expected impact:** closes North Star v2 to 100% and makes the
-already-populated Knowledge Graph actually visible for the first time.
+**Estimated effort:** 2-3 weeks (~1 week remaining — items 6 and half of
+8 are done).
+**Dependencies:** none new for agents (reuses `BaseAgent`).
+**Risks:** low.
+**Expected impact:** closes North Star v2 to 100%.
 
 5. Named specialist agents: Reviewer, Security Auditor, DevOps Engineer,
    UI Designer, Architect (role-prompt subclasses of `BaseAgent`, same
    pattern as `agents/code-agent.ts`).
-6. Interactive Knowledge Graph visualization in the dashboard.
+6. ✅ **Shipped** — interactive Knowledge Graph visualization in the
+   dashboard (`GraphTab`, `dashboard/src/graph-layout.ts`, new
+   `GET /graph/edges` route): force-directed layout, colored/filterable
+   by kind, click to highlight a node's connections.
 7. CLI/REST surface for the Scheduler (`ash schedule ...`,
    `/scheduler*`) — thin wrapper, `Scheduler` class is already complete.
-8. Generic web-search/fetch tool + generalize `ResearchAgent` beyond
-   AI-ecosystem-scoped signals.
+8. 🟡 **Half shipped** — `WebFetchTool` exists and grounds Inbox link
+   summaries in real page content; `ResearchAgent` itself still isn't
+   wired to use it, and there's no dedicated *search* (topic → URLs)
+   tool, only *fetch* (URL → text).
 
 ## Phase 3 — The scope decision, then the real net-new work
 

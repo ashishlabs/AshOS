@@ -26,7 +26,7 @@ Refactor.
 | Local Codebase Intelligence | ✅ | 100% (v1 scope) | High | Substring search only, no semantic code search |
 | Repository Intelligence (external) | ✅ | 100% | High | Real GitHub API, cached |
 | Technology Radar | ✅ | 100% | Medium | Classification quality depends on signal volume |
-| Knowledge Graph (data model + population) | 🟡 | 70% | High | Real and auto-populated; **no visual UI at all** |
+| Knowledge Graph (data model + population + visualization) | ✅ | 95% | High | Real, auto-populated, and now visualized in a dashboard Graph tab (force layout, colored/filterable by kind, click to highlight connections); still no `repository` nodes from external Repository Intelligence |
 | Innovation Intelligence (discovery, scoring, digest) | ✅ | 100% | High | Only GitHub collector proven live in this sandbox; HN/Reddit/arXiv are real but unverified live here |
 | Verification Gate | ✅ | 100% | High | On by default, tested (pass + fail paths, live-verified) |
 | Multi-Agent Specialist Roles | 🟡 | 45% | Medium | 5 of 11 named roles exist; still missing Reviewer, Security Auditor, DevOps, UI Designer, Architect, Video Creator |
@@ -60,5 +60,5 @@ Refactor.
 | Creative Studio (media generation) | 🔴 | No image/video/audio provider or dependency |
 | Real database (vs. JSON files) | 🔴 | See `implementation-status.md` Section 15 |
 
-**Rollup:** 20 ✅/mostly-complete rows, 8 🟡 partial rows, 10 🔴 not-started
+**Rollup:** 21 ✅/mostly-complete rows, 7 🟡 partial rows, 10 🔴 not-started
 rows across 38 tracked features.

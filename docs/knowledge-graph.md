@@ -81,13 +81,35 @@ ash graph neighbors <node-id>      # everything directly connected to a node
 ```
 
 Or the REST API: `GET /graph` (stats), `GET /graph/nodes?kind=`,
-`GET /graph/nodes/:id/neighbors`.
+`GET /graph/nodes/:id/neighbors`, `GET /graph/edges` (every edge, added
+alongside the dashboard visualization below — the per-node `neighbors`
+route doesn't scale to "give me the whole graph" without one request per
+node).
 
 Example: after running one goal and then indexing the same directory,
 `ash graph nodes --kind project` shows one project node whose `neighbors`
 include both the task that ran there and the task that indexed it —
 `ash graph neighbors <project-node-id>` traces both back to their
 respective agents.
+
+## Dashboard visualization
+
+The dashboard's **Graph** tab renders the whole graph visually — fetching
+`GET /graph/nodes` and `GET /graph/edges` once, then laying it out with a
+small, dependency-free force simulation (`dashboard/src/graph-layout.ts`:
+repulsion between every node pair, spring attraction along edges,
+simulated-annealing cooling — the same category of algorithm a library
+like d3-force provides, hand-rolled instead of adding one, the same
+"no vendor SDK where a transparent implementation will do" convention as
+`codebase/indexer.ts`'s regex symbol extraction). Nodes are colored by
+kind (a deterministic string-hash-to-color function, so every kind —
+including ones added later — gets a stable color with no palette to keep
+in sync), filterable by kind, and clickable: selecting a node dims
+everything not directly connected to it and lists its neighbors by kind
+and label in a side panel. The layout is recomputed only when the visible
+node/edge *set* changes (not on every render), so selecting a node
+highlights it without the rest of the graph jumping around. No
+auto-polling — click Refresh after running something that adds nodes.
 
 ## Relationship to Innovation Intelligence's own graph
 
@@ -109,8 +131,6 @@ separate general-purpose surface at `.ashos/graph.json`.
   written" — `idea`/`product` are the closest existing kinds; a real need
   for these should add new `KnowledgeNodeKind` values the same low-risk
   way `task` was added.
-- **No graph visualization** — the dashboard doesn't have a Knowledge
-  Graph card yet; `ash graph nodes`/`neighbors` are the only views today.
 - **No cross-file relationship tracking** (imports, call graphs) inside a
   single project — `CodebaseAnalystAgent`'s own index knows files and
   symbols but doesn't yet feed individual files/symbols into the graph as

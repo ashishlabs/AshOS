@@ -49,7 +49,14 @@ ash graph neighbors <node-id>
 curl http://localhost:4700/graph
 curl "http://localhost:4700/graph/nodes?kind=task"
 curl http://localhost:4700/graph/nodes/<id>/neighbors
+curl http://localhost:4700/graph/edges
 ```
+
+**Or visually:** the dashboard's **Graph** tab draws the whole thing —
+nodes colored by kind, click one to see its details and highlight its
+connections, filter to just one kind at a time. This is the easiest way
+to actually *see* how things connect, rather than piecing it together
+from CLI/REST calls one node at a time.
 
 ## 4. Example walkthrough
 
@@ -68,8 +75,11 @@ node, not a duplicate, because both writers key on the same project path.
 
 - No `repository` nodes yet — [Repository Intelligence (external)](./repository-intelligence.md)
   doesn't write into this graph today.
-- No decision/document node kinds, and no dashboard visualization yet —
-  CLI/REST only.
+- No decision/document node kinds yet.
+- The dashboard visualization doesn't auto-refresh — click Refresh after
+  running something that adds nodes. It's also a simple force layout,
+  not built for very large graphs (fine for the tens-to-hundreds of
+  nodes one project accumulates).
 - No cross-file relationship tracking (imports, call graphs) — that's a
   natural future extension shared with Codebase Intelligence.
 - Full technical detail: `docs/knowledge-graph.md`.

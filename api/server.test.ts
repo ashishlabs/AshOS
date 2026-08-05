@@ -437,6 +437,11 @@ describe("AshOS API", () => {
 
         const neighbors = (await (await fetch(`${graphBaseUrl}/graph/nodes/${agentNodes[0].id}/neighbors`)).json()) as { edge: { kind: string } }[];
         expect(neighbors.some((n) => n.edge.kind === "produced-by")).toBe(true);
+
+        const edges = (await (await fetch(`${graphBaseUrl}/graph/edges`)).json()) as { from: string; to: string; kind: string }[];
+        expect(edges.length).toBeGreaterThanOrEqual(2); // task--produced-by-->agent, task--part-of-->project
+        expect(edges.some((e) => e.kind === "produced-by")).toBe(true);
+        expect(edges.some((e) => e.kind === "part-of")).toBe(true);
       } finally {
         graphServer.close();
       }

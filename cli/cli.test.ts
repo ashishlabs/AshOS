@@ -379,6 +379,12 @@ describe("CLI commands", () => {
     await program.parseAsync(["node", "ash", "graph", "neighbors", agentNodeId]);
     output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
     expect(output).toContain("produced-by");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "graph", "edges"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("produced-by");
+    expect(output).toContain("part-of");
   });
 
   it("graph nodes reports nothing when no kind matches", async () => {

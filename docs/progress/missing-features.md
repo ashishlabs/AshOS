@@ -8,20 +8,18 @@ brief plus the existing North Star roadmap.
 
 ## Critical
 
-1. **AI summarization in the Inbox capture path.** Right now, capturing a
-   URL/note stores it verbatim and classifies it by regex — nothing reads
-   or understands it. This is the single highest-leverage gap: every
-   downstream Second Brain feature (Search relevance, Reflection quality,
-   a future Knowledge Vault) is more valuable once captured content is
-   *understood*, not just filed. Low effort relative to impact — the
-   Reflection Agent already shows the exact pattern (`context.provider.chat()`
-   with a graceful offline fallback) to reuse here.
+1. **~~AI summarization in the Inbox capture path.~~ Closed.**
+   `InboxManager.capture()` now best-effort asks the active provider for
+   a one-sentence summary (`InboxItem.summary`), and — for captured URLs —
+   grounds it in the linked page's actual fetched text via `WebFetchTool`
+   (`tools/web-fetch-tool.ts`) rather than just the URL string. Shown in
+   the dashboard's Inbox tab.
 
-2. **A visual Knowledge Graph in the dashboard.** The data is real,
-   populated automatically, and queryable via CLI/REST — but there is
-   zero visual representation anywhere. For a feature whose entire value
-   proposition is "see how things connect," a JSON API response is not
-   that. This is a pure frontend task; no backend work needed.
+2. **~~A visual Knowledge Graph in the dashboard.~~ Closed.** A **Graph**
+   tab now renders the whole graph — nodes colored/filterable by kind,
+   click a node to highlight its connections — via a small dependency-free
+   force layout (`dashboard/src/graph-layout.ts`) over `GET /graph/nodes`
+   + the new `GET /graph/edges`.
 
 3. **Explicit scope decision on Knowledge Vault, Project Workspace, and
    Learning Hub.** These are three of eight named pillars with *zero*

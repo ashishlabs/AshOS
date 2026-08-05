@@ -280,6 +280,30 @@ export interface SearchResult {
   score: number;
 }
 
+export type KnowledgeNodeKind =
+  | "person" | "company" | "repository" | "product" | "idea" | "problem" | "industry" | "technology"
+  | "community" | "language" | "framework" | "market" | "startup" | "paper" | "workflow" | "agent"
+  | "project" | "skill" | "tool" | "task" | "resource";
+export interface KnowledgeNode {
+  id: string;
+  kind: KnowledgeNodeKind;
+  label: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+  data?: Record<string, unknown>;
+}
+export type KnowledgeEdgeKind = "relates-to" | "produced-by" | "competes-with" | "part-of" | "mentions" | "solves";
+export interface KnowledgeEdge {
+  id: string;
+  from: string;
+  to: string;
+  kind: KnowledgeEdgeKind;
+  weight: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type InboxSourceType = "text" | "note" | "url" | "article" | "github-repo" | "youtube" | "tweet" | "pdf";
 export type InboxStatus = "unread" | "reviewed" | "archived";
 export interface InboxItem {
@@ -332,6 +356,10 @@ export const api = {
     return res.json();
   },
   reflectSave: (period: ReflectionPeriod = "daily") => get<ReflectionData>(`/reflect?period=${period}&save=true`),
+
+  graph: () => get<KnowledgeGraphStats>("/graph"),
+  graphNodes: (kind?: KnowledgeNodeKind) => get<KnowledgeNode[]>(`/graph/nodes${kind ? `?kind=${kind}` : ""}`),
+  graphEdges: () => get<KnowledgeEdge[]>("/graph/edges"),
 
   search: (query: string, opts: { limit?: number; semantic?: boolean } = {}) => {
     const params = new URLSearchParams({ q: query });

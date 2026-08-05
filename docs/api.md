@@ -87,6 +87,7 @@ See `docs/inbox.md`. Items are `MemoryManager` project-scope records, not a sepa
 | GET | `/graph` | — | Node/edge counts, grouped by kind, for the general project-wide graph (distinct from `/innovation/graph`, which reports Innovation Intelligence's own namespaced graph). |
 | GET | `/graph/nodes?kind=` | — | List nodes, optionally filtered by kind (`project`, `agent`, `task`, ...). |
 | GET | `/graph/nodes/:id/neighbors` | — | Every node directly connected to the given node id, with the connecting edge. |
+| GET | `/graph/edges` | — | Every edge in the graph. Powers the dashboard's Graph tab visualization, which needs the whole edge set at once rather than one `neighbors` call per node. |
 
 Populated automatically by every agent execution (`BaseAgent`) and enriched by `CodebaseAnalystAgent` — see `docs/knowledge-graph.md`.
 
