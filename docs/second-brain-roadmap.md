@@ -56,7 +56,7 @@ second, parallel capture path.
 
 ### Tier 1 — build now, no new architecture, unblocks everything else
 
-1. **Universal Inbox** (this change). A single capture point
+1. ✅ **Universal Inbox** (shipped). A single capture point
    (`ash inbox add`, `POST /inbox`) that deterministically classifies
    content (text/url/github-repo/youtube/tweet/article/pdf), persists via
    the *existing* `MemoryManager` (project scope, tagged `inbox`) instead
@@ -68,11 +68,13 @@ second, parallel capture path.
    media-pipeline gap already tracked in `docs/roadmap.md` for
    Video/Vision/Voice agents — text and URL capture (the majority of real
    "second brain" capture volume) ships now.
-2. **Memory Timeline view** — a dashboard page reading `GET /events` +
-   `GET /memory` chronologically. Zero new backend code; the event bus
-   already logs everything (`docs/architecture.md`'s event-driven
-   principle). Natural follow-up once Inbox exists (its `inbox:captured`
-   events feed the same timeline).
+2. ✅ **Memory Timeline view** (shipped). Dashboard `Timeline` tab merging
+   `GET /events` + `GET /memory` into one chronological, searchable feed
+   — zero new backend code, exactly as scoped. Filters out the `log`
+   event (mirrors every other event 1:1, see `kernel/kernel.ts`) and
+   `memory:updated` (duplicates the richer memory record already shown),
+   maps every other event name to a one-line human summary, and merges
+   in Inbox captures for free (`inbox:captured` was already on the bus).
 3. **Dashboard "Today's Focus" widget** — surface unread Inbox count +
    top Innovation opportunity + recent Outcome Memory failures on
    `DashboardTab`. Pure composition of three already-shipped read APIs.
@@ -103,11 +105,15 @@ second, parallel capture path.
    gap `docs/roadmap.md` already tracks for Video/Vision/Voice agents;
    revisit together, not separately, once that's scoped.
 
-## This change
+## Shipped so far
 
-Implements Tier 1 item 1 (Universal Inbox) end to end: `inbox/` package,
-`AshOS.inbox`, `ash inbox add/list/show/archive` CLI, `/inbox*` REST
-routes, and a dashboard Inbox tab for quick capture + review. See
-`docs/inbox.md` for the subsystem's own detailed design, following the
-same per-subsystem doc convention as `docs/codebase-intelligence.md` and
-`docs/knowledge-graph.md`.
+- **Tier 1 item 1 — Universal Inbox**: `inbox/` package, `AshOS.inbox`,
+  `ash inbox add/list/show/archive` CLI, `/inbox*` REST routes, and a
+  dashboard Inbox tab for quick capture + review. See `docs/inbox.md`
+  for the subsystem's own detailed design, following the same
+  per-subsystem doc convention as `docs/codebase-intelligence.md` and
+  `docs/knowledge-graph.md`.
+- **Tier 1 item 2 — Memory Timeline view**: dashboard-only `Timeline`
+  tab (`dashboard/src/App.tsx`'s `TimelineTab`) merging `GET /events`
+  and `GET /memory` into one chronological, keyword-filterable feed. No
+  backend changes.

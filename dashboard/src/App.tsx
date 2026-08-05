@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Brain,
+  Clock,
   GitBranch,
   Inbox as InboxIcon,
   LayoutDashboard,
@@ -58,11 +59,12 @@ import {
   type WorkflowStepResultDTO
 } from "./api";
 
-type Tab = "dashboard" | "inbox" | "plan" | "workflow" | "innovation" | "trending" | "memory" | "logs" | "chat";
+type Tab = "dashboard" | "inbox" | "timeline" | "plan" | "workflow" | "innovation" | "trending" | "memory" | "logs" | "chat";
 
 const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "inbox", label: "Inbox", icon: InboxIcon },
+  { id: "timeline", label: "Timeline", icon: Clock },
   { id: "plan", label: "Plan", icon: ListTodo },
   { id: "workflow", label: "Workflow", icon: GitBranch },
   { id: "innovation", label: "Innovation", icon: Lightbulb },
@@ -127,6 +129,7 @@ function StatusPill() {
 const TAB_PANELS: Record<Tab, React.ComponentType> = {
   dashboard: DashboardTab,
   inbox: InboxTab,
+  timeline: TimelineTab,
   plan: PlanTab,
   workflow: WorkflowTab,
   innovation: InnovationTab,
@@ -1078,6 +1081,143 @@ function InboxTab() {
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+interface TimelineEntry {
+  id: string;
+  timestamp: string;
+  kind: "event" | "memory";
+  category: string;
+  summary: string;
+  detail?: string;
+}
+
+/** `event.name`/mirrored-`log` duplicate every other event 1:1 (see kernel/kernel.ts), and `memory:updated` duplicates the richer memory record fetched separately — both are noise on a "what happened, in order" timeline. */
+const TIMELINE_EVENT_EXCLUDE = new Set(["log", "memory:updated"]);
+
+function summarizeEvent(event: AshOSEvent): string {
+  const p = (event.payload ?? {}) as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === "string" ? v : undefined);
+  switch (true) {
+    case event.name.startsWith("task:"):
+      return `${event.name} — ${str(p.title) ?? str(p.id) ?? ""}`;
+    case event.name.startsWith("agent:"):
+      return `${event.name} — ${str(p.agent) ?? ""}`;
+    case event.name.startsWith("workflow:"):
+      return `${event.name} — ${str(p.goal) ?? str(p.name) ?? ""}`;
+    case event.name === "inbox:captured":
+      return `Captured inbox item (${str(p.sourceType) ?? "?"})`;
+    case event.name === "inbox:updated":
+      return `Inbox item marked ${str(p.status) ?? "?"}`;
+    case event.name === "codebase:indexed":
+      return `Indexed ${String(p.fileCount ?? "?")} file(s) in ${str(p.root) ?? "?"}`;
+    case event.name.startsWith("innovation:"):
+      return `${event.name} — ${str(p.title) ?? str(p.domain) ?? ""}`;
+    case event.name === "tool:executed":
+      return `Tool executed — ${str(p.name) ?? ""}`;
+    case event.name.startsWith("permission:"):
+      return `${event.name} — ${str(p.command) ?? str(p.pattern) ?? ""}`;
+    case event.name.startsWith("plugin:"):
+      return `${event.name} — ${str(p.name) ?? ""}`;
+    case event.name === "scheduler:job-fired":
+      return `Scheduled job fired — ${str(p.name) ?? str(p.id) ?? ""}`;
+    default:
+      return event.name;
+  }
+}
+
+function buildTimeline(events: AshOSEvent[], records: MemoryRecord[]): TimelineEntry[] {
+  const fromEvents: TimelineEntry[] = events
+    .filter((e) => !TIMELINE_EVENT_EXCLUDE.has(e.name))
+    .map((e, i) => ({
+      id: `event-${e.timestamp}-${i}`,
+      timestamp: e.timestamp,
+      kind: "event",
+      category: e.name.split(":")[0],
+      summary: summarizeEvent(e)
+    }));
+
+  const fromMemory: TimelineEntry[] = records.map((r) => ({
+    id: `memory-${r.id}`,
+    timestamp: r.createdAt,
+    kind: "memory",
+    category: "memory",
+    summary: `${r.scope} · ${r.key}`,
+    detail: JSON.stringify(r.value)
+  }));
+
+  return [...fromEvents, ...fromMemory].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+}
+
+function TimelineTab() {
+  const [entries, setEntries] = useState<TimelineEntry[]>([]);
+  const [filter, setFilter] = useState<"all" | "event" | "memory">("all");
+  const [query, setQuery] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = () =>
+      Promise.all([api.events(), api.memoryList()])
+        .then(([events, records]) => {
+          setEntries(buildTimeline(events, records));
+          setError(null);
+        })
+        .catch((e) => setError(e.message));
+    load();
+    const interval = setInterval(load, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const q = query.trim().toLowerCase();
+  const visible = entries.filter((e) => {
+    if (filter !== "all" && e.kind !== filter) return false;
+    if (q && !e.summary.toLowerCase().includes(q) && !e.detail?.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Timeline</CardTitle>
+        <CardDescription>Everything AshOS has done and remembered, newest first — the event bus and Memory, merged into one searchable feed.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter by keyword..." className="flex-1" />
+          <Select value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">all</SelectItem>
+              <SelectItem value="event">events</SelectItem>
+              <SelectItem value="memory">memory</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <LoadError error={error} />
+        {visible.length === 0 && !error ? (
+          <EmptyState>Nothing to show yet — timeline fills in as AshOS runs.</EmptyState>
+        ) : (
+          <ul className="max-h-[32rem] space-y-1.5 overflow-y-auto text-sm">
+            {visible.map((entry) => (
+              <li key={entry.id} className="flex items-start gap-2 border-b py-1.5">
+                <span className="shrink-0 text-xs text-muted-foreground">{new Date(entry.timestamp).toLocaleTimeString()}</span>
+                <Badge variant={entry.kind === "memory" ? "secondary" : "outline"} className="shrink-0 px-1.5 py-0 text-[10px]">
+                  {entry.category}
+                </Badge>
+                <span className="min-w-0 flex-1 break-words">
+                  {entry.summary}
+                  {entry.detail && <span className="ml-1 text-xs text-muted-foreground">{entry.detail}</span>}
+                </span>
               </li>
             ))}
           </ul>
