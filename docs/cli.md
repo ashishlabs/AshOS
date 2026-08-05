@@ -28,12 +28,18 @@ ash innovation events [-l <n>] [-c <category>]   List canonical, deduplicated ev
 ash innovation repo analyze <owner/repo> Analyze a repository into a structured, cached profile (real API)
 ash innovation repo list [-l <n>]        List every previously analyzed repository
 ash innovation radar [-r]                Show the Technology Radar (-r/--refresh recomputes it first)
+ash innovation idea capture [content] [-i <inboxId>] [-t <tags>] [-d <domain>]
+                                          Score/dedupe an idea (or an existing Inbox item) into an Opportunity
 ash codebase index [path] [-f]           Index a local repository (defaults to cwd), cached by git commit hash
 ash codebase find <query> [-p <path>]    Search a previously indexed repository by symbol or file path
 ash codebase list                        List every repository indexed so far
 ash graph stats                          Show general Knowledge Graph node/edge counts, grouped by kind
 ash graph nodes [-k <kind>]              List nodes, optionally filtered by kind (project|agent|task|...)
 ash graph neighbors <id>                 Show every node directly connected to the given node id
+ash inbox add <content...> [-t <tags>]   Capture and auto-classify text/a URL into the Universal Inbox
+ash inbox list [-s <status>]             List inbox items, newest first
+ash inbox show <id>                      Show full detail for one inbox item
+ash inbox archive <id>                   Mark an inbox item archived
 ```
 
 Run `npm run cli -- <command>` during development, or `ash <command>`

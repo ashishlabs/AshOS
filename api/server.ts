@@ -305,6 +305,27 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     }
   });
 
+  app.post("/innovation/ideas", async (req, res) => {
+    const { inboxId, content, tags, domain } = req.body ?? {};
+    if (!isNonEmptyString(inboxId) && !isNonEmptyString(content)) {
+      res.status(400).json({ error: "'inboxId' or 'content' must be provided" });
+      return;
+    }
+    try {
+      const result = await ashos.runAgent("idea", {
+        description: "capture idea",
+        input: { inboxId, content, tags, domain, mergeThreshold: ashos.kernel.config.innovation.mergeThreshold }
+      });
+      if (!result.ok) {
+        res.status(400).json({ error: result.error });
+        return;
+      }
+      res.status(201).json(result.data);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
   app.get("/innovation/radar", (req, res) => {
     const ring = req.query.ring as never;
     res.json(ring ? ashos.innovation.radar.byRing(ring) : ashos.innovation.radar.list());

@@ -15,6 +15,7 @@ import { createHuggingFaceCollector } from "./collectors/huggingface-collector";
 import { createDefaultIntelligenceAgents } from "./agents/index";
 import { RepositoryAnalystAgent } from "./agents/repository-analyst-agent";
 import { TechnologyRadarAgent } from "./agents/technology-radar-agent";
+import { IdeaAgent } from "./agents/idea-agent";
 import { KnowledgeGraph } from "../graph/knowledge-graph";
 import { OpportunityStore } from "./history/opportunity-store";
 import { BuilderProfileStore } from "./profile/builder-profile-store";
@@ -62,7 +63,7 @@ export interface GeneratedDigest {
 /**
  * Wires every innovation/* piece together — this is "AshOS Intelligence":
  * pre-registers one mock Collector + IntelligenceAgent per domain, plus the
- * RepositoryAnalyst and TechnologyRadar agents, into the shared
+ * RepositoryAnalyst, TechnologyRadar, and Idea agents, into the shared
  * `AgentRegistry` (so they're routable like any other agent), and
  * constructs the graph/store/engine collaborators. The one orchestration
  * entry point is `runDiscoveryCycle()`: run each domain's agent -> collect
@@ -113,6 +114,7 @@ export class InnovationModule {
     }
     options.agents.register(new RepositoryAnalystAgent());
     options.agents.register(new TechnologyRadarAgent());
+    options.agents.register(new IdeaAgent());
 
     this.graph = new KnowledgeGraph(options.kernel.root, { namespace: "innovation" });
     this.opportunities = new OpportunityStore(options.kernel.root);

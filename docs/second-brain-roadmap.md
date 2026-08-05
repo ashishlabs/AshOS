@@ -86,9 +86,17 @@ second, parallel capture path.
 
 ### Tier 2 — new agents/prompts over existing infra
 
-4. **Idea Agent** — score/dedupe *Inbox*-sourced ideas through the
-   existing `ScoringEngine`, closing the "Idea Lab" gap without a second
-   scoring engine.
+4. ✅ **Idea Agent** (shipped). `IdeaAgent` (`innovation/agents/idea-agent.ts`,
+   capability `idea`) promotes an Inbox item or raw text into a scored
+   `Opportunity` by reusing the exact discovery-cycle pipeline
+   (`Signal` → `EventStore` → namespaced Knowledge Graph → Builder
+   Profile → `OpportunityEngine`/`ScoringEngine`) instead of a second
+   scoring engine — deduping/combining near-duplicate ideas falls out of
+   `OpportunityEngine`'s existing Jaccard tag-overlap merge for free.
+   `ash innovation idea capture [content] [--inbox <id>]`, `POST
+   /innovation/ideas`, and a "Promote to Idea" button on each Inbox tab
+   item that shows the resulting opportunity's title/score inline. See
+   `docs/innovation.md`'s "Idea Agent" section.
 5. **Reflection Agent** — daily/weekly/monthly review narrative, same
    shape as `DailyBriefGenerator` (ask the active provider for a summary,
    graceful offline fallback) but reading Outcome Memory + Inbox +

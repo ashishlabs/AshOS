@@ -1090,6 +1090,8 @@ function InboxTab() {
   const [content, setContent] = useState("");
   const [capturing, setCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [promotingId, setPromotingId] = useState<string | null>(null);
+  const [promoted, setPromoted] = useState<Record<string, { title: string; score: number; created: boolean }>>({});
 
   const load = () =>
     api
@@ -1125,6 +1127,19 @@ function InboxTab() {
       load();
     } catch (e) {
       setError((e as Error).message);
+    }
+  };
+
+  const promoteToIdea = async (id: string) => {
+    setPromotingId(id);
+    try {
+      const { opportunity, created } = await api.captureIdea({ inboxId: id });
+      setPromoted((prev) => ({ ...prev, [id]: { title: opportunity.title, score: opportunity.score.overall, created } }));
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setPromotingId(null);
     }
   };
 
@@ -1167,18 +1182,44 @@ function InboxTab() {
         ) : (
           <ul className="divide-y">
             {items.map((item) => (
-              <li key={item.id} className="flex items-center justify-between gap-2 py-2.5 text-sm">
-                <span className="min-w-0 flex-1 break-words">
-                  <Badge variant="outline" className="mr-2">
-                    {item.sourceType}
-                  </Badge>
-                  {item.content}
-                </span>
-                {item.status !== "archived" && (
-                  <Button variant="ghost" size="icon" className="shrink-0" onClick={() => archive(item.id)} aria-label={`Archive ${item.id}`}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                )}
+              <li key={item.id} className="flex items-start justify-between gap-2 py-2.5 text-sm">
+                <div className="min-w-0 flex-1">
+                  <span className="break-words">
+                    <Badge variant="outline" className="mr-1.5">
+                      {item.sourceType}
+                    </Badge>
+                    <Badge variant={item.status === "unread" ? "secondary" : "outline"} className="mr-2">
+                      {item.status}
+                    </Badge>
+                    {item.content}
+                  </span>
+                  {promoted[item.id] && (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      <Lightbulb className="h-3 w-3" />
+                      {promoted[item.id].created ? "Captured as" : "Merged into"} opportunity "{promoted[item.id].title}" (score{" "}
+                      {promoted[item.id].score.toFixed(2)})
+                    </p>
+                  )}
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  {item.status !== "archived" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => promoteToIdea(item.id)}
+                      disabled={promotingId === item.id}
+                      aria-label={`Promote ${item.id} to an idea`}
+                      title="Promote to Idea"
+                    >
+                      <Lightbulb className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  {item.status !== "archived" && (
+                    <Button variant="ghost" size="icon" onClick={() => archive(item.id)} aria-label={`Archive ${item.id}`} title="Archive">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

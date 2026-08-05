@@ -182,6 +182,40 @@ export function registerInnovationCommand(program: Command): void {
       }
     });
 
+  const idea = cmd.command("idea").description("Idea Lab: promote a captured idea (Inbox item or raw text) into a scored, deduped Opportunity");
+
+  idea
+    .command("capture [content...]")
+    .description("Score and dedupe an idea into an Innovation Opportunity, reusing the same engine `ash innovation discover` uses")
+    .option("-i, --inbox <id>", "promote an existing Inbox item instead of passing content directly")
+    .option("-t, --tags <tags>", "comma-separated tags")
+    .option("-d, --domain <domain>", "intelligence domain: market/github/community/research/workflow/competitor (defaults to workflow)")
+    .action(async (content: string[], opts) => {
+      const ashos = new AshOS();
+      if (!opts.inbox && content.length === 0) {
+        console.error("Provide idea content, or --inbox <id> to promote an existing Inbox item.");
+        process.exitCode = 1;
+        return;
+      }
+      const tags = opts.tags ? String(opts.tags).split(",").map((t: string) => t.trim()).filter(Boolean) : undefined;
+      const result = await ashos.runAgent("idea", {
+        description: "capture idea",
+        input: {
+          inboxId: opts.inbox,
+          content: content.length ? content.join(" ") : undefined,
+          tags,
+          domain: opts.domain,
+          mergeThreshold: ashos.kernel.config.innovation.mergeThreshold
+        }
+      });
+      if (!result.ok) {
+        console.error(result.error);
+        process.exitCode = 1;
+        return;
+      }
+      console.log(result.output);
+    });
+
   cmd
     .command("radar")
     .description("Show (or refresh) the Technology Radar: emerging/growing/stable/declining/obsolete, with evidence")

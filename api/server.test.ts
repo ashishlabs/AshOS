@@ -506,6 +506,55 @@ describe("AshOS API", () => {
     expect(filtered.every((i) => i.status === "archived")).toBe(true);
   });
 
+  it("POST /innovation/ideas 400s without inboxId or content", async () => {
+    const res = await fetch(`${baseUrl}/innovation/ideas`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({})
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("POST /innovation/ideas scores raw content into an Opportunity", async () => {
+    const res = await fetch(`${baseUrl}/innovation/ideas`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content: "A tool that turns meeting notes into action items", tags: ["productivity"] })
+    });
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { opportunity: { title: string; tags: string[] }; created: boolean };
+    expect(body.created).toBe(true);
+    expect(body.opportunity.tags).toContain("productivity");
+  });
+
+  it("POST /innovation/ideas promotes an Inbox item and marks it reviewed", async () => {
+    const captureRes = await fetch(`${baseUrl}/inbox`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content: "Build a smarter changelog generator" })
+    });
+    const item = (await captureRes.json()) as { id: string };
+
+    const ideaRes = await fetch(`${baseUrl}/innovation/ideas`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ inboxId: item.id })
+    });
+    expect(ideaRes.status).toBe(201);
+
+    const promoted = await fetch(`${baseUrl}/inbox/${item.id}`);
+    expect(((await promoted.json()) as { status: string }).status).toBe("reviewed");
+  });
+
+  it("POST /innovation/ideas 400s for an unknown inboxId", async () => {
+    const res = await fetch(`${baseUrl}/innovation/ideas`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ inboxId: "does-not-exist" })
+    });
+    expect(res.status).toBe(400);
+  });
+
   it("GET /innovation/repositories starts empty; POST /innovation/repositories/analyze runs the agent and caches the result", async () => {
     // A stub RepositoryAnalystAgent so this never touches the real network.
     const stubRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ashos-api-repo-"));

@@ -296,6 +296,9 @@ export const api = {
   inboxList: (status?: InboxStatus) => get<InboxItem[]>(`/inbox${status ? `?status=${status}` : ""}`),
   inboxArchive: (id: string) => post<InboxItem>(`/inbox/${encodeURIComponent(id)}/archive`, {}),
 
+  captureIdea: (input: { inboxId?: string; content?: string; tags?: string[]; domain?: IntelligenceDomain }) =>
+    post<{ opportunity: Opportunity; created: boolean }>("/innovation/ideas", input),
+
   innovationStatus: () => get<InnovationStatus>("/innovation/status"),
   innovationOpportunities: (limit?: number, stage?: IdeaLifecycleStage) => {
     const params = new URLSearchParams();

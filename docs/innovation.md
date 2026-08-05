@@ -212,6 +212,42 @@ knob to retune. An `Opportunity` is evidence-complete: it carries every
 merged `Signal` directly (`opportunity.signals`), not just IDs into a
 separate store, so a `Builder Workspace` view never needs a second lookup.
 
+## Idea Agent — promoting a captured idea into an Opportunity
+
+`IdeaAgent` (`innovation/agents/idea-agent.ts`, capability `idea`) is the
+Second Brain roadmap's "Idea Lab" (`docs/second-brain-roadmap.md` Tier 2
+item 4): it takes a Universal Inbox item (`docs/inbox.md`) — or any raw
+text — and runs it through the *exact same* pipeline a discovery cycle
+runs collector signals through: turn it into a `Signal`, dedupe/normalize
+via `EventStore`, record it in the namespaced Knowledge Graph, reinforce
+the Builder Profile, then merge/score it via `OpportunityEngine`/
+`ScoringEngine`. There is no second scoring concept — an idea you typed
+and a signal a collector found are both just `Signal`s from here on, so
+"detect duplicate ideas" and "combine related ideas" are the same
+tag-overlap merge logic `OpportunityEngine` already has, not new code.
+
+Like `TechnologyRadarAgent`/`RepositoryAnalystAgent`, `IdeaAgent`
+constructs its own file-backed collaborators from `context.cwd` on every
+run rather than depending on `InnovationModule`'s already-constructed
+instances (`AgentContext` carries no reference to it) — so
+`mergeThreshold` defaults to the same constant `kernel/config.ts` does
+(`0.5`) unless a caller passes the real configured value explicitly. Both
+the CLI and REST API do: `ashos.kernel.config.innovation.mergeThreshold`.
+
+```bash
+ash innovation idea capture "A tool that turns meeting notes into action items"
+ash innovation idea capture --inbox <inbox-item-id>   # promote an existing Inbox item
+```
+
+Or `POST /innovation/ideas` with `{ inboxId? , content?, tags?, domain? }`
+(one of `inboxId`/`content` required). Promoting an Inbox item marks it
+`reviewed` (`InboxManager.updateStatus`) and links the resulting
+`Signal.source` back to it (`inbox:<id>`), so the Opportunity's evidence
+trail always points at where the idea came from. The dashboard's Inbox
+tab has a "Promote to Idea" (lightbulb) button per item that calls this
+same endpoint and shows the resulting opportunity's title and score
+inline once promoted.
+
 ## Opportunity Score (15 dimensions)
 
 `ScoringEngine` (`innovation/opportunity/scoring.ts`) is pure,
@@ -399,13 +435,15 @@ See `docs/api.md` for the full table. Summary: `POST /innovation/discover`
 /innovation/graph`, `GET /innovation/events[/:id]`, `GET
 /innovation/repositories[/:owner/:repo]`, `POST
 /innovation/repositories/analyze`, `GET /innovation/radar`, `POST
-/innovation/radar/refresh`, `GET`/`PATCH /innovation/config`.
+/innovation/radar/refresh`, `POST /innovation/ideas`, `GET`/`PATCH
+/innovation/config`.
 
 ## CLI
 
 See `docs/cli.md`. Summary: `ash innovation discover [--live]|digest
 [--sources]|list|show <id>|brief|profile|collectors|events|repo analyze
-<o/r>|repo list|radar [--refresh]`.
+<o/r>|repo list|radar [--refresh]|idea capture [content] [--inbox
+<id>] [--tags] [--domain]`.
 
 ## What's not implemented (see `docs/roadmap.md` and `docs/ashos-intelligence.md`)
 

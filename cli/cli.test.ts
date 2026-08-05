@@ -432,4 +432,51 @@ describe("CLI commands", () => {
     expect(errorSpy.mock.calls.flat().join(" ")).toContain("No inbox item found");
     errorSpy.mockRestore();
   });
+
+  it("innovation idea capture scores raw content into an Opportunity", async () => {
+    const program = freshProgram();
+    registerInnovationCommand(program);
+    await program.parseAsync(["node", "ash", "innovation", "idea", "capture", "A", "tool", "that", "summarizes", "long", "PRs"]);
+
+    const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Created opportunity");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "innovation", "list"]);
+    const listOutput = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(listOutput).toContain("score=");
+  });
+
+  it("innovation idea capture --inbox promotes an existing inbox item and marks it reviewed", async () => {
+    const program = freshProgram();
+    registerInboxCommand(program);
+    registerInnovationCommand(program);
+
+    await program.parseAsync(["node", "ash", "inbox", "add", "Build a smarter changelog generator"]);
+    let output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    const id = output.trim().split(/\s+/).pop()!;
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "innovation", "idea", "capture", "--inbox", id]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Created opportunity");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "inbox", "show", id]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain(`"status": "reviewed"`);
+  });
+
+  it("innovation idea capture errors without content or --inbox", async () => {
+    const program = freshProgram();
+    registerInnovationCommand(program);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await program.parseAsync(["node", "ash", "innovation", "idea", "capture"]);
+
+    expect(errorSpy.mock.calls.flat().join(" ")).toContain("Provide idea content");
+    expect(process.exitCode).toBe(1);
+    process.exitCode = 0;
+    errorSpy.mockRestore();
+  });
 });

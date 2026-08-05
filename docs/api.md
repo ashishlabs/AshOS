@@ -45,6 +45,7 @@ Start it with `npm run api`.
 | POST | `/innovation/repositories/analyze` | `{ fullName }` | Runs the `repository-analyst` agent (real GitHub API call, cached by `pushed_at`) and returns its `AgentResult`. `400` if `fullName` isn't an `"owner/repo"` string. |
 | GET | `/innovation/radar?ring=` | — | Current Technology Radar entries, optionally filtered by ring. |
 | POST | `/innovation/radar/refresh` | — | Runs the `technology-radar` agent to reclassify every tracked technology from the current knowledge graph, and returns its `AgentResult`. |
+| POST | `/innovation/ideas` | `{ inboxId?, content?, tags?, domain? }` | Runs the `idea` agent: scores/dedupes an Inbox item (marking it `reviewed`) or raw text into an Innovation `Opportunity`, reusing the same pipeline a discovery cycle uses. `201 { opportunity, created }`, or `400` if neither `inboxId` nor `content` is given (or `inboxId` doesn't exist). See `docs/innovation.md`'s "Idea Agent" section. |
 | GET | `/innovation/config` | — | Current `InnovationConfig`. |
 | PATCH | `/innovation/config` | partial `InnovationConfig` | Merges into and persists the innovation config. |
 
@@ -63,6 +64,17 @@ AshOS Intelligence architecture this is the first slice of.
 | GET | `/codebase/search?q=&root=` | — | Search a previously indexed repository by symbol name or file path; `400` if `q` is missing. |
 
 See `docs/codebase-intelligence.md`. Distinct from `/innovation/repositories/*` above, which analyzes external GitHub repos rather than the local filesystem.
+
+### Universal Inbox (`/inbox*`)
+
+| Method | Path | Body | Description |
+|---|---|---|---|
+| POST | `/inbox` | `{ content, sourceType?, tags? }` | Captures and auto-classifies content (text/url/github-repo/youtube/tweet/pdf/article). `201` with the created item, `400` if `content` is empty. |
+| GET | `/inbox?status=` | — | List items, newest first, optionally filtered by status (`unread`/`reviewed`/`archived`). |
+| GET | `/inbox/:id` | — | One item, or `404`. |
+| POST | `/inbox/:id/archive` | — | Marks an item archived; `404` if unknown. |
+
+See `docs/inbox.md`. Items are `MemoryManager` project-scope records, not a separate datastore; promoting one to an Innovation Opportunity is `POST /innovation/ideas` above.
 
 ### General Knowledge Graph (`/graph*`)
 
