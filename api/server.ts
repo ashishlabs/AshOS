@@ -400,6 +400,20 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     }
   });
 
+  app.get("/reflect", async (req, res) => {
+    const period = req.query.period as string | undefined;
+    try {
+      const result = await ashos.runAgent("reflection", { description: "reflect", input: { period } });
+      if (!result.ok) {
+        res.status(500).json({ error: result.error });
+        return;
+      }
+      res.json(result.data);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
   app.get("/codebase", (_req, res) => {
     res.json(ashos.codebase.list());
   });

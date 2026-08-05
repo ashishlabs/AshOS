@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  BookOpen,
   Brain,
   Clock,
   GitBranch,
@@ -53,6 +54,8 @@ import {
   type Opportunity,
   type RadarEntry,
   type RadarRing,
+  type ReflectionData,
+  type ReflectionPeriod,
   type RepositoryProfile,
   type TaskGraph,
   type TaskOutcome,
@@ -366,6 +369,77 @@ function TodaysFocusCard() {
   );
 }
 
+const REFLECTION_PERIODS: ReflectionPeriod[] = ["daily", "weekly", "monthly"];
+
+/** Daily/weekly/monthly review narrative — same on-demand-generate shape as the Daily Innovation Brief card, since both call a provider and shouldn't auto-poll. */
+function ReflectionCard() {
+  const [period, setPeriod] = useState<ReflectionPeriod>("daily");
+  const [reflection, setReflection] = useState<ReflectionData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const generate = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setReflection(await api.reflect(period));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Card className="sm:col-span-2">
+      <CardHeader>
+        <CardTitle>Reflection</CardTitle>
+        <CardDescription>A review narrative from Outcome Memory, Inbox, and Knowledge Graph activity — not another opinion, a summary of what actually happened.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={period} onValueChange={(v) => setPeriod(v as ReflectionPeriod)}>
+            <SelectTrigger className="w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {REFLECTION_PERIODS.map((p) => (
+                <SelectItem key={p} value={p}>
+                  {p}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={generate} disabled={loading} variant="outline">
+            <BookOpen className="h-4 w-4" />
+            {loading ? "Generating…" : "Generate"}
+          </Button>
+        </div>
+        <LoadError error={error} />
+        {reflection && (
+          <div className="space-y-3 rounded-lg border p-3">
+            <p className="text-sm whitespace-pre-wrap">{reflection.narrative}</p>
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+              <span>
+                {reflection.outcomes.success}/{reflection.outcomes.total} task{reflection.outcomes.total === 1 ? "" : "s"} succeeded
+                {reflection.outcomes.failure > 0 ? `, ${reflection.outcomes.failure} failed` : ""}
+              </span>
+              <span>·</span>
+              <span>
+                {reflection.inbox.captured} inbox item{reflection.inbox.captured === 1 ? "" : "s"}
+              </span>
+              <span>·</span>
+              <span>
+                {reflection.knowledgeGraph.newNodes} new graph node{reflection.knowledgeGraph.newNodes === 1 ? "" : "s"}
+              </span>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function DashboardTab() {
   const [health, setHealth] = useState<Health | null>(null);
   const [events, setEvents] = useState<AshOSEvent[]>([]);
@@ -386,6 +460,7 @@ function DashboardTab() {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <TodaysFocusCard />
+      <ReflectionCard />
 
       <Card>
         <CardHeader>

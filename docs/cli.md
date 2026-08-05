@@ -40,6 +40,7 @@ ash inbox add <content...> [-t <tags>]   Capture and auto-classify text/a URL in
 ash inbox list [-s <status>]             List inbox items, newest first
 ash inbox show <id>                      Show full detail for one inbox item
 ash inbox archive <id>                   Mark an inbox item archived
+ash reflect [period]                     Daily (default)/weekly/monthly review narrative from Outcome Memory + Inbox + Knowledge Graph activity
 ```
 
 Run `npm run cli -- <command>` during development, or `ash <command>`

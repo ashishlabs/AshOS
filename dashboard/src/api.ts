@@ -60,6 +60,16 @@ export interface MemoryRecord {
   createdAt: string;
 }
 export type MemoryScope = "short-term" | "session" | "project" | "global";
+export type ReflectionPeriod = "daily" | "weekly" | "monthly";
+export interface ReflectionData {
+  period: ReflectionPeriod;
+  windowStart: string;
+  windowEnd: string;
+  outcomes: { total: number; success: number; failure: number; failures: { agent: string; description: string; error?: string }[] };
+  inbox: { captured: number; reviewed: number; archived: number };
+  knowledgeGraph: { newNodes: number; byKind: Record<string, number> };
+  narrative: string;
+}
 /** Shape of a `MemoryRecord.value` written by `agents/outcome.ts`'s `buildOutcome()`, tagged `"outcome"`/`"failure"`/`"success"`/`<agent name>`. */
 export interface TaskOutcome {
   agent: string;
@@ -298,6 +308,8 @@ export const api = {
 
   captureIdea: (input: { inboxId?: string; content?: string; tags?: string[]; domain?: IntelligenceDomain }) =>
     post<{ opportunity: Opportunity; created: boolean }>("/innovation/ideas", input),
+
+  reflect: (period?: ReflectionPeriod) => get<ReflectionData>(`/reflect${period ? `?period=${period}` : ""}`),
 
   innovationStatus: () => get<InnovationStatus>("/innovation/status"),
   innovationOpportunities: (limit?: number, stage?: IdeaLifecycleStage) => {

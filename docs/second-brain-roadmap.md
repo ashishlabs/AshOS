@@ -97,10 +97,17 @@ second, parallel capture path.
    /innovation/ideas`, and a "Promote to Idea" button on each Inbox tab
    item that shows the resulting opportunity's title/score inline. See
    `docs/innovation.md`'s "Idea Agent" section.
-5. **Reflection Agent** — daily/weekly/monthly review narrative, same
-   shape as `DailyBriefGenerator` (ask the active provider for a summary,
-   graceful offline fallback) but reading Outcome Memory + Inbox +
-   Knowledge Graph deltas instead of Innovation opportunities.
+5. ✅ **Reflection Agent** (shipped). `ReflectionAgent` (`agents/reflection-agent.ts`,
+   capability `reflection`) generates a daily/weekly/monthly review
+   narrative, same shape as `DailyBriefGenerator` — deterministic data
+   gathering (`agents/reflection.ts`, independently unit tested) then a
+   best-effort LLM narrative with a graceful offline fallback — but
+   reading Outcome Memory + Inbox + (general) Knowledge Graph activity
+   within the period window instead of Innovation opportunities.
+   `ash reflect [daily|weekly|monthly]`, `GET /reflect?period=`, and an
+   on-demand "Reflection" card on the Dashboard tab (period selector +
+   Generate button, same pattern as the Daily Innovation Brief card so
+   neither auto-polls a provider call).
 6. **Cross-store hybrid search** — extend `MemoryManager.searchSemantic()`
    or add a thin aggregator that also queries `KnowledgeGraph.listNodes()`
    and Inbox items, so "find everything about LangGraph" spans all three.

@@ -14,6 +14,7 @@ import { registerInnovationCommand } from "./commands/innovation";
 import { registerCodebaseCommand } from "./commands/codebase";
 import { registerGraphCommand } from "./commands/graph";
 import { registerInboxCommand } from "./commands/inbox";
+import { registerReflectCommand } from "./commands/reflect";
 import { isInitialized, configPath } from "../kernel/config";
 import { AshOS } from "../sdk/ashos";
 
@@ -478,5 +479,29 @@ describe("CLI commands", () => {
     expect(process.exitCode).toBe(1);
     process.exitCode = 0;
     errorSpy.mockRestore();
+  });
+
+  it("reflect defaults to daily and reports nothing recorded when empty", async () => {
+    const program = freshProgram();
+    registerReflectCommand(program);
+    await program.parseAsync(["node", "ash", "reflect"]);
+
+    const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Reflection (daily)");
+    expect(output).toContain("Nothing recorded today yet.");
+  });
+
+  it("reflect weekly reflects real inbox and outcome activity", async () => {
+    const program = freshProgram();
+    registerInboxCommand(program);
+    registerReflectCommand(program);
+
+    await program.parseAsync(["node", "ash", "inbox", "add", "an idea worth reviewing"]);
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "reflect", "weekly"]);
+    const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Reflection (weekly)");
+    expect(output).toContain("Inbox: 1 captured");
   });
 });

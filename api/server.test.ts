@@ -555,6 +555,22 @@ describe("AshOS API", () => {
     expect(res.status).toBe(400);
   });
 
+  it("GET /reflect defaults to a daily period and works with nothing recorded", async () => {
+    const res = await fetch(`${baseUrl}/reflect`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { period: string; narrative: string };
+    expect(body.period).toBe("daily");
+    expect(typeof body.narrative).toBe("string");
+  });
+
+  it("GET /reflect?period=weekly reflects real inbox activity from earlier tests on this shared server", async () => {
+    const res = await fetch(`${baseUrl}/reflect?period=weekly`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { period: string; inbox: { captured: number } };
+    expect(body.period).toBe("weekly");
+    expect(body.inbox.captured).toBeGreaterThan(0);
+  });
+
   it("GET /innovation/repositories starts empty; POST /innovation/repositories/analyze runs the agent and caches the result", async () => {
     // A stub RepositoryAnalystAgent so this never touches the real network.
     const stubRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ashos-api-repo-"));

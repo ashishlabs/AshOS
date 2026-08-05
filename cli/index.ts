@@ -15,6 +15,7 @@ import { registerInnovationCommand } from "./commands/innovation";
 import { registerCodebaseCommand } from "./commands/codebase";
 import { registerGraphCommand } from "./commands/graph";
 import { registerInboxCommand } from "./commands/inbox";
+import { registerReflectCommand } from "./commands/reflect";
 
 const program = new Command();
 program.name("ash").description("AshOS — AI Operating System for Developers").version("0.1.0");
@@ -33,5 +34,6 @@ registerInnovationCommand(program);
 registerCodebaseCommand(program);
 registerGraphCommand(program);
 registerInboxCommand(program);
+registerReflectCommand(program);
 
 program.parseAsync(process.argv);
