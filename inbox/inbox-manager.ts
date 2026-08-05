@@ -3,6 +3,7 @@ import type { EventBus } from "../kernel/event-bus";
 import type { MemoryManager } from "../memory/memory-manager";
 import type { KnowledgeGraph } from "../graph/knowledge-graph";
 import type { AIProvider } from "../providers/types";
+import type { WebFetchTool } from "../tools/web-fetch-tool";
 import { classify } from "./classifier";
 import type { InboxItem, InboxSourceType, InboxStatus } from "./types";
 
@@ -23,8 +24,10 @@ export interface InboxManagerOptions {
   eventBus?: EventBus;
   /** General-purpose Knowledge Graph — best-effort only, capture never fails because of it (same convention as `CodebaseAnalystAgent.enrichProjectNode`). */
   graph?: KnowledgeGraph;
-  /** When present, `capture()` best-effort asks this provider for a one-sentence summary of the captured text (not the linked page's content — there's no fetch tool yet) and stores it as `InboxItem.summary`. Absent provider or a failed call never blocks capture. */
+  /** When present, `capture()` best-effort asks this provider for a one-sentence summary of the captured text and stores it as `InboxItem.summary`. Absent provider or a failed call never blocks capture. */
   provider?: AIProvider;
+  /** When present alongside `provider` and the captured content contains a URL, `capture()` best-effort fetches the page's readable text (see `tools/web-fetch-tool.ts`'s safety limits) and folds it into the summarization prompt, so the summary reflects what the link is actually about instead of just its URL string. A failed/blocked/timed-out fetch falls back to summarizing the pasted text alone — never blocks or fails capture. */
+  webFetch?: WebFetchTool;
 }
 
 /**
@@ -56,7 +59,7 @@ export class InboxManager {
       createdAt: now,
       updatedAt: now,
       detectedUrl: classification.detectedUrl,
-      summary: await this.summarize(trimmed)
+      summary: await this.summarize(trimmed, classification.detectedUrl)
     };
 
     await this.persist(item);
@@ -91,18 +94,31 @@ export class InboxManager {
     return this.updateStatus(id, "archived");
   }
 
-  /** Best-effort — never let a slow/unreachable/misconfigured provider block capture. */
-  private async summarize(content: string): Promise<string | undefined> {
+  /** Best-effort — never let a slow/unreachable/misconfigured provider (or fetch) block capture. */
+  private async summarize(content: string, detectedUrl?: string): Promise<string | undefined> {
     if (!this.options.provider) return undefined;
     try {
+      const fetched = detectedUrl ? await this.fetchUrlContext(detectedUrl) : undefined;
+      const userContent = fetched ? `${content}\n\n[Fetched page content]\n${fetched}` : content;
       const { content: summary } = await this.options.provider.chat(
         [
           { role: "system", content: SUMMARY_SYSTEM_PROMPT },
-          { role: "user", content }
+          { role: "user", content: userContent }
         ],
         { temperature: 0.3 }
       );
       return summary.trim() || undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Best-effort only — a blocked/timed-out/failed fetch just means the summary falls back to the pasted text alone. */
+  private async fetchUrlContext(url: string): Promise<string | undefined> {
+    if (!this.options.webFetch) return undefined;
+    try {
+      const result = await this.options.webFetch.execute({ action: "fetch", args: { url } });
+      return result.ok ? result.output : undefined;
     } catch {
       return undefined;
     }

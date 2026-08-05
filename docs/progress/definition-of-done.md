@@ -25,27 +25,36 @@ behind every claim below.
 
 ---
 
-### Universal Inbox (capture/classify/store real; no AI, no rich media)
+### Universal Inbox (capture/classify/store/summarize real; still no rich media)
 
 - ✔ **Done:** `capture()`/`list()`/`get()`/`archive()` fully implemented
   and tested, deterministic regex classification into 6 source types,
   reuses `MemoryManager` for persistence (no new store), best-effort
   Knowledge Graph enrichment with a real `repository` node for GitHub
   links, CLI (`ash inbox add/list/show/archive`) and REST (4 routes),
-  dashboard `InboxTab` with a "Promote to Idea" action.
-- ✖ **Missing:** AI summarization (no LLM call anywhere in the capture
-  path), voice capture, image capture, real PDF content extraction
-  (detection is URL-extension-only), a distinct "bookmark" type (folded
-  into generic "article").
+  dashboard `InboxTab` with a "Promote to Idea" action. **AI
+  summarization now real**: a best-effort LLM call (`InboxManager.summarize()`)
+  produces a one-sentence `InboxItem.summary`, shown in the dashboard.
+  When the captured content contains a URL, `WebFetchTool`
+  (`tools/web-fetch-tool.ts`) best-effort fetches the linked page's
+  readable text first and folds it into the summarization prompt, so
+  the summary reflects what the link is actually about — not just a
+  generic inference from the URL string alone.
+- ✖ **Missing:** voice capture, image capture, real PDF *content*
+  extraction (`WebFetchTool` rejects non-text content-types by design —
+  it fetches HTML/plain-text pages, not documents), a distinct
+  "bookmark" type (folded into generic "article"), a dedicated
+  *search* tool (finding URLs for a topic — `WebFetchTool` only fetches
+  a URL it's already given).
 - ⚠ **Should be improved:** classification is purely regex-pattern-based
   — a URL that doesn't match one of the 5 hardcoded patterns
   (GitHub/YouTube/Twitter-X/PDF) always falls through to generic
   "article," even if it's structurally something else (e.g. a Reddit
   thread, a paper on arXiv).
-- 🚀 **Next implementation step:** add a best-effort summarization call
-  in `InboxManager.capture()`, following the exact
-  try/LLM-call/catch-fallback shape `ReflectionAgent.narrate()` already
-  demonstrates.
+- 🚀 **Next implementation step:** wire `ResearchAgent` to use the same
+  `WebFetchTool` (it doesn't yet — see the Research Hub entry below) and
+  extend `HybridSearch`'s semantic mode to Graph/Inbox slices, not just
+  Memory.
 
 ---
 

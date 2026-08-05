@@ -37,7 +37,9 @@ InboxManager.capture(content)
 classify(content)  — deterministic, offline (regex-based URL detection:
         │             github.com/youtube/twitter-x/*.pdf/else-article)
         │
-summarize(content) — best-effort LLM call (skipped if no provider configured)
+summarize(content, detectedUrl) — best-effort LLM call (skipped if no provider configured);
+        │                          if detectedUrl is set and a WebFetchTool is configured,
+        │                          its fetched page text is folded into the prompt first
         │
 InboxItem { id, content, sourceType, status: "unread", tags, summary?, ... }
         │
@@ -62,13 +64,23 @@ no auto-detection path) or extra `tags`.
 
 `InboxManager`'s optional `provider` (`AshOS.inbox` wires in
 `providers.active()`) turns on a best-effort, one-sentence summary of the
-**captured text itself** — not the linked page's content, since there's
-no fetch tool yet. A bare URL with nothing else gets whatever the model
-can infer from the URL string alone; a note, or a URL pasted alongside
-your own commentary, gets a genuinely useful one-liner. A missing
-provider, a slow/unreachable one, or any thrown error all resolve to
-`summary: undefined` — capture is never blocked or failed by this. Shown
-in the dashboard's Inbox tab under each item's content.
+captured item. A missing provider, a slow/unreachable one, or any thrown
+error all resolve to `summary: undefined` — capture is never blocked or
+failed by this. Shown in the dashboard's Inbox tab under each item's
+content.
+
+When the captured content contains a URL *and* a `WebFetchTool` is
+configured (`AshOS.inbox` wires in the same instance registered as
+`"web-fetch"` on `AshOS.tools`), `capture()` best-effort fetches the
+linked page's readable text first and folds it into the summarization
+prompt — so the summary reflects what the link is actually *about*,
+not just its URL string. See `tools/web-fetch-tool.ts` for the fetch's
+safety limits (http/https only, private/internal addresses blocked,
+redirects refused, timeout, size caps, non-text content rejected). A
+blocked/failed/timed-out fetch — including every fetch made from this
+project's own sandboxed dev environment, which only allowlists
+`api.github.com` — falls back to summarizing the pasted text alone,
+exactly like before this existed.
 
 ## Status lifecycle
 
@@ -118,11 +130,10 @@ directly.
   this stage. Blocked on the same media-pipeline gap `docs/roadmap.md`
   already tracks for Video/Vision/Voice agents; see
   `docs/second-brain-roadmap.md` Tier 3.
-- **No fetching of a captured URL's actual content** — the AI summary
-  above summarizes whatever text was captured, not the linked page. A
-  bare link with no surrounding text produces a low-information summary,
-  since there's no web-fetch tool yet (`docs/roadmap-v2.md`'s Tier 2 item
-  7 tracks that gap).
+- **No PDF/non-HTML document fetching** — `WebFetchTool` deliberately
+  rejects non-text content-types (PDF, images, ...) rather than trying to
+  parse them, so a captured `pdf`-classified item still only summarizes
+  whatever text was pasted alongside the link, not the document itself.
 - **No automatic promotion into Knowledge Vault entities** — an inbox
   item can already be promoted into a scored Innovation `Opportunity`
   (`ash innovation idea capture`/the dashboard's "Promote to Idea"

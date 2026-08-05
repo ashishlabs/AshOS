@@ -38,7 +38,7 @@ subsystem's own detailed design.
 | 5 | Multi-Agent Collaboration | 🟡 Partial | 14 agents registered today (Generic/Code/Research/Git/Testing/GitHubTrending + 8 Innovation agents). Missing named roles: Reviewer, Security Auditor, DevOps, UI Designer, Architect, Video Creator. |
 | 6 | Local-First AI | ✅ Done | Local providers exist, and `ModelRouter` (Stage 2, shipped) now defaults routine work to a configured cheap/local model and escalates only when a task is tagged (or defaults to) a higher tier. Off by default — see `docs/model-router.md`. |
 | 7 | Innovation Engine | ✅ Done | GitHub/HN/Reddit/arXiv/Hugging Face collectors, event dedup, knowledge graph, opportunity scoring, Daily Brief, and a Markdown news digest are all shipped. Only Product Hunt (explicitly named) is missing, same collector pattern as the rest. |
-| 8 | Autonomous Research | 🟡 Partial | `ResearchAgent` exists but has no web search/fetch tool — it reasons from the model alone. The Innovation collectors prove the multi-source pattern works; it's just scoped to AI-ecosystem signals, not arbitrary topics. |
+| 8 | Autonomous Research | 🟡 Partial | A `WebFetchTool` now exists (`tools/web-fetch-tool.ts`, Tier 2 item 7) and is used by the Inbox's summarizer, but `ResearchAgent` itself hasn't been wired to call it yet — it still reasons from the model alone. The Innovation collectors prove the multi-source pattern works; it's just scoped to AI-ecosystem signals, not arbitrary topics. |
 | 9 | Build Software End-to-End | 🟡 Partial | `ashos.run(goal)` already does research→plan→code→test→git for one pass. Design, deploy, monitor, and iterate are all missing. **Overlaps with the removed Evolution Engine** — see below. |
 | 10 | Continuous Learning | ❌ Missing | `BuilderProfileStore` learns narrowly for Innovation category weights only; nothing learns from general task outcomes. **Overlaps with the removed Evolution Engine.** |
 | 11 | Workflow Automation | ✅ Infra done | `WorkflowEngine` + `Scheduler` fully support this — "daily AI news" is literally the digest already built. Needs more workflow definitions + a couple of new tools (email, calendar) for the other named examples. |
@@ -84,7 +84,7 @@ much new architecture it requires.
 ### Tier 2 — new agents/tools, moderate effort, no new architecture
 
 6. Add Reviewer, Documentation Writer, Security Auditor, Architect agents — role prompts over existing tools, no new infrastructure. Closes most of #5.
-7. `WebSearchTool`/`WebFetchTool` + generalize `ResearchAgent` to research any topic, not just AI-ecosystem signals. Closes #8.
+7. 🟡 `WebFetchTool` — **shipped** (`tools/web-fetch-tool.ts`, capability `web-fetch`): fetches a URL and extracts readable text, http(s)-only with private/loopback/link-local addresses blocked, no redirects, timeout + size caps. Used by the Inbox's AI summarizer (`docs/inbox.md`) and available to any agent via `context.tools.get("web-fetch")`. Remaining: no dedicated `WebSearchTool` (finding URLs, not just fetching a known one) and `ResearchAgent` itself hasn't been updated to call it — still reasons model-only. Closes half of #8.
 8. MCP client support — one standardized integration point instead of hand-building Docker/browser/etc. one at a time. Biggest lever for #2.
 9. Kanban view over the existing task graph (UI only, backend already exists).
 10. Product Hunt collector (same pattern as the five collectors already shipped). Closes the last piece of #7.

@@ -6,6 +6,7 @@ import { ToolRegistry } from "../tools/registry";
 import { ShellTool } from "../tools/shell-tool";
 import { GitTool } from "../tools/git-tool";
 import { FsTool } from "../tools/fs-tool";
+import { WebFetchTool } from "../tools/web-fetch-tool";
 import { AgentRegistry } from "../agents/registry";
 import { GenericAgent } from "../agents/generic-agent";
 import { CodeAgent } from "../agents/code-agent";
@@ -67,13 +68,20 @@ export class AshOS {
     this.scheduler = new Scheduler(this.kernel.eventBus);
     this.codebase = new CodebaseIndexStore(this.kernel.root);
     this.knowledgeGraph = new KnowledgeGraph(this.kernel.root);
-    this.inbox = new InboxManager(this.memory, { eventBus: this.kernel.eventBus, graph: this.knowledgeGraph, provider: this.providers.active() });
+    const webFetchTool = new WebFetchTool();
+    this.inbox = new InboxManager(this.memory, {
+      eventBus: this.kernel.eventBus,
+      graph: this.knowledgeGraph,
+      provider: this.providers.active(),
+      webFetch: webFetchTool
+    });
     this.search = new HybridSearch(this.memory, this.knowledgeGraph, this.inbox);
 
     this.tools = new ToolRegistry();
     this.tools.register(new ShellTool(this.kernel.permissions));
     this.tools.register(new GitTool(this.kernel.permissions));
     this.tools.register(new FsTool());
+    this.tools.register(webFetchTool);
 
     this.agents = new AgentRegistry();
     this.agents.register(new GenericAgent());

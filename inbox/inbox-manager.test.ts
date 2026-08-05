@@ -1,12 +1,13 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EventBus } from "../kernel/event-bus";
 import { MemoryManager } from "../memory/memory-manager";
 import { KnowledgeGraph } from "../graph/knowledge-graph";
 import { MockProvider } from "../providers/mock-provider";
 import type { AIProvider, ChatMessage, ChatResult } from "../providers/types";
+import { WebFetchTool } from "../tools/web-fetch-tool";
 import { InboxManager } from "./inbox-manager";
 
 describe("InboxManager", () => {
@@ -142,5 +143,50 @@ describe("InboxManager", () => {
     const withProvider = new InboxManager(memory, { provider: new MockProvider() });
     const captured = await withProvider.capture("round trip check");
     expect(withProvider.get(captured.id)?.summary).toBe(captured.summary);
+  });
+
+  describe("with webFetch configured", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("grounds the summary in the fetched page's content when capturing a URL", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          headers: { get: (k: string) => (k === "content-type" ? "text/html" : null) },
+          text: async () => "<html><title>Rate Limiting Explained</title><body><p>A deep dive into token buckets.</p></body></html>"
+        })
+      );
+      const webFetch = new WebFetchTool({ resolveHostname: async () => "93.184.216.34" });
+      const withFetch = new InboxManager(memory, { provider: new MockProvider(), webFetch });
+
+      const item = await withFetch.capture("https://example.com/rate-limiting");
+
+      expect(item.summary).toContain("Rate Limiting Explained");
+      expect(item.summary).toContain("token buckets");
+    });
+
+    it("falls back to summarizing the pasted text alone when the fetch is blocked/fails", async () => {
+      const webFetch = new WebFetchTool({ resolveHostname: async () => "127.0.0.1" }); // resolves private -> WebFetchTool itself refuses
+      const withFetch = new InboxManager(memory, { provider: new MockProvider(), webFetch });
+
+      const item = await withFetch.capture("https://example.com/whatever check this out");
+
+      expect(item.summary).toContain("https://example.com/whatever check this out");
+    });
+
+    it("never calls the fetch tool when the captured content has no URL", async () => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+      const webFetch = new WebFetchTool({ resolveHostname: async () => "93.184.216.34" });
+      const withFetch = new InboxManager(memory, { provider: new MockProvider(), webFetch });
+
+      await withFetch.capture("just a plain thought, no link at all");
+
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
   });
 });
