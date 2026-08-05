@@ -450,6 +450,62 @@ describe("AshOS API", () => {
     expect(res.status).toBe(400);
   });
 
+  it("POST /inbox 400s without content", async () => {
+    const res = await fetch(`${baseUrl}/inbox`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({})
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("POST /inbox captures and classifies; GET /inbox lists it; GET /inbox/:id fetches it", async () => {
+    const captureRes = await fetch(`${baseUrl}/inbox`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content: "https://github.com/anthropics/claude-code" })
+    });
+    expect(captureRes.status).toBe(201);
+    const item = (await captureRes.json()) as { id: string; sourceType: string; status: string };
+    expect(item.sourceType).toBe("github-repo");
+    expect(item.status).toBe("unread");
+
+    const listRes = await fetch(`${baseUrl}/inbox`);
+    const list = (await listRes.json()) as { id: string }[];
+    expect(list.some((i) => i.id === item.id)).toBe(true);
+
+    const getRes = await fetch(`${baseUrl}/inbox/${item.id}`);
+    expect(getRes.status).toBe(200);
+    expect(((await getRes.json()) as { id: string }).id).toBe(item.id);
+  });
+
+  it("GET /inbox/:id 404s for an unknown id", async () => {
+    const res = await fetch(`${baseUrl}/inbox/does-not-exist`);
+    expect(res.status).toBe(404);
+  });
+
+  it("POST /inbox/:id/archive archives an item; unknown id 404s", async () => {
+    const captureRes = await fetch(`${baseUrl}/inbox`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content: "archive me via api" })
+    });
+    const item = (await captureRes.json()) as { id: string };
+
+    const archiveRes = await fetch(`${baseUrl}/inbox/${item.id}/archive`, { method: "POST" });
+    expect(archiveRes.status).toBe(200);
+    expect(((await archiveRes.json()) as { status: string }).status).toBe("archived");
+
+    const missingRes = await fetch(`${baseUrl}/inbox/does-not-exist/archive`, { method: "POST" });
+    expect(missingRes.status).toBe(404);
+  });
+
+  it("GET /inbox?status= filters by status", async () => {
+    const filteredRes = await fetch(`${baseUrl}/inbox?status=archived`);
+    const filtered = (await filteredRes.json()) as { status: string }[];
+    expect(filtered.every((i) => i.status === "archived")).toBe(true);
+  });
+
   it("GET /innovation/repositories starts empty; POST /innovation/repositories/analyze runs the agent and caches the result", async () => {
     // A stub RepositoryAnalystAgent so this never touches the real network.
     const stubRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ashos-api-repo-"));

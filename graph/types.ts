@@ -5,8 +5,10 @@
  * `workflow`/`skill`/`tool` existed here from the start but went
  * unpopulated until the General Knowledge Graph (North Star roadmap
  * Stage 4, see `docs/knowledge-graph.md`) started writing to a second,
- * project-scoped graph instance. `task` is new in that stage — every
- * other kind predates it.
+ * project-scoped graph instance. `task` is new in that stage. `resource`
+ * is new for Universal Inbox (`inbox/`, see `docs/inbox.md`) — a captured
+ * piece of raw content (note, URL, repo link, ...) before it's been
+ * triaged into something more specific like an `idea` or `paper`.
  */
 export type KnowledgeNodeKind =
   | "person"
@@ -28,7 +30,8 @@ export type KnowledgeNodeKind =
   | "project"
   | "skill"
   | "tool"
-  | "task";
+  | "task"
+  | "resource";
 
 export interface KnowledgeNode {
   id: string;

@@ -21,6 +21,7 @@ import { InnovationModule } from "../innovation/innovation-module";
 import { CodebaseAnalystAgent } from "../codebase/agents/codebase-analyst-agent";
 import { CodebaseIndexStore } from "../codebase/codebase-store";
 import { KnowledgeGraph } from "../graph/knowledge-graph";
+import { InboxManager } from "../inbox/inbox-manager";
 import type { Agent, AgentContext, AgentResult } from "../agents/types";
 import type { WorkflowDefinition } from "../workflow/types";
 import type { TaskGraph } from "../planner/types";
@@ -49,6 +50,8 @@ export class AshOS {
   readonly codebase: CodebaseIndexStore;
   /** General-purpose, project-wide Knowledge Graph (`.ashos/graph.json`) — distinct from Innovation Intelligence's own namespaced graph at `.ashos/innovation/graph.json`. See `docs/knowledge-graph.md`. */
   readonly knowledgeGraph: KnowledgeGraph;
+  /** Universal Inbox — the single capture point everything enters AshOS through. See `docs/inbox.md`. */
+  readonly inbox: InboxManager;
 
   constructor(opts: AshOSOptions = {}) {
     this.kernel = new Kernel({ root: opts.root });
@@ -58,6 +61,7 @@ export class AshOS {
     this.scheduler = new Scheduler(this.kernel.eventBus);
     this.codebase = new CodebaseIndexStore(this.kernel.root);
     this.knowledgeGraph = new KnowledgeGraph(this.kernel.root);
+    this.inbox = new InboxManager(this.memory, { eventBus: this.kernel.eventBus, graph: this.knowledgeGraph });
 
     this.tools = new ToolRegistry();
     this.tools.register(new ShellTool(this.kernel.permissions));

@@ -13,6 +13,7 @@ import { registerMemoryCommand } from "./commands/memory";
 import { registerInnovationCommand } from "./commands/innovation";
 import { registerCodebaseCommand } from "./commands/codebase";
 import { registerGraphCommand } from "./commands/graph";
+import { registerInboxCommand } from "./commands/inbox";
 import { isInitialized, configPath } from "../kernel/config";
 import { AshOS } from "../sdk/ashos";
 
@@ -385,5 +386,50 @@ describe("CLI commands", () => {
 
     const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
     expect(output).toContain("No nodes recorded yet");
+  });
+
+  it("inbox list reports empty inbox, then add/list/show/archive round-trip", async () => {
+    const program = freshProgram();
+    registerInboxCommand(program);
+
+    await program.parseAsync(["node", "ash", "inbox", "list"]);
+    let output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Inbox is empty");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "inbox", "add", "https://github.com/anthropics/claude-code"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Captured [github-repo]");
+    const id = output.trim().split(/\s+/).pop()!;
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "inbox", "list"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("[unread]");
+    expect(output).toContain("[github-repo]");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "inbox", "show", id]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain(`"id": "${id}"`);
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "inbox", "archive", id]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain(`Archived ${id}`);
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "inbox", "list", "--status", "archived"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("[archived]");
+  });
+
+  it("inbox show reports an error for an unknown id", async () => {
+    const program = freshProgram();
+    registerInboxCommand(program);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await program.parseAsync(["node", "ash", "inbox", "show", "does-not-exist"]);
+    expect(errorSpy.mock.calls.flat().join(" ")).toContain("No inbox item found");
+    errorSpy.mockRestore();
   });
 });

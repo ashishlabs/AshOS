@@ -31,6 +31,8 @@ export type AshOSEventName =
   | "codebase:indexed"
   | "task:verified"
   | "task:verification-failed"
+  | "inbox:captured"
+  | "inbox:updated"
   | "log";
 
 export interface AshOSEvent<T = unknown> {

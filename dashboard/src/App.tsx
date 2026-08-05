@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Brain,
   GitBranch,
+  Inbox as InboxIcon,
   LayoutDashboard,
   Lightbulb,
   ListTodo,
@@ -40,6 +41,8 @@ import {
   type DailyBrief,
   type Health,
   type IdeaLifecycleStage,
+  type InboxItem,
+  type InboxStatus,
   type InnovationConfig,
   type KnowledgeGraphStats,
   type LogEntry,
@@ -55,10 +58,11 @@ import {
   type WorkflowStepResultDTO
 } from "./api";
 
-type Tab = "dashboard" | "plan" | "workflow" | "innovation" | "trending" | "memory" | "logs" | "chat";
+type Tab = "dashboard" | "inbox" | "plan" | "workflow" | "innovation" | "trending" | "memory" | "logs" | "chat";
 
 const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "inbox", label: "Inbox", icon: InboxIcon },
   { id: "plan", label: "Plan", icon: ListTodo },
   { id: "workflow", label: "Workflow", icon: GitBranch },
   { id: "innovation", label: "Innovation", icon: Lightbulb },
@@ -122,6 +126,7 @@ function StatusPill() {
 
 const TAB_PANELS: Record<Tab, React.ComponentType> = {
   dashboard: DashboardTab,
+  inbox: InboxTab,
   plan: PlanTab,
   workflow: WorkflowTab,
   innovation: InnovationTab,
@@ -975,6 +980,112 @@ function InnovationTab() {
 }
 
 const SCOPES: MemoryScope[] = ["short-term", "session", "project", "global"];
+
+const INBOX_STATUSES: InboxStatus[] = ["unread", "reviewed", "archived"];
+
+function InboxTab() {
+  const [items, setItems] = useState<InboxItem[]>([]);
+  const [status, setStatus] = useState<InboxStatus | "all">("all");
+  const [content, setContent] = useState("");
+  const [capturing, setCapturing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () =>
+    api
+      .inboxList(status === "all" ? undefined : status)
+      .then((r) => {
+        setItems(r);
+        setError(null);
+      })
+      .catch((e) => setError(e.message));
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  const capture = async () => {
+    if (!content.trim()) return;
+    setCapturing(true);
+    try {
+      await api.inboxCapture(content);
+      setContent("");
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setCapturing(false);
+    }
+  };
+
+  const archive = async (id: string) => {
+    try {
+      await api.inboxArchive(id);
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Inbox</CardTitle>
+        <CardDescription>Everything enters AshOS through here — text, links, GitHub repos, articles — auto-classified on capture.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && capture()}
+            placeholder="Capture a note, link, or idea..."
+          />
+          <Button onClick={capture} disabled={capturing} className="shrink-0">
+            {capturing ? "…" : "Capture"}
+          </Button>
+        </div>
+
+        <Select value={status} onValueChange={(v) => setStatus(v as InboxStatus | "all")}>
+          <SelectTrigger className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">all</SelectItem>
+            {INBOX_STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <LoadError error={error} />
+        {items.length === 0 && !error ? (
+          <EmptyState>Nothing captured yet.</EmptyState>
+        ) : (
+          <ul className="divide-y">
+            {items.map((item) => (
+              <li key={item.id} className="flex items-center justify-between gap-2 py-2.5 text-sm">
+                <span className="min-w-0 flex-1 break-words">
+                  <Badge variant="outline" className="mr-2">
+                    {item.sourceType}
+                  </Badge>
+                  {item.content}
+                </span>
+                {item.status !== "archived" && (
+                  <Button variant="ghost" size="icon" className="shrink-0" onClick={() => archive(item.id)} aria-label={`Archive ${item.id}`}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 function MemoryTab() {
   const [scope, setScope] = useState<MemoryScope>("project");

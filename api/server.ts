@@ -342,6 +342,43 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     res.json(ashos.knowledgeGraph.neighbors(req.params.id));
   });
 
+  app.post("/inbox", async (req, res) => {
+    if (!isNonEmptyString(req.body?.content)) {
+      res.status(400).json({ error: "'content' must be a non-empty string" });
+      return;
+    }
+    try {
+      const tags = Array.isArray(req.body?.tags) ? req.body.tags : undefined;
+      const item = await ashos.inbox.capture(req.body.content, { sourceType: req.body?.sourceType, tags });
+      res.status(201).json(item);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  app.get("/inbox", (req, res) => {
+    const status = req.query.status as never;
+    res.json(ashos.inbox.list(status ? { status } : undefined));
+  });
+
+  app.get("/inbox/:id", (req, res) => {
+    const item = ashos.inbox.get(req.params.id);
+    if (!item) {
+      res.status(404).json({ error: `inbox item "${req.params.id}" not found` });
+      return;
+    }
+    res.json(item);
+  });
+
+  app.post("/inbox/:id/archive", async (req, res) => {
+    try {
+      const item = await ashos.inbox.archive(req.params.id);
+      res.json(item);
+    } catch (error) {
+      res.status(404).json({ error: (error as Error).message });
+    }
+  });
+
   app.get("/codebase", (_req, res) => {
     res.json(ashos.codebase.list());
   });

@@ -245,6 +245,19 @@ export interface TrendingReposResult {
   error?: string;
 }
 
+export type InboxSourceType = "text" | "note" | "url" | "article" | "github-repo" | "youtube" | "tweet" | "pdf";
+export type InboxStatus = "unread" | "reviewed" | "archived";
+export interface InboxItem {
+  id: string;
+  content: string;
+  sourceType: InboxSourceType;
+  status: InboxStatus;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+  detectedUrl?: string;
+}
+
 export const api = {
   health: () => get<Health>("/health"),
   githubTrending: (limit?: number) => get<TrendingReposResult>(`/agents/github-trending${limit ? `?limit=${limit}` : ""}`),
@@ -258,6 +271,10 @@ export const api = {
   memoryRemember: (scope: MemoryScope, key: string, value: unknown, tags?: string[]) =>
     post<MemoryRecord>("/memory", { scope, key, value, tags }),
   memoryForget: (scope: MemoryScope, key: string) => post<{ ok: boolean }>("/memory/forget", { scope, key }),
+
+  inboxCapture: (content: string, tags?: string[]) => post<InboxItem>("/inbox", { content, tags }),
+  inboxList: (status?: InboxStatus) => get<InboxItem[]>(`/inbox${status ? `?status=${status}` : ""}`),
+  inboxArchive: (id: string) => post<InboxItem>(`/inbox/${encodeURIComponent(id)}/archive`, {}),
 
   innovationStatus: () => get<InnovationStatus>("/innovation/status"),
   innovationOpportunities: (limit?: number, stage?: IdeaLifecycleStage) => {
