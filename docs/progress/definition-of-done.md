@@ -119,28 +119,37 @@ handling for orphaned edges (moot today since nothing deletes nodes).
 
 ---
 
-### Multi-Agent Specialist Roles (9 of 11 named roles exist or have a direct equivalent)
+### Multi-Agent Specialist Roles (10 of 11 named roles exist or have a direct equivalent)
 
 - ✔ **Done:** Code, Research, Testing, Git, Generic agents all real and
   registered; Reflection agent added since the last audit; Reviewer
   (`review`), Security Auditor (`security-audit`), DevOps (`devops`), UI
-  Designer (`ui-design`), and Architect (`architecture`) are now also
-  real `BaseAgent` subclasses, each following `agents/code-agent.ts`'s
-  shape (optional `task.input.file` to read for context or write the
-  produced artifact) — bringing total registered agents to 21. Confirmed
-  via `agents/agents.test.ts` (per-agent behavior) and
-  `sdk/ashos.test.ts` (registration under the correct capability).
-- ✖ **Missing:** Documentation Writer, Video Creator — confirmed absent
-  via grep across `agents/` and `innovation/agents/`. Video Creator is
-  additionally blocked on missing media-generation provider
-  infrastructure this codebase doesn't have.
-- ⚠ **Should be improved:** nothing about the existing 9 needs rework —
-  this is purely a "hasn't been built yet" gap for the remaining two, not
+  Designer (`ui-design`), and Architect (`architecture`) are all real
+  `BaseAgent` subclasses, each following `agents/code-agent.ts`'s shape
+  (optional `task.input.file` to read for context or write the produced
+  artifact). Documentation Writer (`documentation`/`docs`,
+  `agents/documentation-agent.ts`) is also now real: it grounds the
+  generated Markdown in actual source — a single file's real content, or
+  a module directory's real file/symbol structure via Local Codebase
+  Intelligence's `scanRepository` — and always writes the result to disk
+  (`.ashos/generated-docs/<slug>.md` by default), closing
+  `missing-features.md` item 14 ("no agent produces documentation") at
+  the same time. Unlike the other five, it's deliberately **not**
+  planner-routed — the Planner's `TaskGraph` never carries a structured
+  `input`, and a documentation request needs a real file/dir path, not
+  paraphrased prose — so it's invoked directly via `ash docs generate`,
+  `POST /docs/generate`, or `runAgent("documentation", ...)`, same
+  precedent as `github-trending`/`codebase-analyst`. Bringing total
+  registered agents to 22. Confirmed via `agents/agents.test.ts`
+  (per-agent behavior) and `sdk/ashos.test.ts` (registration under the
+  correct capability).
+- ✖ **Missing:** Video Creator — blocked on missing media-generation
+  provider infrastructure this codebase doesn't have.
+- ⚠ **Should be improved:** nothing about the existing 10 needs rework —
+  this is purely a "hasn't been built yet" gap for the remaining one, not
   a quality issue.
-- 🚀 **Next implementation step:** build Documentation Writer as a
-  `BaseAgent` subclass with a role-specific system prompt — no new tools
-  or infrastructure required, same pattern as the five specialists just
-  shipped. Video Creator stays deferred with Creative Studio.
+- 🚀 **Next implementation step:** none outstanding for Documentation
+  Writer. Video Creator stays deferred with Creative Studio.
 
 ---
 

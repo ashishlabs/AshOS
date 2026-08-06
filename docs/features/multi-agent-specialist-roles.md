@@ -1,15 +1,15 @@
 # Feature: Multi-Agent Specialist Roles
 
-**Status:** ✅ Mostly Complete (9 of 11 named roles exist or have a direct equivalent)
+**Status:** ✅ Mostly Complete (10 of 11 named roles exist or have a direct equivalent)
 
 ## 1. What is this feature?
 
 The North Star vision for AshOS names 11 specialist "team member" roles
 an AI Employee should have: Architect, Planner, Researcher, Developer,
 Reviewer, Tester, Documentation Writer, Security Auditor, DevOps
-Engineer, UI Designer, Video Creator. As of this update, 9 of them have a
+Engineer, UI Designer, Video Creator. As of this update, 10 of them have a
 real, working agent (or, for Planner, the `planner/` subsystem itself).
-Only **Documentation Writer** and **Video Creator** remain unbuilt.
+Only **Video Creator** remains unbuilt.
 
 **Business value:** this is an honest status page, not a "how to use"
 page for roles that don't exist — it tells you exactly which
@@ -41,20 +41,30 @@ approximate with a generic agent or build yourself as a plugin.
 | DevOps Engineer | **DevOps agent** | `devops` | `ash run "write a Dockerfile for ..."` or `runAgent("devops", ...)` |
 | UI Designer | **UI Designer agent** | `ui-design` | `ash run "design a settings page with ..."` or `runAgent("ui-design", ...)` |
 | Architect | **Architect agent** | `architecture` | `ash run "propose an architecture for ..."` or `runAgent("architecture", ...)` |
+| Documentation Writer | **Documentation agent** | `documentation`, `docs` | `ash docs generate --file <path>` / `--dir <path>`, `POST /docs/generate`, or `runAgent("documentation", { input: { file } })` — **not** planner-routed, see below |
 | Version control specialist | **Git agent** | `git`, `vcs` | Routed automatically for git-flavored tasks |
 | General fallback | **Generic agent** | `generic` | Anything that doesn't match a specialist |
 
-The five newest agents (Reviewer, Security Auditor, DevOps, UI Designer,
-Architect) share the exact `CodeAgent` shape: an optional
-`task.input.file` to read for context (Reviewer, Security Auditor) or to
-write the produced artifact to (DevOps, UI Designer, Architect) via the
-`fs` tool. Omit `input.file` and the result comes back directly as
-`output` instead.
+The five specialists before Documentation Writer (Reviewer, Security
+Auditor, DevOps, UI Designer, Architect) share the exact `CodeAgent`
+shape: an optional `task.input.file` to read for context (Reviewer,
+Security Auditor) or to write the produced artifact to (DevOps, UI
+Designer, Architect) via the `fs` tool. Omit `input.file` and the result
+comes back directly as `output` instead.
 
-**Not yet available** — a goal needing these today falls back to the
+**Documentation Writer is deliberately not planner-routed.** The
+Planner's `TaskGraph` shape (`{ id, title, description, capability,
+dependsOn }`) never carries a structured `input` — the other five
+specialists don't need one (they can act on free-text `task.description`
+alone), but a documentation request fundamentally needs a real file or
+module path, not a paraphrased sentence. Same reasoning `github-trending`
+and `codebase-analyst` already use for staying direct-invoke-only
+(`docs/architecture.md`) — call it via CLI/REST/`runAgent()` with an
+explicit `input.file`/`input.dir` instead of `ash run "write docs for
+..."`.
+
+**Not yet available** — a goal needing this today falls back to the
 Generic or Code agent instead:
-- Documentation Writer (dedicated docs-generation agent; today `ash run
-  "write docs for ..."` falls back to Generic/Code)
 - Video Creator (blocked on missing media-generation provider
   infrastructure — deferred with Creative Studio, `docs/roadmap-v2.md`
   goal #13)
@@ -77,10 +87,8 @@ which agent actually handled it.
   explicitly, but a live LLM provider can still misclassify an ambiguous
   goal. You can always bypass the Planner and call `AshOS.runAgent(...)`
   directly with the exact capability you want.
-- Documentation Writer and Video Creator are the two remaining gaps —
-  see `docs/roadmap-v2.md`'s Tier 2/Tier 3 for where each sits in the
-  plan (Documentation Writer is unscheduled but low-effort; Video Creator
-  is deprioritized with the rest of Creative Studio).
+- Video Creator is the one remaining gap — see `docs/roadmap-v2.md`'s
+  Tier 3 (deprioritized with the rest of Creative Studio).
 - Building a missing role yourself is low effort: it's a `BaseAgent`
   subclass with a role-specific system prompt over the existing
   shell/git/fs tools, following the exact pattern in

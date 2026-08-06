@@ -21,6 +21,7 @@ import { SecurityAuditorAgent } from "../agents/security-auditor-agent";
 import { DevOpsAgent } from "../agents/devops-agent";
 import { UIDesignerAgent } from "../agents/ui-designer-agent";
 import { ArchitectAgent } from "../agents/architect-agent";
+import { DocumentationAgent } from "../agents/documentation-agent";
 import { Planner } from "../planner/planner";
 import { TaskExecutor } from "../planner/executor";
 import { WorkflowEngine } from "../workflow/workflow-engine";
@@ -119,6 +120,7 @@ export class AshOS {
     this.agents.register(new DevOpsAgent());
     this.agents.register(new UIDesignerAgent());
     this.agents.register(new ArchitectAgent());
+    this.agents.register(new DocumentationAgent());
     this.agents.register(new CodebaseAnalystAgent(this.codebase));
 
     this.innovation = new InnovationModule({ kernel: this.kernel, providers: this.providers, agents: this.agents, tools: this.tools });

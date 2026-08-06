@@ -13,7 +13,7 @@ Refactor.
 | AI Providers (Anthropic/OpenAI/Ollama/LM Studio/Mock) | ✅ | 100% | High | Consistent `AIProvider` interface, raw `fetch` (no vendor SDKs), registry-resolved everywhere |
 | Model Router | ✅ | 100% | High | Off by default; wired into `BaseAgent.execute()` for every agent for free |
 | Tools (Shell/Git/Fs) | ✅ | 100% | High | Permission-gated for Shell/Git; Fs is ungated by design |
-| Agent System + Registry | ✅ | 100% | High | 17 agents registered, capability-routed |
+| Agent System + Registry | ✅ | 100% | High | 18 agents registered (root registry), capability-routed |
 | Memory (4 scopes + semantic search) | ✅ | 100% | Medium | Solid substrate; full-file read-modify-write is a known scaling limit, sharpened by Second Brain's write volume |
 | Outcome Memory | ✅ | 100% | High | Automatic, zero opt-in, feeds Reflection Agent |
 | Planner + Task Executor | ✅ | 100% | High | Includes Verification Gate (auto-runs tests after code-producing tasks) |
@@ -29,7 +29,7 @@ Refactor.
 | Knowledge Graph (data model + population + visualization) | ✅ | 95% | High | Real, auto-populated, and now visualized in a dashboard Graph tab (force layout, colored/filterable by kind, click to highlight connections); still no `repository` nodes from external Repository Intelligence |
 | Innovation Intelligence (discovery, scoring, digest) | ✅ | 100% | High | Only GitHub collector proven live in this sandbox; HN/Reddit/arXiv are real but unverified live here |
 | Verification Gate | ✅ | 100% | High | On by default, tested (pass + fail paths, live-verified) |
-| Multi-Agent Specialist Roles | ✅ | 90% | High | 9 of 11 named roles exist or have a direct equivalent — Reviewer, Security Auditor, DevOps, UI Designer, Architect now shipped as real `BaseAgent` subclasses; only Documentation Writer and Video Creator remain missing |
+| Multi-Agent Specialist Roles | ✅ | 95% | High | 10 of 11 named roles exist or have a direct equivalent — Reviewer, Security Auditor, DevOps, UI Designer, Architect, and Documentation Writer now shipped as real `BaseAgent` subclasses; only Video Creator remains missing |
 | Real database (vs. JSON files) | 🟡 | 50% | High | `MemoryManager`'s project/global scopes — the store Inbox/Vault/Workspace/Learning/Outcome Memory all ride on — now persist to SQLite via `node:sqlite` (indexed writes + a tag index, replacing whole-file JSON read-modify-write); the Knowledge Graph and Innovation's per-file JSON stores are unchanged. See `implementation-status.md` Section 15. |
 
 ## "AI Second Brain" Vision Layer
@@ -46,7 +46,7 @@ Refactor.
 | Project Workspace | ✅ | 78% | High | `workspace/` package — Project/Task/Milestone entities, CRUD via CLI/REST, revision history for all three (`ash project history`/`task history`/`milestone history`), a dashboard Projects tab, and computed progress tracking all real; Roadmap/Architecture-docs/Definition-of-Done/Risk-tracking as data models and AI recommendations remain deliberately out of scope |
 | Learning Hub | ✅ | 68% | High | `learning/` package — tracked courses/books/videos/articles and flashcards reviewed via a real SuperMemo-2 spaced repetition implementation (`learning/srs.ts`), independently unit tested, plus revision history for both (`ash learn resource history`/`card history`); Learning paths, Quizzes, and AI recommendations remain deliberately out of scope |
 | AI recommendations (dashboard-wide) | 🔴 | 0% | — | No recommendation engine exists in any subsystem |
-| AI documentation generation | 🔴 | 0% | — | No agent/capability produces documentation |
+| AI documentation generation | ✅ | 100% (for its scope) | High | `agents/documentation-agent.ts` (capability `documentation`/`docs`) generates Markdown grounded in real source — one file's actual content, or a module's real file/symbol structure — and always writes the result to disk. Direct-invoke only (CLI/REST/`runAgent()`), not planner-routed. Doesn't cover roadmap generation (see below). |
 | AI roadmap generation | 🔴 | 0% | — | All roadmap docs in this repo are hand-written |
 
 ## Explicitly Not Implemented (named in earlier project audits, unchanged)
@@ -60,5 +60,5 @@ Refactor.
 | Self-Improvement / Evolution Engine | 🔴 | Deliberately removed (commit `8f7400b`); rebuild gated on an explicit, still-undecided user choice |
 | Creative Studio (media generation) | 🔴 | No image/video/audio provider or dependency |
 
-**Rollup:** 21 ✅/mostly-complete rows, 8 🟡 partial rows, 9 🔴 not-started
+**Rollup:** 22 ✅/mostly-complete rows, 8 🟡 partial rows, 8 🔴 not-started
 rows across 38 tracked features.

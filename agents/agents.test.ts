@@ -11,6 +11,7 @@ import { SecurityAuditorAgent } from "./security-auditor-agent";
 import { DevOpsAgent } from "./devops-agent";
 import { UIDesignerAgent } from "./ui-designer-agent";
 import { ArchitectAgent } from "./architect-agent";
+import { DocumentationAgent } from "./documentation-agent";
 import { AgentRegistry } from "./registry";
 import { ToolRegistry } from "../tools/registry";
 import { FsTool } from "../tools/fs-tool";
@@ -173,6 +174,84 @@ describe("Agents", () => {
     const result = await agent.execute({ id: "t12", description: "a rate limiter shared across services" }, context);
     expect(result.ok).toBe(true);
     expect(result.output).toContain("a rate limiter shared across services");
+  });
+
+  it("DocumentationAgent documents a single file, grounded in its real content, and writes the result to disk", async () => {
+    const file = path.join(cwd, "widget.ts");
+    fs.writeFileSync(file, "export function widget(name: string) { return `hello ${name}`; }");
+    const agent = new DocumentationAgent();
+    const result = await agent.execute({ id: "t13", description: "document widget.ts", input: { file } }, context);
+
+    expect(result.ok).toBe(true);
+    expect(result.output).toContain(file);
+    expect(result.output).toContain("export function widget");
+    const data = result.data as { target: string; outputFile: string };
+    expect(data.target).toBe(file);
+    expect(data.outputFile).toBe(path.join(cwd, ".ashos", "generated-docs", "widget.md"));
+    expect(fs.existsSync(data.outputFile)).toBe(true);
+    expect(fs.readFileSync(data.outputFile, "utf-8")).toBe(result.output);
+  });
+
+  it("DocumentationAgent documents a module directory from its file/symbol structure", async () => {
+    fs.mkdirSync(path.join(cwd, "widgets"));
+    fs.writeFileSync(path.join(cwd, "widgets", "a.ts"), "export function makeWidget() { return 1; }");
+    fs.writeFileSync(path.join(cwd, "widgets", "b.ts"), "export class WidgetStore {}");
+
+    const agent = new DocumentationAgent();
+    const result = await agent.execute({ id: "t14", description: "document the widgets module", input: { dir: "widgets" } }, context);
+
+    expect(result.ok).toBe(true);
+    expect(result.output).toContain("widgets/a.ts");
+    expect(result.output).toContain("makeWidget");
+    expect(result.output).toContain("WidgetStore");
+    const data = result.data as { target: string; outputFile: string };
+    expect(data.outputFile).toBe(path.join(cwd, ".ashos", "generated-docs", "widgets.md"));
+  });
+
+  it("DocumentationAgent writes to an explicit outputFile when given one", async () => {
+    const file = path.join(cwd, "widget.ts");
+    fs.writeFileSync(file, "export function widget() {}");
+    const outputFile = path.join(cwd, "custom-docs", "widget-doc.md");
+
+    const agent = new DocumentationAgent();
+    const result = await agent.execute({ id: "t15", description: "document it", input: { file, outputFile } }, context);
+
+    expect(result.ok).toBe(true);
+    expect(fs.existsSync(outputFile)).toBe(true);
+    expect(fs.existsSync(path.join(cwd, ".ashos", "generated-docs"))).toBe(false);
+  });
+
+  it("DocumentationAgent requires exactly one of input.file or input.dir", async () => {
+    const agent = new DocumentationAgent();
+    const neither = await agent.execute({ id: "t16", description: "document something" }, context);
+    expect(neither.ok).toBe(false);
+
+    fs.mkdirSync(path.join(cwd, "widgets"));
+    const both = await agent.execute(
+      { id: "t17", description: "document something", input: { file: path.join(cwd, "widget.ts"), dir: "widgets" } },
+      context
+    );
+    expect(both.ok).toBe(false);
+  });
+
+  it("DocumentationAgent fails cleanly when the given file doesn't exist", async () => {
+    const agent = new DocumentationAgent();
+    const result = await agent.execute({ id: "t18", description: "document it", input: { file: path.join(cwd, "missing.ts") } }, context);
+    expect(result.ok).toBe(false);
+  });
+
+  it("DocumentationAgent fails cleanly when the given directory has no source files", async () => {
+    fs.mkdirSync(path.join(cwd, "empty"));
+    const agent = new DocumentationAgent();
+    const result = await agent.execute({ id: "t19", description: "document it", input: { dir: "empty" } }, context);
+    expect(result.ok).toBe(false);
+  });
+
+  it("DocumentationAgent registers under the 'documentation' capability", () => {
+    const registry = new AgentRegistry();
+    registry.register(new DocumentationAgent());
+    expect(registry.findByCapability("documentation")?.name).toBe("documentation");
+    expect(registry.findByCapability("docs")?.name).toBe("documentation");
   });
 
   it("AgentRegistry finds agents by capability", () => {

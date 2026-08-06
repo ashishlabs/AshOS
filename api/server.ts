@@ -745,6 +745,20 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     }
   });
 
+  app.post("/docs/generate", async (req, res) => {
+    const { file, dir, outputFile } = req.body ?? {};
+    if (!file && !dir) {
+      res.status(400).json({ error: "specify 'file' or 'dir' in the request body" });
+      return;
+    }
+    try {
+      const result = await ashos.runAgent("documentation", { description: `document ${file ?? dir}`, input: { file, dir, outputFile } });
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
   app.post("/scheduler", (req, res) => {
     const { cron, description, goal, workflowFile } = req.body ?? {};
     if (Boolean(isNonEmptyString(goal)) === Boolean(isNonEmptyString(workflowFile))) {
