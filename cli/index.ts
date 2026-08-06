@@ -20,6 +20,8 @@ import { registerProjectCommand } from "./commands/project";
 import { registerLearnCommand } from "./commands/learn";
 import { registerReflectCommand } from "./commands/reflect";
 import { registerSearchCommand } from "./commands/search";
+import { registerWorkflowCommand } from "./commands/workflow";
+import { registerScheduleCommand } from "./commands/schedule";
 
 const program = new Command();
 program.name("ash").description("AshOS — AI Operating System for Developers").version("0.1.0");
@@ -43,5 +45,7 @@ registerProjectCommand(program);
 registerLearnCommand(program);
 registerReflectCommand(program);
 registerSearchCommand(program);
+registerWorkflowCommand(program);
+registerScheduleCommand(program);
 
 program.parseAsync(process.argv);

@@ -81,13 +81,13 @@ handling for orphaned edges (moot today since nothing deletes nodes).
   surfaces, on-demand dashboard card.
 - ✖ **Missing:** nothing scoped — this is the most complete of the
   Second Brain additions.
-- ⚠ **Should be improved:** reflections are generated on-demand only;
-  there's no scheduled/automatic reflection (would need the Scheduler's
-  missing CLI/REST surface — see `missing-features.md` item 9 — to be
-  fully useful hands-off).
-- 🚀 **Next implementation step:** once Scheduler has a CLI/REST surface,
-  wire a default "generate a daily reflection every morning" job as a
-  reference example.
+- ⚠ **Should be improved:** none outstanding — `AshOS.startScheduledJobs()`
+  already wires a default daily-reflection cron job
+  (`config.reflection`), and the Scheduler's CLI/REST surface
+  (`missing-features.md` item 9, now closed — see `docs/scheduler.md`)
+  means a user can additionally schedule their own custom goal/workflow
+  jobs the same way, e.g. `ash schedule add "0 7 * * *" --goal "..."`.
+- 🚀 **Next implementation step:** none outstanding for this entry.
 
 ---
 

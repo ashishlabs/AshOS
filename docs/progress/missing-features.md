@@ -93,15 +93,25 @@ brief plus the existing North Star roadmap.
    its own, so "Autonomous Research" (North Star goal #8) is real but not
    fully autonomous yet.
 
-9. **CLI/REST surface for the Scheduler.** It's real, working
-   infrastructure, but only reachable by writing SDK code — there's no
-   `ash schedule ...` command and no `/scheduler` route. Blocks anyone
-   wanting a recurring job (a daily digest, a nightly reflection) without
-   writing a standalone script.
+9. **~~CLI/REST surface for the Scheduler.~~ Closed.** `ash schedule
+   add/list/remove` and `POST`/`GET /scheduler`, `DELETE /scheduler/:id`
+   now exist. Turned out `Scheduler` being in-memory-only meant a job
+   added from a short-lived CLI/request process needed a durable
+   definition to mean anything — `ScheduleStore`
+   (`scheduler/schedule-store.ts`, `.ashos/schedules.json`) persists it,
+   and a long-running process reads it back via
+   `AshOS.loadPersistedSchedules()` (called from `startScheduledJobs()`)
+   and registers it on the real `Scheduler`, dispatching to
+   `AshOS.run()`/`runWorkflowFile()` when it fires — reusing both
+   existing entry points, no new execution path. Live-verified end-to-end
+   against the built API server. See `docs/scheduler.md`.
 
-10. **A CLI command to run a Workflow file directly** (`ash workflow run
-    <file>`). Today, running a workflow requires the REST API or the SDK
-    — there's no terminal-only path, unlike everything else in the CLI.
+10. **~~A CLI command to run a Workflow file directly~~ Closed.**
+    `ash workflow run <file>` (`cli/commands/workflow.ts`) reads and
+    parses a workflow JSON file and runs it via the existing
+    `AshOS.runWorkflowFile()` → `WorkflowEngine` path, printing per-step
+    status. Also became the one shared file-loading entry point a
+    `{ kind: "workflow" }` schedule target reuses (item 9 above).
 
 11. **PDF/document content extraction.** Inbox detects a PDF only by URL
     file extension — it never fetches or parses the actual document. A

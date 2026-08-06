@@ -32,8 +32,10 @@ ones, and removes the single largest regression risk in the codebase.
    Dashboard, Inbox, Vault, Search, and Timeline tabs against a mocked
    `fetch`. Still open: the other 10 tabs (Projects, Learning, Graph,
    Plan, Workflow, Innovation, Trending, Memory, Logs, Chat).
-4. `ash workflow run <file>` CLI command (thin wrapper over the existing
-   `WorkflowEngine`/REST path — no engine changes).
+4. ✅ **Shipped** — `ash workflow run <file>` CLI command
+   (`cli/commands/workflow.ts`): reads and parses a workflow JSON file,
+   runs it via the existing `AshOS.runWorkflowFile()` → `runWorkflow()` →
+   `WorkflowEngine` path, prints per-step status. No engine changes.
 
 ## Phase 2 — Close the last named North Star gap + visualize existing data
 
@@ -53,8 +55,16 @@ ones, and removes the single largest regression risk in the codebase.
    dashboard (`GraphTab`, `dashboard/src/graph-layout.ts`, new
    `GET /graph/edges` route): force-directed layout, colored/filterable
    by kind, click to highlight a node's connections.
-7. CLI/REST surface for the Scheduler (`ash schedule ...`,
-   `/scheduler*`) — thin wrapper, `Scheduler` class is already complete.
+7. ✅ **Shipped** — CLI/REST surface for the Scheduler (`ash schedule
+   add/list/remove`, `POST`/`GET /scheduler`, `DELETE /scheduler/:id`).
+   Turned out to need one small new piece beyond a thin wrapper: `Scheduler`
+   itself is in-memory only, so a job added from a short-lived CLI/request
+   process needs a durable definition (`ScheduleStore`,
+   `scheduler/schedule-store.ts`, `.ashos/schedules.json`) that a
+   long-running process reads back and registers for real
+   (`AshOS.loadPersistedSchedules()`, called from `startScheduledJobs()`).
+   A schedule's target reuses `AshOS.run()`/`runWorkflowFile()` directly —
+   no new execution path. See `docs/scheduler.md`.
 8. ✅ **Shipped, except one piece** — `WebFetchTool` exists and grounds
    both Inbox link summaries and `ResearchAgent` output in real page
    content when the task description contains a URL (live-verified

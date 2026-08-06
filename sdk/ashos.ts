@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { Kernel } from "../kernel/kernel";
 import { ProviderRegistry } from "../providers/registry";
 import { ModelRouter } from "../providers/router";
@@ -24,6 +25,8 @@ import { Planner } from "../planner/planner";
 import { TaskExecutor } from "../planner/executor";
 import { WorkflowEngine } from "../workflow/workflow-engine";
 import { Scheduler } from "../scheduler/scheduler";
+import { ScheduleStore } from "../scheduler/schedule-store";
+import type { ScheduleTarget } from "../scheduler/types";
 import { InnovationModule } from "../innovation/innovation-module";
 import { CodebaseAnalystAgent } from "../codebase/agents/codebase-analyst-agent";
 import { CodebaseIndexStore } from "../codebase/codebase-store";
@@ -36,7 +39,7 @@ import { HybridSearch } from "../search/hybrid-search";
 import { saveReflection, type SavedReflection } from "../agents/reflection-store";
 import type { ReflectionData, ReflectionPeriod } from "../agents/reflection";
 import type { Agent, AgentContext, AgentResult } from "../agents/types";
-import type { WorkflowDefinition } from "../workflow/types";
+import type { WorkflowDefinition, WorkflowStepResult } from "../workflow/types";
 import type { TaskGraph } from "../planner/types";
 import type { ChatMessage, ChatOptions } from "../providers/types";
 
@@ -59,6 +62,8 @@ export class AshOS {
   readonly tools: ToolRegistry;
   readonly agents: AgentRegistry;
   readonly scheduler: Scheduler;
+  /** Durable definitions for `scheduler`'s in-memory jobs — see `loadPersistedSchedules()`. */
+  readonly scheduleStore: ScheduleStore;
   readonly innovation: InnovationModule;
   readonly codebase: CodebaseIndexStore;
   /** General-purpose, project-wide Knowledge Graph (`.ashos/graph.json`) — distinct from Innovation Intelligence's own namespaced graph at `.ashos/innovation/graph.json`. See `docs/knowledge-graph.md`. */
@@ -80,6 +85,7 @@ export class AshOS {
     this.router = new ModelRouter(this.providers, this.kernel.config.router);
     this.memory = new MemoryManager(this.kernel.root, { eventBus: this.kernel.eventBus, provider: this.providers.active() });
     this.scheduler = new Scheduler(this.kernel.eventBus);
+    this.scheduleStore = new ScheduleStore(this.kernel.root);
     this.codebase = new CodebaseIndexStore(this.kernel.root);
     this.knowledgeGraph = new KnowledgeGraph(this.kernel.root);
     const webFetchTool = new WebFetchTool();
@@ -161,6 +167,12 @@ export class AshOS {
     return engine.run(definition);
   }
 
+  /** Reads and parses a workflow definition from a JSON file, then runs it — the one shared entry point behind both `ash workflow run <file>` and a `{ kind: "workflow" }` schedule target, so file-loading isn't duplicated between them. */
+  async runWorkflowFile(file: string): Promise<Map<string, WorkflowStepResult>> {
+    const definition = JSON.parse(fs.readFileSync(file, "utf-8")) as WorkflowDefinition;
+    return this.runWorkflow(definition);
+  }
+
   /**
    * Generates a reflection narrative (same as `runAgent("reflection", ...)`)
    * and saves it to `.ashos/reflections/<period>-<date>.json` — see
@@ -189,14 +201,50 @@ export class AshOS {
    * block, the only real caller.
    */
   startScheduledJobs(): void {
-    if (!this.kernel.config.reflection.enabled) return;
-    this.scheduler.schedule({
-      id: "daily-reflection",
-      cron: this.kernel.config.reflection.cron,
-      run: async () => {
-        await this.generateAndSaveReflection("daily");
-      }
-    });
+    if (this.kernel.config.reflection.enabled) {
+      this.scheduler.schedule({
+        id: "daily-reflection",
+        cron: this.kernel.config.reflection.cron,
+        run: async () => {
+          await this.generateAndSaveReflection("daily");
+        }
+      });
+    }
+    this.loadPersistedSchedules();
+  }
+
+  /**
+   * Reads every `scheduleStore` entry (added via `ash schedule add` /
+   * `POST /scheduler`, possibly by an earlier, already-exited CLI process)
+   * and registers it on `this.scheduler` for real. Only meaningful from the
+   * same long-running entry point as `startScheduledJobs()` — a persisted
+   * schedule is durable data, but `Scheduler` itself is in-memory and reset
+   * on every process start, so nothing actually fires until some
+   * long-running process reads this back and re-registers it.
+   */
+  loadPersistedSchedules(): void {
+    for (const schedule of this.scheduleStore.list()) {
+      this.scheduler.schedule({
+        id: schedule.id,
+        cron: schedule.cron,
+        description: schedule.description,
+        run: () => this.runScheduleTarget(schedule.target)
+      });
+    }
+  }
+
+  private async runScheduleTarget(target: ScheduleTarget): Promise<void> {
+    if (target.kind === "goal") {
+      await this.run(target.goal);
+    } else {
+      await this.runWorkflowFile(target.file);
+    }
+  }
+
+  /** Removes a persisted schedule and, if this process already had it registered via `loadPersistedSchedules()`, cancels it immediately rather than waiting for the next restart. */
+  scheduleRemove(id: string): boolean {
+    this.scheduler.cancel(id);
+    return this.scheduleStore.remove(id);
   }
 
   async loadPlugins(dir: string = `${this.kernel.root}/plugins`): Promise<string[]> {

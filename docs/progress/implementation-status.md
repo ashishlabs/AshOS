@@ -455,8 +455,9 @@ during this audit:
 
 - `dashboard/src/App.tsx`: **1,745 lines** (grew from ~1,200 before the
   Second Brain tabs; still one file for all 11 tab components).
-- `api/server.ts`: **472 lines** (grew from 371), all 50 REST routes in
-  one file.
+- `api/server.ts`: **792 lines** (re-counted; grew from 371 at the
+  original audit date through Vault/Workspace/Learning/Search/
+  Graph-edges/Scheduler routes), all 79 REST routes in one file.
 - `TODO`/`FIXME` comments: **0** (confirmed by grep across the whole tree).
 - `evolution/` and `tests/` remain empty leftover directories
   (`evolution/` has one empty nested `dashboard/` folder; `tests/` is

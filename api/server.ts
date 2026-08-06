@@ -717,6 +717,37 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     }
   });
 
+  app.post("/scheduler", (req, res) => {
+    const { cron, description, goal, workflowFile } = req.body ?? {};
+    if (Boolean(isNonEmptyString(goal)) === Boolean(isNonEmptyString(workflowFile))) {
+      res.status(400).json({ error: "provide exactly one of 'goal' or 'workflowFile'" });
+      return;
+    }
+    if (!isNonEmptyString(cron)) {
+      res.status(400).json({ error: "'cron' must be a non-empty string" });
+      return;
+    }
+    const target = isNonEmptyString(goal) ? ({ kind: "goal", goal } as const) : ({ kind: "workflow", file: workflowFile } as const);
+    try {
+      const schedule = ashos.scheduleStore.add({ cron, description, target });
+      res.status(201).json(schedule);
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  });
+
+  app.get("/scheduler", (_req, res) => {
+    res.json(ashos.scheduleStore.list());
+  });
+
+  app.delete("/scheduler/:id", (req, res) => {
+    if (!ashos.scheduleRemove(req.params.id)) {
+      res.status(404).json({ error: `scheduled job "${req.params.id}" not found` });
+      return;
+    }
+    res.status(204).end();
+  });
+
   app.get("/codebase", (_req, res) => {
     res.json(ashos.codebase.list());
   });

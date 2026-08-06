@@ -222,13 +222,18 @@ listener block. Follow this pattern for any new route module.
   `defaultConfig()` always sets all three, so don't add `?.` guards for
   them in new code.
 - `AshOS.startScheduledJobs()` (registers `config.reflection`'s daily
-  cron job on `this.scheduler`) must never be called from the `AshOS`
-  constructor or from `createServer()` — both are constructed freely by
-  tests, and `node-cron`'s `schedule()` creates a real, persistent timer.
-  It's called exactly once, from `api/server.ts`'s
+  cron job on `this.scheduler`, then calls `loadPersistedSchedules()` to
+  also register every user-created job from `scheduleStore`) must never be
+  called from the `AshOS` constructor or from `createServer()` — both are
+  constructed freely by tests, and `node-cron`'s `schedule()` creates a
+  real, persistent timer. It's called exactly once, from `api/server.ts`'s
   `require.main === module` block — the only code path that represents a
   process actually staying alive long enough for a cron schedule to mean
-  anything.
+  anything. `ash schedule add`/`POST /scheduler` only persist a definition
+  to `.ashos/schedules.json` (`scheduler/schedule-store.ts`) — they never
+  register on the live `Scheduler` themselves, since the CLI process (or
+  the request handler) doesn't stay alive long enough for that to mean
+  anything either. See `docs/scheduler.md`.
 - "AshOS Intelligence" (`docs/ashos-intelligence.md`) extends Innovation
   Intelligence (`docs/innovation.md`) rather than replacing it: raw
   `Signal`s are normalized/deduped into canonical `IntelligenceEvent`s

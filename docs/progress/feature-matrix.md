@@ -17,10 +17,10 @@ Refactor.
 | Memory (4 scopes + semantic search) | ✅ | 100% | Medium | Solid substrate; full-file read-modify-write is a known scaling limit, sharpened by Second Brain's write volume |
 | Outcome Memory | ✅ | 100% | High | Automatic, zero opt-in, feeds Reflection Agent |
 | Planner + Task Executor | ✅ | 100% | High | Includes Verification Gate (auto-runs tests after code-producing tasks) |
-| Workflow Engine | ✅ | 100% (infra) | Medium | No CLI command to run a workflow file — REST/SDK only |
-| Scheduler | ✅ | 100% (infra) | Medium | No CLI or REST surface at all — SDK-only |
+| Workflow Engine | ✅ | 100% | High | `ash workflow run <file>` closes the CLI gap — reachable from CLI, REST, and SDK now |
+| Scheduler | ✅ | 100% | High | `ash schedule add/list/remove` + `/scheduler` REST routes, backed by a new `ScheduleStore` for durability across process restarts — reachable from CLI, REST, and SDK now |
 | Plugin System | ✅ | 100% | Medium | Local-only install path, no registry |
-| REST API | ✅ | 100% | High | 50 routes, no authentication |
+| REST API | ✅ | 100% | High | 79 routes (re-counted; the "50 routes" figure predates Vault/Workspace/Learning/Search/Graph-edges/Scheduler shipping), no authentication |
 | CLI (`ash`) | ✅ | 100% | High | 16 command groups |
 | Dashboard shell (nav, theming, layout) | ✅ | 100% | Medium | Zero automated tests |
 | Local Codebase Intelligence | ✅ | 100% (v1 scope) | High | Substring search only, no semantic code search |

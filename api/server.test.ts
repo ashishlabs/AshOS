@@ -383,6 +383,75 @@ describe("AshOS API", () => {
     }
   });
 
+  it("POST /scheduler requires exactly one of 'goal' or 'workflowFile'", async () => {
+    const neither = await fetch(`${baseUrl}/scheduler`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cron: "0 9 * * *" })
+    });
+    expect(neither.status).toBe(400);
+
+    const both = await fetch(`${baseUrl}/scheduler`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cron: "0 9 * * *", goal: "x", workflowFile: "y.json" })
+    });
+    expect(both.status).toBe(400);
+  });
+
+  it("POST /scheduler 400s on a missing or invalid cron expression", async () => {
+    const missing = await fetch(`${baseUrl}/scheduler`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ goal: "x" })
+    });
+    expect(missing.status).toBe(400);
+
+    const invalid = await fetch(`${baseUrl}/scheduler`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cron: "not-a-cron", goal: "x" })
+    });
+    expect(invalid.status).toBe(400);
+  });
+
+  it("POST /scheduler creates a schedule; GET /scheduler lists it; DELETE removes it", async () => {
+    const createRes = await fetch(`${baseUrl}/scheduler`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cron: "0 9 * * *", description: "morning digest", goal: "summarize the news" })
+    });
+    expect(createRes.status).toBe(201);
+    const schedule = (await createRes.json()) as { id: string; target: { kind: string } };
+    expect(schedule.target).toEqual({ kind: "goal", goal: "summarize the news" });
+
+    const listRes = await fetch(`${baseUrl}/scheduler`);
+    const schedules = (await listRes.json()) as { id: string }[];
+    expect(schedules.some((s) => s.id === schedule.id)).toBe(true);
+
+    const deleteRes = await fetch(`${baseUrl}/scheduler/${schedule.id}`, { method: "DELETE" });
+    expect(deleteRes.status).toBe(204);
+
+    const afterDelete = (await (await fetch(`${baseUrl}/scheduler`)).json()) as { id: string }[];
+    expect(afterDelete.some((s) => s.id === schedule.id)).toBe(false);
+  });
+
+  it("DELETE /scheduler/:id 404s for an unknown id", async () => {
+    const res = await fetch(`${baseUrl}/scheduler/does-not-exist`, { method: "DELETE" });
+    expect(res.status).toBe(404);
+  });
+
+  it("POST /scheduler accepts a workflowFile target", async () => {
+    const createRes = await fetch(`${baseUrl}/scheduler`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cron: "0 18 * * 5", workflowFile: "./examples/workflows/research-and-build.json" })
+    });
+    expect(createRes.status).toBe(201);
+    const schedule = (await createRes.json()) as { target: { kind: string; file: string } };
+    expect(schedule.target).toEqual({ kind: "workflow", file: "./examples/workflows/research-and-build.json" });
+  });
+
   it("GET /codebase starts empty; POST /codebase/index then GET /codebase/search find a real file on disk", async () => {
     const repoDir = fs.mkdtempSync(path.join(os.tmpdir(), "ashos-api-codebase-"));
     try {

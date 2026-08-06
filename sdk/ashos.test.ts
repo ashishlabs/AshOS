@@ -115,4 +115,78 @@ describe("AshOS SDK facade", () => {
     const ashos = new AshOS({ root });
     expect(ashos.scheduler.list()).toHaveLength(0);
   });
+
+  it("runWorkflowFile() reads and runs a workflow definition from disk", async () => {
+    const ashos = new AshOS({ root });
+    const file = path.join(root, "wf.json");
+    fs.writeFileSync(file, JSON.stringify({ name: "smoke", steps: [{ id: "s1", uses: "agent:generic", params: { description: "say hi" } }] }));
+    const results = await ashos.runWorkflowFile(file);
+    expect(results.get("s1")?.status).toBe("success");
+  });
+
+  it("loadPersistedSchedules() registers every scheduleStore entry on the live scheduler", () => {
+    const ashos = new AshOS({ root });
+    const schedule = ashos.scheduleStore.add({ cron: "0 9 * * *", description: "morning", target: { kind: "goal", goal: "x" } });
+    ashos.loadPersistedSchedules();
+    try {
+      const job = ashos.scheduler.list().find((j) => j.id === schedule.id);
+      expect(job?.cron).toBe("0 9 * * *");
+      expect(job?.description).toBe("morning");
+    } finally {
+      ashos.scheduler.stopAll();
+    }
+  });
+
+  it("startScheduledJobs() also loads persisted schedules, not just the daily reflection", () => {
+    const ashos = new AshOS({ root });
+    const schedule = ashos.scheduleStore.add({ cron: "0 10 * * *", target: { kind: "goal", goal: "x" } });
+    ashos.startScheduledJobs();
+    try {
+      expect(ashos.scheduler.list().some((j) => j.id === schedule.id)).toBe(true);
+    } finally {
+      ashos.scheduler.stopAll();
+    }
+  });
+
+  it("a scheduled goal target actually plans and executes when its job fires", async () => {
+    const ashos = new AshOS({ root });
+    const schedule = ashos.scheduleStore.add({ cron: "0 9 * * *", target: { kind: "goal", goal: "say hi" } });
+    ashos.loadPersistedSchedules();
+    try {
+      const job = ashos.scheduler.list().find((j) => j.id === schedule.id);
+      await job!.run();
+      expect(ashos.memory.query({ tag: "outcome" }).length).toBeGreaterThan(0);
+    } finally {
+      ashos.scheduler.stopAll();
+    }
+  });
+
+  it("a scheduled workflow target reads and runs the workflow file when its job fires", async () => {
+    const ashos = new AshOS({ root });
+    const file = path.join(root, "wf.json");
+    fs.writeFileSync(file, JSON.stringify({ name: "smoke", steps: [{ id: "s1", uses: "agent:generic", params: { description: "say hi" } }] }));
+    const schedule = ashos.scheduleStore.add({ cron: "0 9 * * *", target: { kind: "workflow", file } });
+    ashos.loadPersistedSchedules();
+    try {
+      const job = ashos.scheduler.list().find((j) => j.id === schedule.id);
+      await job!.run();
+      expect(ashos.memory.query({ tag: "outcome" }).length).toBeGreaterThan(0);
+    } finally {
+      ashos.scheduler.stopAll();
+    }
+  });
+
+  it("scheduleRemove() cancels a live job and deletes the persisted definition", () => {
+    const ashos = new AshOS({ root });
+    const schedule = ashos.scheduleStore.add({ cron: "0 9 * * *", target: { kind: "goal", goal: "x" } });
+    ashos.loadPersistedSchedules();
+    expect(ashos.scheduleRemove(schedule.id)).toBe(true);
+    expect(ashos.scheduler.list().find((j) => j.id === schedule.id)).toBeUndefined();
+    expect(ashos.scheduleStore.list()).toEqual([]);
+  });
+
+  it("scheduleRemove() returns false for an unknown id", () => {
+    const ashos = new AshOS({ root });
+    expect(ashos.scheduleRemove("missing")).toBe(false);
+  });
 });
