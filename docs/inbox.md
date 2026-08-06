@@ -134,9 +134,10 @@ directly.
   rejects non-text content-types (PDF, images, ...) rather than trying to
   parse them, so a captured `pdf`-classified item still only summarizes
   whatever text was pasted alongside the link, not the document itself.
-- **No automatic promotion into Knowledge Vault entities** — an inbox
-  item can already be promoted into a scored Innovation `Opportunity`
+- **~~No automatic promotion into Knowledge Vault entities~~ Closed.** An
+  inbox item can be promoted into a scored Innovation `Opportunity`
   (`ash innovation idea capture`/the dashboard's "Promote to Idea"
-  button), but turning one into a richer Knowledge Vault page is Tier 3
-  work (`docs/second-brain-roadmap.md`) — Knowledge Vault itself doesn't
-  exist yet.
+  button) *or* into a curated Knowledge Vault note
+  (`ash vault promote <inboxId>`/the dashboard's "Promote to Vault"
+  button, `VaultManager.promoteFromInbox()`) — either promotion marks the
+  source item `reviewed`. See `docs/knowledge-vault.md`.

@@ -406,6 +406,74 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     }
   });
 
+  app.post("/vault", async (req, res) => {
+    const { title, content, tags, links, inboxId } = req.body ?? {};
+    if (isNonEmptyString(inboxId)) {
+      try {
+        const note = await ashos.vault.promoteFromInbox(inboxId, { title });
+        res.status(201).json(note);
+      } catch (error) {
+        res.status(400).json({ error: (error as Error).message });
+      }
+      return;
+    }
+    if (!isNonEmptyString(title) || !isNonEmptyString(content)) {
+      res.status(400).json({ error: "'title' and 'content' must be non-empty strings, or provide 'inboxId' to promote an existing inbox item" });
+      return;
+    }
+    try {
+      const note = await ashos.vault.create(title, content, {
+        tags: Array.isArray(tags) ? tags : undefined,
+        links: Array.isArray(links) ? links : undefined
+      });
+      res.status(201).json(note);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  app.get("/vault", (req, res) => {
+    const status = req.query.status as never;
+    const tag = req.query.tag as string | undefined;
+    res.json(ashos.vault.list({ status: status || undefined, tag }));
+  });
+
+  app.get("/vault/:id", (req, res) => {
+    const note = ashos.vault.get(req.params.id);
+    if (!note) {
+      res.status(404).json({ error: `vault note "${req.params.id}" not found` });
+      return;
+    }
+    res.json(note);
+  });
+
+  app.post("/vault/:id/archive", async (req, res) => {
+    try {
+      const note = await ashos.vault.archive(req.params.id);
+      res.json(note);
+    } catch (error) {
+      res.status(404).json({ error: (error as Error).message });
+    }
+  });
+
+  app.post("/vault/:id/link", async (req, res) => {
+    const targetId = req.body?.targetId;
+    if (!isNonEmptyString(targetId)) {
+      res.status(400).json({ error: "'targetId' must be a non-empty string" });
+      return;
+    }
+    try {
+      const note = await ashos.vault.link(req.params.id, targetId);
+      res.json(note);
+    } catch (error) {
+      res.status(404).json({ error: (error as Error).message });
+    }
+  });
+
+  app.get("/vault/:id/backlinks", (req, res) => {
+    res.json(ashos.vault.backlinks(req.params.id));
+  });
+
   app.get("/search", async (req, res) => {
     const query = req.query.q as string | undefined;
     if (!isNonEmptyString(query)) {

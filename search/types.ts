@@ -1,4 +1,4 @@
-export type SearchResultSource = "memory" | "graph" | "inbox";
+export type SearchResultSource = "memory" | "graph" | "inbox" | "vault";
 
 /** One hit from `HybridSearch`, normalized across three otherwise-unrelated stores so a caller can render one ranked list. */
 export interface SearchResult {

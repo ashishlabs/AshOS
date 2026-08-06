@@ -269,7 +269,7 @@ export interface TrendingReposResult {
   error?: string;
 }
 
-export type SearchResultSource = "memory" | "graph" | "inbox";
+export type SearchResultSource = "memory" | "graph" | "inbox" | "vault";
 export interface SearchResult {
   source: SearchResultSource;
   id: string;
@@ -283,7 +283,7 @@ export interface SearchResult {
 export type KnowledgeNodeKind =
   | "person" | "company" | "repository" | "product" | "idea" | "problem" | "industry" | "technology"
   | "community" | "language" | "framework" | "market" | "startup" | "paper" | "workflow" | "agent"
-  | "project" | "skill" | "tool" | "task" | "resource";
+  | "project" | "skill" | "tool" | "task" | "resource" | "note";
 export interface KnowledgeNode {
   id: string;
   kind: KnowledgeNodeKind;
@@ -318,6 +318,19 @@ export interface InboxItem {
   summary?: string;
 }
 
+export type VaultStatus = "active" | "archived";
+export interface VaultNote {
+  id: string;
+  title: string;
+  content: string;
+  tags: string[];
+  links: string[];
+  status: VaultStatus;
+  createdAt: string;
+  updatedAt: string;
+  sourceInboxId?: string;
+}
+
 export const api = {
   health: () => get<Health>("/health"),
   githubTrending: (limit?: number) => get<TrendingReposResult>(`/agents/github-trending${limit ? `?limit=${limit}` : ""}`),
@@ -343,6 +356,20 @@ export const api = {
   inboxCapture: (content: string, tags?: string[]) => post<InboxItem>("/inbox", { content, tags }),
   inboxList: (status?: InboxStatus) => get<InboxItem[]>(`/inbox${status ? `?status=${status}` : ""}`),
   inboxArchive: (id: string) => post<InboxItem>(`/inbox/${encodeURIComponent(id)}/archive`, {}),
+
+  vaultCreate: (title: string, content: string, tags?: string[]) => post<VaultNote>("/vault", { title, content, tags }),
+  vaultPromote: (inboxId: string, title?: string) => post<VaultNote>("/vault", { inboxId, title }),
+  vaultList: (opts: { status?: VaultStatus; tag?: string } = {}) => {
+    const params = new URLSearchParams();
+    if (opts.status) params.set("status", opts.status);
+    if (opts.tag) params.set("tag", opts.tag);
+    const qs = params.toString();
+    return get<VaultNote[]>(`/vault${qs ? `?${qs}` : ""}`);
+  },
+  vaultGet: (id: string) => get<VaultNote>(`/vault/${encodeURIComponent(id)}`),
+  vaultArchive: (id: string) => post<VaultNote>(`/vault/${encodeURIComponent(id)}/archive`, {}),
+  vaultLink: (id: string, targetId: string) => post<VaultNote>(`/vault/${encodeURIComponent(id)}/link`, { targetId }),
+  vaultBacklinks: (id: string) => get<VaultNote[]>(`/vault/${encodeURIComponent(id)}/backlinks`),
 
   captureIdea: (input: { inboxId?: string; content?: string; tags?: string[]; domain?: IntelligenceDomain }) =>
     post<{ opportunity: Opportunity; created: boolean }>("/innovation/ideas", input),

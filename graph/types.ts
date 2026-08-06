@@ -8,7 +8,9 @@
  * project-scoped graph instance. `task` is new in that stage. `resource`
  * is new for Universal Inbox (`inbox/`, see `docs/inbox.md`) — a captured
  * piece of raw content (note, URL, repo link, ...) before it's been
- * triaged into something more specific like an `idea` or `paper`.
+ * triaged into something more specific like an `idea` or `paper`. `note`
+ * is new for the Knowledge Vault (`vault/`, see `docs/knowledge-vault.md`)
+ * — a curated, titled note, one step further triaged than a raw `resource`.
  */
 export type KnowledgeNodeKind =
   | "person"
@@ -31,7 +33,8 @@ export type KnowledgeNodeKind =
   | "skill"
   | "tool"
   | "task"
-  | "resource";
+  | "resource"
+  | "note";
 
 export interface KnowledgeNode {
   id: string;

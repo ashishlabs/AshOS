@@ -23,42 +23,46 @@ Companion files: `feature-matrix.md` (the master table), `missing-features.md`
 | Typecheck | Clean (`npx tsc --noEmit`, zero errors) |
 | TODO/FIXME in source | 0 |
 
-**What "~46%" means:** this repo is a genuinely working, well-tested,
-local-first AI agent platform (the "AshOS core" — providers, agents,
-planner, memory, tools, plugins — is essentially complete) with a real
-first layer of "Second Brain" capability on top (Universal Inbox, Memory
-Timeline, hybrid Search, an Idea Agent, a Reflection Agent). But five of
-the vision's named pillars — **Knowledge Vault, Project Workspace, Learning
-Hub**, plus AI-native summarization/classification inside the Inbox and a
-visual Knowledge Graph — **do not exist in any form**, not even
-partially. This is not a system that's "70% done everywhere" — it's a
-system that is **complete in some areas and a zero in others**, and the
-sections below say exactly which.
+**What "~46%" means (as of the 2026-08-05 audit date above — see the
+per-section updates below for what's shipped since):** this repo is a
+genuinely working, well-tested, local-first AI agent platform (the
+"AshOS core" — providers, agents, planner, memory, tools, plugins — is
+essentially complete) with a real first layer of "Second Brain"
+capability on top (Universal Inbox with AI summarization, Memory
+Timeline, hybrid Search, a visual Knowledge Graph, an Idea Agent, a
+Reflection Agent, and — as of this update — a Knowledge Vault). Two of
+the vision's named pillars — **Project Workspace, Learning Hub** — still
+do not exist in any form. This is not a system that's "70% done
+everywhere" — it's a system that is **complete in some areas and a zero
+in others**, and the sections below say exactly which. (The completion
+percentage and health/quality scores above predate the Inbox AI
+summarization, Knowledge Graph visualization, and Knowledge Vault work
+described below and have not been recalculated — treat them as a lower
+bound, not current.)
 
 ### Major blockers
 
-1. **No Knowledge Vault, Project Workspace, or Learning Hub code exists at all.** Zero files, zero types, zero routes. These are three of the vision's eight major pillars.
-2. **The Inbox has no AI in it.** Classification is regex/URL-pattern matching (`inbox/classifier.ts`), not an LLM call. There is no summarization step anywhere in the capture path. "Universal Inbox" captures and files things; it does not understand them yet.
-3. **The Knowledge Graph has no visual/interactive UI.** It's a real, populated graph (CLI/REST only) but there is no graph visualization component anywhere in `dashboard/`.
-4. **Zero dashboard automated tests.** All 406 passing tests are backend-only; the entire UI layer (11 tabs) has no test coverage.
+1. **No Project Workspace or Learning Hub code exists at all.** Zero files, zero types, zero routes. Knowledge Vault, the third pillar this blocker originally named, now has a real implementation — see Section 5.
+2. **~~The Inbox has no AI in it.~~ Closed.** `InboxManager.capture()` now best-effort asks the active provider for a one-sentence summary, grounded in a captured URL's fetched page text via `WebFetchTool`. See Section 4.
+3. **~~The Knowledge Graph has no visual/interactive UI.~~ Closed.** A dashboard **Graph** tab now renders the whole graph via a dependency-free force layout, colored/filterable by kind, click-to-highlight-connections.
+4. **Zero dashboard automated tests.** All passing tests are backend-only; the UI layer has no test coverage. Still open — the biggest blocker remaining from this list.
 
 ### Biggest risks
 
-- **Scope mismatch between the "Second Brain" vision and what's been built.** The vision describes a Notion/Obsidian/Mem-style personal knowledge system; what exists is a developer-agent platform with a thin capture/reflect layer bolted on. Continuing to build vision features piecemeal without an explicit scope decision (see `roadmap.md`) risks half-building several pillars instead of finishing any.
-- **JSON-file persistence under Second Brain's higher write volume.** Every Inbox capture, every Outcome Memory record, every reflection is a full read-modify-write of one project-scope JSON file (`memory/memory-manager.ts`). This was an accepted tradeoff at AshOS-core scale; Second Brain's "capture everything" pattern is exactly the workload that breaks that assumption first.
+- **Scope mismatch between the "Second Brain" vision and what's been built.** The vision describes a Notion/Obsidian/Mem-style personal knowledge system; what exists is a developer-agent platform with a Second Brain layer built incrementally on top. Continuing to build vision features piecemeal without an explicit scope decision on Project Workspace/Learning Hub (see `roadmap.md`) risks half-building those two pillars instead of finishing either.
+- **JSON-file persistence under Second Brain's higher write volume.** Every Inbox capture, every Vault note, every Outcome Memory record, every reflection is a full read-modify-write of one project-scope JSON file (`memory/memory-manager.ts`). This was an accepted tradeoff at AshOS-core scale; Second Brain's "capture everything" pattern is exactly the workload that breaks that assumption first.
 - **No authentication anywhere.** Fine for a local single-user tool; a hard blocker the moment this is positioned as something a team shares.
 
 ### Top priorities (see `roadmap.md` for phased detail)
 
-1. Decide, explicitly, whether Knowledge Vault / Learning Hub are in scope at all — building either is genuine new domain logic, not a recombination of existing subsystems (unlike everything shipped so far).
-2. Add real AI summarization to the Inbox capture path — the single highest-leverage gap, since every other "Second Brain" feature (Vault, Search, Reflection) is more valuable once captured items are understood, not just filed.
-3. A Knowledge Graph visualization in the dashboard — the data already exists; only the view is missing.
-4. Dashboard test coverage — the biggest risk-to-regression ratio in the codebase given how much UI surface has shipped with zero tests.
+1. Decide, explicitly, whether Project Workspace / Learning Hub are in scope at all — building either is genuine new domain logic, not a recombination of existing subsystems, unlike Knowledge Vault which turned out to be exactly that.
+2. Dashboard test coverage — the biggest risk-to-regression ratio in the codebase given how much UI surface has shipped with zero tests.
+3. Recalculate the completion percentage and health/quality scores above against what's actually shipped now (Inbox AI, Graph viz, Knowledge Vault, five specialist agents) — the current numbers predate all of it.
 
 ### Estimated work remaining
 
-- To close the gaps in what's *already started* (Inbox AI, Graph viz, dashboard tests, named agent roles): **~3-4 weeks** for one experienced engineer, no new architecture required.
-- To build Knowledge Vault + Project Workspace + Learning Hub as designed in the original brief: **~2-3 months**, genuine new domain modeling, and should not be started without the scope decision above.
+- Dashboard test coverage: **~1-2 weeks** for one experienced engineer, no new architecture required.
+- To build Project Workspace + Learning Hub as designed in the original brief: **~2-3 months**, genuine new domain modeling, and should not be started without the scope decision above.
 
 ---
 
@@ -136,26 +140,26 @@ the user typed or pasted, verbatim, forever.
 
 ## 5. Knowledge Vault
 
-**Verdict: 🔴 Not Started. Zero implementation.**
-
-Searched the entire repository for: `vault`, `backlink`, `flashcard`,
-`quiz`, `spaced repetition`, knowledge-page CRUD. The only hit was a single
-doc-comment in `inbox/types.ts` referencing the vision by name — no code.
+**Verdict: ✅ Core implemented.** `vault/` package (`VaultManager`,
+confirmed real via `vault/vault-manager.ts` + `vault/vault-manager.test.ts`),
+`AshOS.vault`, `ash vault add/promote/list/show/archive/link/backlinks`,
+`/vault*` REST routes, a dashboard Vault tab, and a "Promote to Vault"
+button on each Inbox item. See `docs/knowledge-vault.md`. Flashcards and
+spaced repetition were never in scope for Vault — those remain Learning
+Hub territory (Section 8, still not started).
 
 | Requirement | Status |
 |---|---|
-| Knowledge pages | 🔴 None |
-| Tags | 🟡 Tags exist on Memory records, Inbox items, and Knowledge Graph nodes — but as flat string arrays for filtering, not a tag taxonomy/management system |
-| Backlinks | 🔴 None — Knowledge Graph edges connect `project`/`agent`/`task`/`resource`/`repository` nodes, not user-authored notes referencing each other |
-| Related notes | 🔴 None (no "notes" concept exists to relate) |
-| References | 🔴 None |
-| AI summaries | 🔴 None (see Section 4) |
-| Revision history | 🔴 None — Memory records are overwritten on update, no version chain |
-| Flashcards | 🔴 None |
-| Search | 🟡 The general Hybrid Search (Section 14) would surface a knowledge page if one existed, but there's nothing Vault-specific to search |
-| Knowledge graph integration | 🟡 The graph exists and could host `resource`/future `knowledge-page` nodes, but nothing writes vault-shaped data into it today |
-
-This is the single largest all-or-nothing gap against the vision brief.
+| Knowledge pages | ✅ `VaultNote` (title, content, tags) — `vault/types.ts` |
+| Tags | 🟡 Same flat-string-array tagging every other subsystem uses (filterable via `ash vault list --tag`), not a dedicated tag taxonomy/management system |
+| Backlinks | ✅ `VaultManager.backlinks(id)` — the inverse of a note's `links` array, exposed via `ash vault backlinks`/`GET /vault/:id/backlinks` and shown in the dashboard's expanded note view |
+| Related notes | ✅ `VaultManager.link()` — explicit note-to-note links, not inferred from content (no `[[wiki-link]]` parsing, see `docs/knowledge-vault.md`'s "What's not implemented") |
+| References | ✅ A note promoted from an Inbox item records `sourceInboxId` and gets a `relates-to` graph edge back to that item's `resource` node |
+| AI summaries | 🔴 None on Vault notes themselves — a promoted note's `content` is the Inbox item's *original* text, not its `InboxItem.summary` |
+| Revision history | 🔴 None — Memory records are overwritten on update, no version chain (title is immutable by design; content/tags/links are overwrite-on-edit) |
+| Flashcards | 🔴 None — out of scope for Vault, tracked separately as Learning Hub (Section 8) |
+| Search | ✅ `HybridSearch`'s Vault slice (Section 14) — title/content/tag substring matching, same heuristic as every other non-semantic slice |
+| Knowledge graph integration | ✅ Every note becomes a `note` node (new `KnowledgeNodeKind`) on the general `KnowledgeGraph`; links become `relates-to` edges |
 
 ---
 
@@ -218,8 +222,9 @@ Searched for `course`, `flashcard`, `quiz`, `spaced repetition`,
 was the same `inbox/types.ts` doc-comment referencing the vision by name.
 Every single requested capability — Courses, Books, Videos, Progress,
 Learning paths, Revision, Flashcards, Quizzes, AI recommendations — has
-**no code, no types, no route, no UI**. This is the second of the three
-fully-unbuilt pillars (alongside Knowledge Vault).
+**no code, no types, no route, no UI**. This is now one of two remaining
+fully-unbuilt pillars, alongside Project Workspace — Knowledge Vault
+(Section 5) shipped since the previous version of this audit.
 
 ---
 
@@ -460,11 +465,15 @@ during this audit:
 | Maintainability | **75/100** | consistent per-subsystem doc convention, but two oversized files (`App.tsx`, `server.ts`) and two dead directories |
 | Scalability | **50/100** | full-file JSON read-modify-write and brute-force vector search are real, documented limits that Second Brain's write volume stresses harder than AshOS-core did |
 | AI readiness | **65/100** | real LLM integration exists (chat, planning, reflection, briefs) behind a clean provider abstraction — but large swaths of "Second Brain" (classification, idea evaluation, search ranking) are deliberately non-AI heuristics, which is a design choice, not a defect, but means "AI readiness" for the *vision's* AI-heavy framing is lower than the core platform's own AI readiness |
-| **Second Brain readiness** | **~35/100** | Inbox/Timeline/Search/Idea/Reflection are real; Vault, Workspace, and Learning Hub — three of eight pillars — are completely unbuilt |
+| **Second Brain readiness** | **~35/100** (pre-Vault; not recalculated) | Inbox/Timeline/Search/Idea/Reflection/**Vault** are real; Project Workspace and Learning Hub — two of eight pillars — remain completely unbuilt |
 
 **Recommendation: Needs improvement.** Not "major work remaining" in the
-sense of the existing code being broken or low quality — it isn't. But
-three named pillars of the vision this audit was asked to measure against
-have zero implementation, which caps how far "needs improvement" can be
-argued to be close to "ready." Do not present this system as a "Second
-Brain" without qualifying which pillars exist.
+sense of the existing code being broken or low quality — it isn't. Two
+named pillars of the vision this audit was asked to measure against
+(Project Workspace, Learning Hub) still have zero implementation, which
+caps how far "needs improvement" can be argued to be close to "ready."
+The numeric scores in this table were computed before Knowledge Vault,
+Inbox AI summarization, and the Knowledge Graph dashboard visualization
+shipped and have not been recalculated — treat every percentage above as
+a stale lower bound, not a current measurement. Do not present this
+system as a "Second Brain" without qualifying which pillars exist.

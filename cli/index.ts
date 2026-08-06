@@ -15,6 +15,7 @@ import { registerInnovationCommand } from "./commands/innovation";
 import { registerCodebaseCommand } from "./commands/codebase";
 import { registerGraphCommand } from "./commands/graph";
 import { registerInboxCommand } from "./commands/inbox";
+import { registerVaultCommand } from "./commands/vault";
 import { registerReflectCommand } from "./commands/reflect";
 import { registerSearchCommand } from "./commands/search";
 
@@ -35,6 +36,7 @@ registerInnovationCommand(program);
 registerCodebaseCommand(program);
 registerGraphCommand(program);
 registerInboxCommand(program);
+registerVaultCommand(program);
 registerReflectCommand(program);
 registerSearchCommand(program);
 

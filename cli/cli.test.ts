@@ -14,6 +14,7 @@ import { registerInnovationCommand } from "./commands/innovation";
 import { registerCodebaseCommand } from "./commands/codebase";
 import { registerGraphCommand } from "./commands/graph";
 import { registerInboxCommand } from "./commands/inbox";
+import { registerVaultCommand } from "./commands/vault";
 import { registerReflectCommand } from "./commands/reflect";
 import { registerSearchCommand } from "./commands/search";
 import { isInitialized, configPath } from "../kernel/config";
@@ -438,6 +439,106 @@ describe("CLI commands", () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     await program.parseAsync(["node", "ash", "inbox", "show", "does-not-exist"]);
     expect(errorSpy.mock.calls.flat().join(" ")).toContain("No inbox item found");
+    errorSpy.mockRestore();
+  });
+
+  it("vault list reports empty vault, then add/list/show/archive round-trip", async () => {
+    const program = freshProgram();
+    registerVaultCommand(program);
+
+    await program.parseAsync(["node", "ash", "vault", "list"]);
+    let output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Vault is empty");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "vault", "add", "Rate limiting", "token", "bucket", "notes"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Created note");
+    const id = output.trim().split(/\s+/).pop()!;
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "vault", "list"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("[active]");
+    expect(output).toContain("Rate limiting");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "vault", "show", id]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain(`"id": "${id}"`);
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "vault", "archive", id]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain(`Archived ${id}`);
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "vault", "list", "--status", "archived"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("[archived]");
+  });
+
+  it("vault show reports an error for an unknown id", async () => {
+    const program = freshProgram();
+    registerVaultCommand(program);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await program.parseAsync(["node", "ash", "vault", "show", "does-not-exist"]);
+    expect(errorSpy.mock.calls.flat().join(" ")).toContain("No vault note found");
+    errorSpy.mockRestore();
+  });
+
+  it("vault link and backlinks round-trip two notes", async () => {
+    const program = freshProgram();
+    registerVaultCommand(program);
+
+    await program.parseAsync(["node", "ash", "vault", "add", "Note", "A", "content", "a"]);
+    let output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    const idA = output.trim().split(/\s+/).pop()!;
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "vault", "add", "Note", "B", "content", "b"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    const idB = output.trim().split(/\s+/).pop()!;
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "vault", "link", idA, idB]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain(`Linked ${idA} -> ${idB}`);
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "vault", "backlinks", idB]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain(idA);
+  });
+
+  it("vault promote turns an inbox item into a note and marks it reviewed", async () => {
+    const program = freshProgram();
+    registerInboxCommand(program);
+    registerVaultCommand(program);
+
+    await program.parseAsync(["node", "ash", "inbox", "add", "a thought worth keeping"]);
+    let output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    const inboxId = output.trim().split(/\s+/).pop()!;
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "vault", "promote", inboxId]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain(`from inbox item ${inboxId}`);
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "inbox", "show", inboxId]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain(`"status": "reviewed"`);
+  });
+
+  it("vault promote reports an error for an unknown inbox id", async () => {
+    const program = freshProgram();
+    registerVaultCommand(program);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await program.parseAsync(["node", "ash", "vault", "promote", "does-not-exist"]);
+    expect(errorSpy.mock.calls.flat().join(" ")).toContain("not found");
+    expect(process.exitCode).toBe(1);
+    process.exitCode = 0;
     errorSpy.mockRestore();
   });
 

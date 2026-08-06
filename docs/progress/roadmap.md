@@ -54,31 +54,37 @@ ones, and removes the single largest regression risk in the codebase.
 
 ## Phase 3 — The scope decision, then the real net-new work
 
-**Estimated effort:** 2-3 months once scoped; **do not start without an
-explicit decision first.**
+**Estimated effort:** 2-3 months once scoped for the remaining items;
+**do not start without an explicit decision first.** Knowledge Vault
+(item 10 below) turned out not to belong in this phase after all — it
+shipped without needing the scope decision, see below.
 **Dependencies:** a persisted Project/Task entity (item 9 below) is a
-prerequisite for the rest of this phase — Knowledge Vault's "related
-notes," Idea Lab's "related projects," and Research Hub's "project
-linking" all point back to it.
-**Risks:** highest in this roadmap. Knowledge Vault and Learning Hub are
-genuinely new domain logic with no existing analogue to reuse (unlike
-every Second Brain feature shipped so far) — underestimating this is the
+prerequisite for the rest of this phase — Idea Lab's "related projects"
+and Research Hub's "project linking" both point back to it.
+**Risks:** highest in this roadmap. Learning Hub is genuinely new domain
+logic with no existing analogue to reuse — underestimating this is the
 single most likely way this roadmap goes over budget.
-**Expected impact:** if built, closes the three fully-unimplemented
-pillars (Knowledge Vault, Project Workspace, Learning Hub) that currently
-cap "Second Brain readiness" at ~35/100.
+**Expected impact:** if built, closes the two remaining fully-unimplemented
+pillars (Project Workspace, Learning Hub).
 
 9. **Persisted Project/Task/Milestone entity** — a real CRUD data model,
    not just a Knowledge Graph label. This unblocks Project Workspace and
    partially unblocks Idea Lab/Research Hub's "related projects" gaps.
-10. **Knowledge Vault** — pages, tags-as-taxonomy, backlinks, revision
-    history, flashcards. The single largest scope item in this roadmap.
+10. ✅ **Shipped, and didn't need this phase's scope decision after
+    all** — Knowledge Vault (`vault/`, see `docs/knowledge-vault.md`):
+    pages (`VaultNote`), tags, backlinks, related-notes links, and Hybrid
+    Search/Knowledge Graph integration all reused existing infrastructure
+    (`MemoryManager` records + `KnowledgeGraph` edges), the same pattern
+    every other Second Brain feature in Phase 1/2 used. Revision history
+    and flashcards remain unbuilt — flashcards were never really a Vault
+    feature, they belong to Learning Hub (item 11).
 11. **Learning Hub** — courses, flashcards, quizzes, spaced repetition,
     learning paths. Entirely new domain, no existing subsystem to build
-    on top of.
+    on top of. The one item in this phase that still needs the explicit
+    scope decision.
 12. **A recommendation engine** for the dashboard's "AI recommendations"
-    surface — depends on items 9-11 existing to have enough structured
-    data to recommend over.
+    surface — depends on items 9 and 11 existing to have enough
+    structured data to recommend over.
 
 ## Phase 4 — Infrastructure hardening (parallel-track, not gated on Phase 3)
 

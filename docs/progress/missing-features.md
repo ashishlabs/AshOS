@@ -21,13 +21,18 @@ brief plus the existing North Star roadmap.
    force layout (`dashboard/src/graph-layout.ts`) over `GET /graph/nodes`
    + the new `GET /graph/edges`.
 
-3. **Explicit scope decision on Knowledge Vault, Project Workspace, and
-   Learning Hub.** These are three of eight named pillars with *zero*
-   implementation — not partial, not a thin version, nothing. Continuing
-   to build adjacent features (more Inbox source types, more Search
-   modes) without deciding whether these three are in scope risks a
-   system that's permanently "almost a Second Brain" rather than
-   definitively one thing or another.
+3. **~~Knowledge Vault~~ Closed. Explicit scope decision still needed on
+   Project Workspace and Learning Hub.** Knowledge Vault now has a real
+   implementation (`vault/`, see `docs/knowledge-vault.md`) — it turned
+   out to need no new persistence engine or entity type, just the same
+   `MemoryManager`-record-plus-`KnowledgeGraph`-edge pattern Inbox already
+   established. Project Workspace and Learning Hub are a different shape
+   of gap: Project Workspace genuinely needs a first-class `Project`
+   entity with its own CRUD surface, and Learning Hub (flashcards, spaced
+   repetition) has no existing analogue to reuse at all. Continuing to
+   build adjacent features without deciding whether these two are in
+   scope risks a system that's permanently "almost a Second Brain" rather
+   than definitively one thing or another.
 
 ## High
 

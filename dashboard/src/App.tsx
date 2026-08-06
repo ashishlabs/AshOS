@@ -6,7 +6,9 @@ import {
   GitBranch,
   Inbox as InboxIcon,
   LayoutDashboard,
+  Library,
   Lightbulb,
+  Link as LinkIcon,
   ListTodo,
   Menu,
   Moon,
@@ -65,15 +67,18 @@ import {
   type TaskGraph,
   type TaskOutcome,
   type TrendingReposResult,
+  type VaultNote,
+  type VaultStatus,
   type WorkflowStepResultDTO
 } from "./api";
 import { computeForceLayout, kindColor } from "./graph-layout";
 
-type Tab = "dashboard" | "inbox" | "timeline" | "search" | "graph" | "plan" | "workflow" | "innovation" | "trending" | "memory" | "logs" | "chat";
+type Tab = "dashboard" | "inbox" | "vault" | "timeline" | "search" | "graph" | "plan" | "workflow" | "innovation" | "trending" | "memory" | "logs" | "chat";
 
 const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "inbox", label: "Inbox", icon: InboxIcon },
+  { id: "vault", label: "Vault", icon: Library },
   { id: "timeline", label: "Timeline", icon: Clock },
   { id: "search", label: "Search", icon: Search },
   { id: "graph", label: "Graph", icon: Network },
@@ -141,6 +146,7 @@ function StatusPill() {
 const TAB_PANELS: Record<Tab, React.ComponentType> = {
   dashboard: DashboardTab,
   inbox: InboxTab,
+  vault: VaultTab,
   timeline: TimelineTab,
   search: SearchTab,
   graph: GraphTab,
@@ -1209,6 +1215,8 @@ function InboxTab() {
   const [error, setError] = useState<string | null>(null);
   const [promotingId, setPromotingId] = useState<string | null>(null);
   const [promoted, setPromoted] = useState<Record<string, { title: string; score: number; created: boolean }>>({});
+  const [promotingToVaultId, setPromotingToVaultId] = useState<string | null>(null);
+  const [promotedToVault, setPromotedToVault] = useState<Record<string, string>>({});
 
   const load = () =>
     api
@@ -1257,6 +1265,19 @@ function InboxTab() {
       setError((e as Error).message);
     } finally {
       setPromotingId(null);
+    }
+  };
+
+  const promoteToVault = async (id: string) => {
+    setPromotingToVaultId(id);
+    try {
+      const note = await api.vaultPromote(id);
+      setPromotedToVault((prev) => ({ ...prev, [id]: note.title }));
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setPromotingToVaultId(null);
     }
   };
 
@@ -1318,6 +1339,12 @@ function InboxTab() {
                       {promoted[item.id].score.toFixed(2)})
                     </p>
                   )}
+                  {promotedToVault[item.id] && (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      <Library className="h-3 w-3" />
+                      Saved to Vault as "{promotedToVault[item.id]}"
+                    </p>
+                  )}
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   {item.status !== "archived" && (
@@ -1333,11 +1360,209 @@ function InboxTab() {
                     </Button>
                   )}
                   {item.status !== "archived" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => promoteToVault(item.id)}
+                      disabled={promotingToVaultId === item.id}
+                      aria-label={`Promote ${item.id} to a vault note`}
+                      title="Promote to Vault"
+                    >
+                      <Library className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  {item.status !== "archived" && (
                     <Button variant="ghost" size="icon" onClick={() => archive(item.id)} aria-label={`Archive ${item.id}`} title="Archive">
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   )}
                 </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+const VAULT_STATUSES: VaultStatus[] = ["active", "archived"];
+
+function VaultTab() {
+  const [notes, setNotes] = useState<VaultNote[]>([]);
+  const [status, setStatus] = useState<VaultStatus | "all">("all");
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [backlinks, setBacklinks] = useState<VaultNote[]>([]);
+  const [linkTargetId, setLinkTargetId] = useState("");
+  const [linking, setLinking] = useState(false);
+
+  const load = () =>
+    api
+      .vaultList(status === "all" ? {} : { status })
+      .then((r) => {
+        setNotes(r);
+        setError(null);
+      })
+      .catch((e) => setError(e.message));
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setBacklinks([]);
+      return;
+    }
+    api.vaultBacklinks(selectedId).then(setBacklinks).catch(() => setBacklinks([]));
+  }, [selectedId, notes]);
+
+  const create = async () => {
+    if (!title.trim() || !content.trim()) return;
+    setCreating(true);
+    try {
+      await api.vaultCreate(title, content);
+      setTitle("");
+      setContent("");
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const archive = async (id: string) => {
+    try {
+      await api.vaultArchive(id);
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const link = async (id: string) => {
+    if (!linkTargetId.trim()) return;
+    setLinking(true);
+    try {
+      await api.vaultLink(id, linkTargetId.trim());
+      setLinkTargetId("");
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLinking(false);
+    }
+  };
+
+  const selected = notes.find((n) => n.id === selectedId);
+  const byId = new Map(notes.map((n) => [n.id, n]));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Vault</CardTitle>
+        <CardDescription>Curated, long-form notes — link related notes together and see backlinks. Promote items from the Inbox, or write one here directly.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Note title..." />
+          <Textarea rows={3} value={content} onChange={(e) => setContent(e.target.value)} placeholder="Note content..." />
+          <Button onClick={create} disabled={creating || !title.trim() || !content.trim()}>
+            {creating ? "…" : "Create note"}
+          </Button>
+        </div>
+
+        <Select value={status} onValueChange={(v) => setStatus(v as VaultStatus | "all")}>
+          <SelectTrigger className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">all</SelectItem>
+            {VAULT_STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <LoadError error={error} />
+        {notes.length === 0 && !error ? (
+          <EmptyState>Nothing in the vault yet.</EmptyState>
+        ) : (
+          <ul className="divide-y">
+            {notes.map((note) => (
+              <li key={note.id} className="py-2.5 text-sm">
+                <div className="flex items-start justify-between gap-2">
+                  <button
+                    className="min-w-0 flex-1 text-left"
+                    onClick={() => setSelectedId(selectedId === note.id ? null : note.id)}
+                  >
+                    <span className="break-words">
+                      <Badge variant={note.status === "active" ? "secondary" : "outline"} className="mr-2">
+                        {note.status}
+                      </Badge>
+                      <span className="font-medium">{note.title}</span>
+                    </span>
+                    {note.tags.length > 0 && (
+                      <span className="ml-2">
+                        {note.tags.map((t) => (
+                          <Badge key={t} variant="outline" className="mr-1">
+                            {t}
+                          </Badge>
+                        ))}
+                      </span>
+                    )}
+                  </button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {note.status !== "archived" && (
+                      <Button variant="ghost" size="icon" onClick={() => archive(note.id)} aria-label={`Archive ${note.id}`} title="Archive">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {selectedId === note.id && (
+                  <div className="mt-2 space-y-2 rounded-md border bg-muted/30 p-3 text-xs">
+                    <p className="whitespace-pre-wrap text-foreground">{note.content}</p>
+
+                    {note.links.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1 text-muted-foreground">
+                        <LinkIcon className="h-3 w-3" /> Links to:{" "}
+                        {note.links.map((id) => (
+                          <Badge key={id} variant="outline">
+                            {byId.get(id)?.title ?? id}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                    {backlinks.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1 text-muted-foreground">
+                        Linked from: {backlinks.map((n) => <Badge key={n.id} variant="outline">{n.title}</Badge>)}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <Input
+                        value={linkTargetId}
+                        onChange={(e) => setLinkTargetId(e.target.value)}
+                        placeholder="Note id to link to..."
+                        className="h-8"
+                      />
+                      <Button size="sm" variant="outline" onClick={() => link(note.id)} disabled={linking || !linkTargetId.trim()}>
+                        Link
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -1373,6 +1598,12 @@ function summarizeEvent(event: AshOSEvent): string {
       return `Captured inbox item (${str(p.sourceType) ?? "?"})`;
     case event.name === "inbox:updated":
       return `Inbox item marked ${str(p.status) ?? "?"}`;
+    case event.name === "vault:created":
+      return `Created vault note "${str(p.title) ?? "?"}"`;
+    case event.name === "vault:updated":
+      return `Vault note marked ${str(p.status) ?? "?"}`;
+    case event.name === "vault:linked":
+      return "Linked two vault notes";
     case event.name === "codebase:indexed":
       return `Indexed ${String(p.fileCount ?? "?")} file(s) in ${str(p.root) ?? "?"}`;
     case event.name.startsWith("innovation:"):
@@ -1487,7 +1718,8 @@ function TimelineTab() {
 const SEARCH_SOURCE_VARIANT: Record<SearchResult["source"], "secondary" | "outline" | "default"> = {
   memory: "secondary",
   graph: "outline",
-  inbox: "default"
+  inbox: "default",
+  vault: "secondary"
 };
 
 function SearchTab() {

@@ -3,12 +3,14 @@ import type { KnowledgeGraph } from "../graph/knowledge-graph";
 import type { KnowledgeNode } from "../graph/types";
 import type { InboxManager } from "../inbox/inbox-manager";
 import type { InboxItem } from "../inbox/types";
+import type { VaultManager } from "../vault/vault-manager";
+import type { VaultNote } from "../vault/types";
 import type { SearchResult } from "./types";
 
 export interface HybridSearchOptions {
-  /** Max results returned, after merging and ranking across all three stores. */
+  /** Max results returned, after merging and ranking across all four stores. */
   limit?: number;
-  /** Use `MemoryManager.searchSemantic()` (embedding cosine similarity, best-effort) for the Memory slice instead of plain keyword matching. Graph/Inbox matching is always keyword-based — neither store computes embeddings. */
+  /** Use `MemoryManager.searchSemantic()` (embedding cosine similarity, best-effort) for the Memory slice instead of plain keyword matching. Graph/Inbox/Vault matching is always keyword-based — none of the three computes embeddings. */
   semantic?: boolean;
 }
 
@@ -28,14 +30,14 @@ function textScore(haystacks: string[], query: string): number | null {
 }
 
 /**
- * "Find everything about X" across the three stores a Second Brain
+ * "Find everything about X" across the four stores a Second Brain
  * capture/connect flow actually populates — Memory, the general
- * Knowledge Graph, and the Inbox — without touching any of the three
- * (Second Brain roadmap Tier 2 item 6, `docs/second-brain-roadmap.md`).
- * Deliberately not a fourth search index: every slice queries its own
- * store's existing lookup (`MemoryManager.query`/`searchSemantic`,
- * `KnowledgeGraph.listNodes`, `InboxManager.list`) and this class only
- * merges and ranks the results. Graph/Inbox matching is a deterministic
+ * Knowledge Graph, the Inbox, and the Knowledge Vault
+ * (`docs/second-brain-roadmap.md`). Deliberately not a fifth search
+ * index: every slice queries its own store's existing lookup
+ * (`MemoryManager.query`/`searchSemantic`, `KnowledgeGraph.listNodes`,
+ * `InboxManager.list`, `VaultManager.list`) and this class only merges
+ * and ranks the results. Graph/Inbox/Vault matching is a deterministic
  * substring heuristic (same "transparent heuristic over an LLM/embedding
  * call wherever one is good enough" convention as
  * `codebase/indexer.ts`'s `searchIndex`); Memory matching can opt into
@@ -45,25 +47,26 @@ export class HybridSearch {
   constructor(
     private readonly memory: MemoryManager,
     private readonly graph: KnowledgeGraph,
-    private readonly inbox: InboxManager
+    private readonly inbox: InboxManager,
+    private readonly vault: VaultManager
   ) {}
 
   async search(query: string, options: HybridSearchOptions = {}): Promise<SearchResult[]> {
     const limit = options.limit ?? 20;
     const memoryHits = options.semantic ? await this.searchMemorySemantic(query, limit) : this.searchMemory(query);
-    const results = [...memoryHits, ...this.searchGraph(query), ...this.searchInbox(query)];
+    const results = [...memoryHits, ...this.searchGraph(query), ...this.searchInbox(query), ...this.searchVault(query)];
     return results.sort((a, b) => b.score - a.score || b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
   }
 
-  /** `InboxManager` persists items *as* Memory records (see `docs/inbox.md`) — excluded here so a matching Inbox item surfaces once, via `searchInbox()`'s friendlier title/snippet, not twice. */
-  private isInboxBackedRecord(tags: string[] | undefined): boolean {
-    return Boolean(tags?.includes("inbox"));
+  /** `InboxManager`/`VaultManager` persist their records *as* Memory records (see `docs/inbox.md`/`docs/knowledge-vault.md`) — excluded here so a matching item surfaces once, via its own friendlier title/snippet, not twice. */
+  private isSubsystemBackedRecord(tags: string[] | undefined): boolean {
+    return Boolean(tags?.includes("inbox") || tags?.includes("vault"));
   }
 
   private searchMemory(query: string): SearchResult[] {
     return this.memory
       .query({ text: query })
-      .filter((record) => !this.isInboxBackedRecord(record.tags))
+      .filter((record) => !this.isSubsystemBackedRecord(record.tags))
       .map((record) => ({
         source: "memory" as const,
         id: record.id,
@@ -76,7 +79,7 @@ export class HybridSearch {
   }
 
   private async searchMemorySemantic(query: string, limit: number): Promise<SearchResult[]> {
-    const records = (await this.memory.searchSemantic(query, limit)).filter((record) => !this.isInboxBackedRecord(record.tags));
+    const records = (await this.memory.searchSemantic(query, limit)).filter((record) => !this.isSubsystemBackedRecord(record.tags));
     return records.map((record, index) => ({
       source: "memory",
       id: record.id,
@@ -127,6 +130,27 @@ export class HybridSearch {
       snippet: `[${item.sourceType}/${item.status}]`,
       tags: item.tags,
       createdAt: item.createdAt,
+      score
+    };
+  }
+
+  private searchVault(query: string): SearchResult[] {
+    const hits: SearchResult[] = [];
+    for (const note of this.vault.list()) {
+      const score = textScore([note.title, note.content, ...note.tags], query);
+      if (score !== null) hits.push(this.vaultHit(note, score));
+    }
+    return hits;
+  }
+
+  private vaultHit(note: VaultNote, score: number): SearchResult {
+    return {
+      source: "vault",
+      id: note.id,
+      title: note.title,
+      snippet: `[${note.status}] ${note.content.length > 80 ? `${note.content.slice(0, 77)}...` : note.content}`,
+      tags: note.tags,
+      createdAt: note.createdAt,
       score
     };
   }

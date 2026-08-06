@@ -511,6 +511,112 @@ describe("AshOS API", () => {
     expect(filtered.every((i) => i.status === "archived")).toBe(true);
   });
 
+  it("POST /vault 400s without title/content or inboxId", async () => {
+    const res = await fetch(`${baseUrl}/vault`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({})
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("POST /vault creates a note; GET /vault lists it; GET /vault/:id fetches it", async () => {
+    const createRes = await fetch(`${baseUrl}/vault`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "Rate limiting", content: "token bucket notes", tags: ["backend"] })
+    });
+    expect(createRes.status).toBe(201);
+    const note = (await createRes.json()) as { id: string; title: string; status: string };
+    expect(note.title).toBe("Rate limiting");
+    expect(note.status).toBe("active");
+
+    const listRes = await fetch(`${baseUrl}/vault`);
+    const list = (await listRes.json()) as { id: string }[];
+    expect(list.some((n) => n.id === note.id)).toBe(true);
+
+    const getRes = await fetch(`${baseUrl}/vault/${note.id}`);
+    expect(getRes.status).toBe(200);
+    expect(((await getRes.json()) as { id: string }).id).toBe(note.id);
+  });
+
+  it("GET /vault/:id 404s for an unknown id", async () => {
+    const res = await fetch(`${baseUrl}/vault/does-not-exist`);
+    expect(res.status).toBe(404);
+  });
+
+  it("POST /vault/:id/archive archives a note; unknown id 404s", async () => {
+    const createRes = await fetch(`${baseUrl}/vault`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "Archive me via api", content: "content" })
+    });
+    const note = (await createRes.json()) as { id: string };
+
+    const archiveRes = await fetch(`${baseUrl}/vault/${note.id}/archive`, { method: "POST" });
+    expect(archiveRes.status).toBe(200);
+    expect(((await archiveRes.json()) as { status: string }).status).toBe("archived");
+
+    const missingRes = await fetch(`${baseUrl}/vault/does-not-exist/archive`, { method: "POST" });
+    expect(missingRes.status).toBe(404);
+  });
+
+  it("POST /vault/:id/link links two notes; GET /vault/:id/backlinks reflects it", async () => {
+    const aRes = await fetch(`${baseUrl}/vault`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "Note A", content: "content a" })
+    });
+    const a = (await aRes.json()) as { id: string };
+    const bRes = await fetch(`${baseUrl}/vault`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "Note B", content: "content b" })
+    });
+    const b = (await bRes.json()) as { id: string };
+
+    const linkRes = await fetch(`${baseUrl}/vault/${a.id}/link`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ targetId: b.id })
+    });
+    expect(linkRes.status).toBe(200);
+
+    const backlinksRes = await fetch(`${baseUrl}/vault/${b.id}/backlinks`);
+    const backlinks = (await backlinksRes.json()) as { id: string }[];
+    expect(backlinks.map((n) => n.id)).toEqual([a.id]);
+  });
+
+  it("POST /vault with inboxId promotes an existing inbox item and marks it reviewed", async () => {
+    const captureRes = await fetch(`${baseUrl}/inbox`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content: "promote me to the vault" })
+    });
+    const item = (await captureRes.json()) as { id: string };
+
+    const promoteRes = await fetch(`${baseUrl}/vault`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ inboxId: item.id })
+    });
+    expect(promoteRes.status).toBe(201);
+    const note = (await promoteRes.json()) as { sourceInboxId: string };
+    expect(note.sourceInboxId).toBe(item.id);
+
+    const inboxItemRes = await fetch(`${baseUrl}/inbox/${item.id}`);
+    expect(((await inboxItemRes.json()) as { status: string }).status).toBe("reviewed");
+  });
+
+  it("POST /vault 400s for an unknown inboxId", async () => {
+    const res = await fetch(`${baseUrl}/vault`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ inboxId: "does-not-exist" })
+    });
+    expect(res.status).toBe(400);
+  });
+
   it("POST /innovation/ideas 400s without inboxId or content", async () => {
     const res = await fetch(`${baseUrl}/innovation/ideas`, {
       method: "POST",
@@ -635,6 +741,19 @@ describe("AshOS API", () => {
     expect(res.status).toBe(200);
     const results = (await res.json()) as { source: string; title: string }[];
     expect(results.some((r) => r.source === "inbox")).toBe(true);
+  });
+
+  it("GET /search finds a real vault note captured earlier on this shared server", async () => {
+    await fetch(`${baseUrl}/vault`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "zzzvaultsearchable-marker-zzz", content: "a note to find" })
+    });
+
+    const res = await fetch(`${baseUrl}/search?q=zzzvaultsearchable-marker-zzz`);
+    expect(res.status).toBe(200);
+    const results = (await res.json()) as { source: string; title: string }[];
+    expect(results.some((r) => r.source === "vault")).toBe(true);
   });
 
   it("GET /search respects the limit parameter", async () => {

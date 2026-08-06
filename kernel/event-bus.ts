@@ -34,6 +34,9 @@ export type AshOSEventName =
   | "inbox:captured"
   | "inbox:updated"
   | "reflection:generated"
+  | "vault:created"
+  | "vault:updated"
+  | "vault:linked"
   | "log";
 
 export interface AshOSEvent<T = unknown> {

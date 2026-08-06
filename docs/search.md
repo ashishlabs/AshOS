@@ -1,10 +1,12 @@
 # Hybrid Search
 
 `HybridSearch` (`search/hybrid-search.ts`, `AshOS.search`) answers "find
-everything about X" across the three stores a Second Brain capture/connect
-flow actually populates — Memory, the general Knowledge Graph, and the
-Inbox — without adding a fourth search index. It's Tier 2 item 6 of
-`docs/second-brain-roadmap.md`, closing out that tier.
+everything about X" across the four stores a Second Brain capture/connect
+flow actually populates — Memory, the general Knowledge Graph, the
+Inbox, and the Vault — without adding a fifth search index. It's Tier 2
+item 6 of `docs/second-brain-roadmap.md`, closing out that tier (the
+Vault slice was added once Knowledge Vault itself shipped, see
+`docs/knowledge-vault.md`).
 
 ## Quick start
 
@@ -30,20 +32,22 @@ KnowledgeGraph.listNodes()             — keyword: label/tag substring match
         │
 InboxManager.list()                    — keyword: content/tag substring match
         │
+VaultManager.list()                    — keyword: title/content/tag substring match
+        │
 merge, sort by score desc (tie-break: newest first), slice to `limit`
 ```
 
-Graph and Inbox matching is always a deterministic substring heuristic —
+Graph/Inbox/Vault matching is always a deterministic substring heuristic —
 same "transparent heuristic over an LLM/embedding call wherever one is
 good enough" convention as `codebase/indexer.ts`'s `searchIndex` — since
-neither store computes embeddings. Memory matching can opt into the
+none of the three computes embeddings. Memory matching can opt into the
 existing `MemoryManager.searchSemantic()` (best-effort, requires an
 active provider; falls back to keyword matching without one, per
 `MemoryManager`'s own documented behavior) via `{ semantic: true }`.
 
 ## Scoring
 
-A single deterministic `textScore()` heuristic is shared by all three
+A single deterministic `textScore()` heuristic is shared by all four
 keyword slices: exact match on title/label/content or a tag → `1.0`,
 prefix match → `0.75`, substring match → `0.5`. Memory hits that only
 matched through `MemoryManager.query`'s value-substring pre-filter (not
@@ -53,21 +57,23 @@ a score itself. Semantic Memory hits use rank position (`searchSemantic`
 returns results already ordered by cosine similarity, but doesn't expose
 the raw score) converted into a comparable `0-1` value.
 
-## Inbox items never double up as Memory hits
+## Inbox and Vault items never double up as Memory hits
 
-Universal Inbox has no persistence engine of its own — every `InboxItem`
-is a `MemoryManager` project-scope record tagged `"inbox"` (see
-`docs/inbox.md`). Without deduplication, a query matching an Inbox item's
-content would return it twice: once as a raw `memory` hit (JSON dump) and
-once as a properly formatted `inbox` hit. `HybridSearch` excludes any
-Memory record tagged `"inbox"` from the Memory slice — the Inbox slice
-already surfaces it with a friendlier title and snippet.
+Neither Universal Inbox nor Knowledge Vault has a persistence engine of
+its own — every `InboxItem` is a `MemoryManager` project-scope record
+tagged `"inbox"`, and every `VaultNote` is one tagged `"vault"` (see
+`docs/inbox.md`/`docs/knowledge-vault.md`). Without deduplication, a
+query matching one of these would return it twice: once as a raw `memory`
+hit (JSON dump) and once as a properly formatted `inbox`/`vault` hit.
+`HybridSearch` excludes any Memory record tagged `"inbox"` or `"vault"`
+from the Memory slice — the Inbox/Vault slices already surface them with
+a friendlier title and snippet.
 
 ## REST API
 
 | Method | Path | Body | Description |
 |---|---|---|---|
-| GET | `/search?q=&limit=&semantic=` | — | Merged, ranked results across Memory/Graph/Inbox. `400` if `q` is missing. |
+| GET | `/search?q=&limit=&semantic=` | — | Merged, ranked results across Memory/Graph/Inbox/Vault. `400` if `q` is missing. |
 
 ## CLI
 

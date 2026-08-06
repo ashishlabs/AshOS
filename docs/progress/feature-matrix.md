@@ -41,7 +41,7 @@ Refactor.
 | Idea Lab | 🟡 | 60% | High | Storage/scoring/dedup/lifecycle all real; "AI evaluation"/"market analysis" are deterministic heuristic formulas, not LLM reasoning; no related-projects link |
 | Reflection Agent | ✅ | 90% | High | Real daily/weekly/monthly narrative with graceful offline fallback |
 | Cross-store Hybrid Search | 🟡 | 70% | High | Real merge across Memory/Graph/Inbox; semantic mode is Memory-only, Graph/Inbox always keyword-only |
-| Knowledge Vault | 🔴 | 0% | — | No code anywhere — pages, tags-as-taxonomy, backlinks, flashcards, revision history all absent |
+| Knowledge Vault | ✅ | 80% | High | `vault/` package — pages (`VaultNote`), tags, backlinks, related-notes links, Hybrid Search + Knowledge Graph integration all real; flashcards/revision history remain absent (flashcards belong to Learning Hub, not Vault) |
 | Project Workspace | 🔴 | 5% | — | Only a bare `project` Knowledge Graph node exists; no Project/Milestone/Task/Risk entities, no CRUD, no UI |
 | Learning Hub | 🔴 | 0% | — | No code anywhere — courses, flashcards, quizzes, learning paths all absent |
 | AI recommendations (dashboard-wide) | 🔴 | 0% | — | No recommendation engine exists in any subsystem |

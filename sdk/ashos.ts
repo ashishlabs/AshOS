@@ -29,6 +29,7 @@ import { CodebaseAnalystAgent } from "../codebase/agents/codebase-analyst-agent"
 import { CodebaseIndexStore } from "../codebase/codebase-store";
 import { KnowledgeGraph } from "../graph/knowledge-graph";
 import { InboxManager } from "../inbox/inbox-manager";
+import { VaultManager } from "../vault/vault-manager";
 import { HybridSearch } from "../search/hybrid-search";
 import { saveReflection, type SavedReflection } from "../agents/reflection-store";
 import type { ReflectionData, ReflectionPeriod } from "../agents/reflection";
@@ -62,7 +63,9 @@ export class AshOS {
   readonly knowledgeGraph: KnowledgeGraph;
   /** Universal Inbox — the single capture point everything enters AshOS through. See `docs/inbox.md`. */
   readonly inbox: InboxManager;
-  /** Cross-store hybrid search over Memory, the general Knowledge Graph, and the Inbox. See `docs/search.md`. */
+  /** Knowledge Vault — curated, long-form notes with links between them, one step further triaged than a raw Inbox capture. See `docs/knowledge-vault.md`. */
+  readonly vault: VaultManager;
+  /** Cross-store hybrid search over Memory, the general Knowledge Graph, the Inbox, and the Vault. See `docs/search.md`. */
   readonly search: HybridSearch;
 
   constructor(opts: AshOSOptions = {}) {
@@ -80,7 +83,8 @@ export class AshOS {
       provider: this.providers.active(),
       webFetch: webFetchTool
     });
-    this.search = new HybridSearch(this.memory, this.knowledgeGraph, this.inbox);
+    this.vault = new VaultManager(this.memory, { eventBus: this.kernel.eventBus, graph: this.knowledgeGraph });
+    this.search = new HybridSearch(this.memory, this.knowledgeGraph, this.inbox, this.vault);
 
     this.tools = new ToolRegistry();
     this.tools.register(new ShellTool(this.kernel.permissions));

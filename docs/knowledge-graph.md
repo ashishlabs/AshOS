@@ -30,6 +30,13 @@ reusable:
   as `AgentContext.graph`.
 - A new `"task"` node kind was added to `KnowledgeNodeKind` — the one
   genuinely new type, since nothing existed to represent a task before.
+- Two more kinds were added after Stage 4 shipped, by the same "extend
+  the union, no new infrastructure" pattern: `"resource"` for Universal
+  Inbox (`docs/inbox.md`) — a captured, untriaged piece of content — and
+  `"note"` for the Knowledge Vault (`docs/knowledge-vault.md`) — a
+  curated, titled note, one step further triaged than a raw `resource`. A
+  note promoted from an inbox item gets a `relates-to` edge back to its
+  originating `resource` node.
 
 ## What gets recorded, and by whom
 
