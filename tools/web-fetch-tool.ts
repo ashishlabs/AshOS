@@ -29,6 +29,26 @@ async function defaultResolveHostname(hostname: string): Promise<string> {
   return address;
 }
 
+function isPdfResponse(contentType: string, pathname: string): boolean {
+  if (/application\/pdf/i.test(contentType)) return true;
+  // Some hosts (e.g. raw.githubusercontent.com) serve PDFs as a generic
+  // binary content-type, or none at all — fall back to the URL extension.
+  if ((!contentType || /application\/octet-stream/i.test(contentType)) && /\.pdf$/i.test(pathname)) return true;
+  return false;
+}
+
+async function extractPdfText(buffer: Uint8Array): Promise<string> {
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const doc = await pdfjs.getDocument({ data: buffer, verbosity: 0 }).promise;
+  const pages: string[] = [];
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = await doc.getPage(i);
+    const content = await page.getTextContent();
+    pages.push(content.items.map((item) => ("str" in item ? item.str : "")).join(" "));
+  }
+  return pages.join("\n").replace(/\s+/g, " ").trim();
+}
+
 function stripHtml(html: string): { title?: string; text: string } {
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const text = html
@@ -67,7 +87,11 @@ export interface WebFetchToolOptions {
  * common cloud metadata IP too), redirects refused rather than followed,
  * a hard timeout, and a capped read size. This is a read-only best-effort
  * enrichment, not a general-purpose browser — binary/non-text responses
- * are rejected by content-type rather than parsed.
+ * are rejected by content-type rather than parsed, except `application/pdf`
+ * (or a generic/absent content-type paired with a `.pdf` URL path, since
+ * some hosts serve PDFs as `application/octet-stream`), which is extracted
+ * via `pdfjs-dist`'s Node-compatible legacy build (dynamically imported
+ * since it ships ESM-only) instead of rejected.
  */
 export class WebFetchTool implements Tool {
   private resolveHostname: (hostname: string) => Promise<string>;
@@ -132,12 +156,28 @@ export class WebFetchTool implements Tool {
       }
 
       const contentType = res.headers.get("content-type") ?? "";
-      if (contentType && !/text\/html|text\/plain|application\/xhtml/i.test(contentType)) {
+      const isPdf = isPdfResponse(contentType, parsed.pathname);
+      if (contentType && !isPdf && !/text\/html|text\/plain|application\/xhtml/i.test(contentType)) {
         return { ok: false, error: `unsupported content-type: ${contentType}` };
       }
       const contentLength = Number(res.headers.get("content-length") ?? 0);
       if (contentLength > MAX_RESPONSE_BYTES) {
         return { ok: false, error: `response too large (${contentLength} bytes)` };
+      }
+
+      if (isPdf) {
+        const arrayBuffer = await res.arrayBuffer();
+        if (arrayBuffer.byteLength > MAX_RESPONSE_BYTES) {
+          return { ok: false, error: `response too large (${arrayBuffer.byteLength} bytes)` };
+        }
+        let text: string;
+        try {
+          text = await extractPdfText(new Uint8Array(arrayBuffer));
+        } catch (error) {
+          return { ok: false, error: `failed to parse PDF: ${(error as Error).message}` };
+        }
+        if (!text) return { ok: false, error: "no readable text content found in PDF" };
+        return { ok: true, output: text.slice(0, MAX_TEXT_LENGTH) };
       }
 
       const raw = (await res.text()).slice(0, MAX_RESPONSE_BYTES);

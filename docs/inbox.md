@@ -131,10 +131,17 @@ directly.
   this stage. Blocked on the same media-pipeline gap `docs/roadmap.md`
   already tracks for Video/Vision/Voice agents; see
   `docs/second-brain-roadmap.md` Tier 3.
-- **No PDF/non-HTML document fetching** — `WebFetchTool` deliberately
-  rejects non-text content-types (PDF, images, ...) rather than trying to
-  parse them, so a captured `pdf`-classified item still only summarizes
-  whatever text was pasted alongside the link, not the document itself.
+- **~~No PDF/non-HTML document fetching~~ Closed.** `WebFetchTool` now
+  extracts real text from `application/pdf` responses (and from a
+  `.pdf`-suffixed URL served with a generic/absent content-type, e.g.
+  `raw.githubusercontent.com`'s `application/octet-stream`) via
+  `pdfjs-dist`'s Node-compatible legacy build, so a captured `pdf`-
+  classified item is now summarized against the document's actual
+  content, not just the pasted link text — no changes needed in
+  `InboxManager` itself, since it already calls `fetchUrlContext()` for
+  any `detectedUrl` regardless of `sourceType`. Live-verified against a
+  real PDF on `raw.githubusercontent.com`. Images and other binary
+  formats are still rejected by content-type.
 - **~~No automatic promotion into Knowledge Vault entities~~ Closed.** An
   inbox item can be promoted into a scored Innovation `Opportunity`
   (`ash innovation idea capture`/the dashboard's "Promote to Idea"

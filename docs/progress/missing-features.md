@@ -113,10 +113,20 @@ brief plus the existing North Star roadmap.
     status. Also became the one shared file-loading entry point a
     `{ kind: "workflow" }` schedule target reuses (item 9 above).
 
-11. **PDF/document content extraction.** Inbox detects a PDF only by URL
-    file extension — it never fetches or parses the actual document. A
-    "capture a PDF" flow that doesn't read the PDF is capture without
-    substance.
+11. **~~PDF/document content extraction.~~ Closed.** `WebFetchTool`
+    (`tools/web-fetch-tool.ts`) now detects a PDF by `application/pdf`
+    content-type or a `.pdf` URL path served with a generic/absent
+    content-type (e.g. `raw.githubusercontent.com`'s
+    `application/octet-stream`), and extracts its real text via
+    `pdfjs-dist`'s Node-compatible legacy build (dynamically imported
+    since it ships ESM-only, chosen over the `pdf-parse` wrapper to avoid
+    a transitive native-binary dependency). `InboxManager` needed zero
+    changes — it already calls `fetchUrlContext()` for any `detectedUrl`
+    regardless of `sourceType`, so a captured `pdf`-classified item is now
+    summarized against the document's actual content automatically.
+    Live-verified against a real PDF fetched from
+    `raw.githubusercontent.com`. Non-PDF binary formats (images, ...) are
+    still rejected by content-type.
 
 12. **An actual embedded database** (e.g. SQLite) to replace whole-file
     JSON read-modify-write. Not urgent at current scale, but Second

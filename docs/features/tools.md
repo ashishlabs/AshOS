@@ -80,10 +80,14 @@ You ask AshOS to fix a bug and commit the result:
 - **Web Fetch** is deliberately conservative, not a general-purpose
   browser: only `http`/`https`, private/loopback/link-local addresses
   (including cloud metadata endpoints) blocked after DNS resolution,
-  redirects refused rather than followed, a ~6s timeout, and non-text
-  responses (PDFs, images, ...) rejected rather than parsed. It fetches
+  redirects refused rather than followed, a ~6s timeout, and non-text,
+  non-PDF responses (images, ...) rejected rather than parsed. It fetches
   the page's raw text — no JavaScript execution, so content that only
-  renders client-side won't show up.
+  renders client-side won't show up. `application/pdf` responses (or a
+  `.pdf`-suffixed URL served with a generic/absent content-type, e.g.
+  `raw.githubusercontent.com`'s `application/octet-stream`) are the one
+  binary exception: their text is extracted via `pdfjs-dist`'s
+  Node-compatible legacy build instead of being rejected.
 - There's no Docker tool or browser-automation tool yet (see
   `docs/roadmap.md`) — only shell/git/fs/web-fetch ship today. A plugin
   can add a new tool without any kernel changes

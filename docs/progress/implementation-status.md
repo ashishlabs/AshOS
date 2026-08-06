@@ -125,7 +125,7 @@ Implementation: `inbox/classifier.ts`, `inbox/inbox-manager.ts`,
 | GitHub repos | ✅ | Regex-matched, tagged `"github"`, and — uniquely among source types — gets a real Knowledge Graph `repository` node + edge (`inbox-manager.ts`'s `enrichGraph()`) |
 | YouTube | ✅ (classification only) | Regex-matched, tagged `"video"` — no transcript fetch, no metadata pull |
 | Tweets/X | ✅ (classification only) | Regex-matched, tagged `"social"` |
-| PDFs | 🟡 | Detected **only by URL file extension** (`\.pdf$`) — no file upload, no text extraction, no content parsing |
+| PDFs | ✅ (URL-only) | Detected by URL file extension or `application/pdf`/`application/octet-stream`+`.pdf` content-type; `WebFetchTool` now extracts real text via `pdfjs-dist` — no file upload path yet |
 | Voice | 🔴 | No audio capture, no transcription — not in the code at all |
 | Images | 🔴 | No image capture/upload — not in the code at all |
 | Bookmarks | 🟡 | Not a distinct type — a bookmark is just a URL classified as `"article"` |

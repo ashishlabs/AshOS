@@ -31,12 +31,13 @@ handling for orphaned edges (moot today since nothing deletes nodes).
   readable text first and folds it into the summarization prompt, so
   the summary reflects what the link is actually about — not just a
   generic inference from the URL string alone.
-- ✖ **Missing:** voice capture, image capture, real PDF *content*
-  extraction (`WebFetchTool` rejects non-text content-types by design —
-  it fetches HTML/plain-text pages, not documents), a distinct
-  "bookmark" type (folded into generic "article"), a dedicated
-  *search* tool (finding URLs for a topic — `WebFetchTool` only fetches
-  a URL it's already given).
+- ✖ **Missing:** voice capture, image capture, a distinct "bookmark" type
+  (folded into generic "article"), a dedicated *search* tool (finding
+  URLs for a topic — `WebFetchTool` only fetches a URL it's already
+  given). Real PDF *content* extraction is **done**: `WebFetchTool` now
+  extracts text from `application/pdf` responses (and `.pdf`-suffixed
+  URLs served with a generic content-type) via `pdfjs-dist`, live-verified
+  against a real PDF on `raw.githubusercontent.com`.
 - ⚠ **Should be improved:** classification is purely regex-pattern-based
   — a URL that doesn't match one of the 5 hardcoded patterns
   (GitHub/YouTube/Twitter-X/PDF) always falls through to generic
