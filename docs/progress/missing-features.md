@@ -21,18 +21,18 @@ brief plus the existing North Star roadmap.
    force layout (`dashboard/src/graph-layout.ts`) over `GET /graph/nodes`
    + the new `GET /graph/edges`.
 
-3. **~~Knowledge Vault~~ Closed. ~~Project Workspace~~ Closed. Explicit
-   scope decision still needed on Learning Hub.** Knowledge Vault
-   (`vault/`, see `docs/knowledge-vault.md`) and Project Workspace
-   (`workspace/`, see `docs/project-workspaces.md`) both now have real
-   implementations — neither turned out to need a new persistence engine,
-   just the same `MemoryManager`-record-plus-`KnowledgeGraph`-edge
-   pattern Inbox already established. Learning Hub is a different shape
-   of gap: flashcards, spaced repetition, and quizzes have no existing
-   analogue to reuse anywhere in this codebase. Continuing to build
-   adjacent features without deciding whether it's in scope risks a
-   system that's permanently "almost a Second Brain" rather than
-   definitively one thing or another.
+3. **~~Knowledge Vault~~ Closed. ~~Project Workspace~~ Closed.
+   ~~Learning Hub~~ Closed.** All three of the vision's previously
+   fully-unbuilt pillars now have real implementations. Knowledge Vault
+   (`vault/`) and Project Workspace (`workspace/`) turned out not to need
+   a new persistence engine, just the same
+   `MemoryManager`-record-plus-`KnowledgeGraph`-edge pattern Inbox
+   already established. Learning Hub (`learning/`) was the one pillar
+   that genuinely needed new domain logic — the SuperMemo-2 spaced
+   repetition algorithm (`learning/srs.ts`) has no prior analogue
+   anywhere in this codebase — but its storage still followed the same
+   reuse convention. See `docs/knowledge-vault.md`,
+   `docs/project-workspaces.md`, `docs/learning-hub.md`.
 
 ## High
 
@@ -57,16 +57,18 @@ brief plus the existing North Star roadmap.
    or research item to a `Project` yet (no `projectId` field, no
    automatic association).
 
-6. **Dashboard automated tests.** Zero exist for an 11-tab application.
-   Every Second Brain UI addition (Inbox, Timeline, Search, Today's
-   Focus) shipped with no repeatable verification beyond manual
-   Playwright screenshots at build time — the single biggest
-   regression risk in the codebase today.
+6. **Dashboard automated tests.** Zero exist for what's now a 15-tab
+   application (up from 11 at the original audit date — Vault, Projects,
+   Graph, and Learning have all shipped their own tabs since). Every
+   Second Brain UI addition shipped with no repeatable verification
+   beyond manual Playwright screenshots at build time — the single
+   biggest regression risk in the codebase today.
 
 7. **Semantic search for Graph and Inbox slices**, not just Memory.
    `HybridSearch`'s `--semantic` flag only affects the Memory query today;
-   Graph and Inbox results are always plain substring matching, even in
-   "semantic" mode — a user enabling semantic search would reasonably
+   Graph, Inbox, Vault, Workspace, and Learning results are always plain
+   substring matching, even in "semantic" mode — a user enabling semantic
+   search would reasonably
    expect it to apply everywhere.
 
 ## Medium
@@ -111,14 +113,16 @@ brief plus the existing North Star roadmap.
     Real gap against the vision's "AI Layer" section, but low urgency —
     nothing currently depends on it.
 
-15. **Per-record revision history** (Memory/Inbox/Knowledge Graph nodes
-    are all overwrite-on-update, no version chain). Matters most once
-    Knowledge Vault exists and "what did this page used to say" becomes
-    a real question — low priority while Vault itself doesn't exist.
+15. **Per-record revision history** (Memory/Inbox/Vault/Workspace/
+    Learning/Knowledge Graph nodes are all overwrite-on-update, no
+    version chain). Now a real, live gap rather than a hypothetical one —
+    Knowledge Vault shipped, so "what did this note used to say" is an
+    actual question a user can ask today with no way to answer it.
 
 16. **Product Hunt collector** for Innovation Intelligence — same pattern
     as the five collectors already shipped, just not built yet.
 
-17. **Accessibility depth** (only 7 `aria-*` attributes across a
-    1,745-line, 11-tab dashboard). Not broken, but thin — worth a pass
-    once the higher-priority Vault/Workspace/testing gaps are addressed.
+17. **Accessibility depth** (only 10 `aria-*` attributes across a
+    2,775-line, 15-tab dashboard — both numbers grown from 7/1,745/11 at
+    the original audit date). Not broken, but thin — worth a pass once
+    the higher-priority dashboard-testing gap is addressed.

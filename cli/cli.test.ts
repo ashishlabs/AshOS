@@ -16,6 +16,7 @@ import { registerGraphCommand } from "./commands/graph";
 import { registerInboxCommand } from "./commands/inbox";
 import { registerVaultCommand } from "./commands/vault";
 import { registerProjectCommand } from "./commands/project";
+import { registerLearnCommand } from "./commands/learn";
 import { registerReflectCommand } from "./commands/reflect";
 import { registerSearchCommand } from "./commands/search";
 import { isInitialized, configPath } from "../kernel/config";
@@ -659,6 +660,87 @@ describe("CLI commands", () => {
     await program.parseAsync(["node", "ash", "project", "milestone", "status", milestoneId, "done"]);
     output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
     expect(output).toContain("is now [done]");
+  });
+
+  it("learn resource list reports empty, then add/list/show/status round-trip", async () => {
+    const program = freshProgram();
+    registerLearnCommand(program);
+
+    await program.parseAsync(["node", "ash", "learn", "resource", "list"]);
+    let output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("No resources tracked yet");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "learn", "resource", "add", "Deep Learning Specialization", "--type", "course"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Created resource");
+    const id = output.trim().split(/\s+/).pop()!;
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "learn", "resource", "list"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("[to-learn]");
+    expect(output).toContain("[course]");
+    expect(output).toContain("Deep Learning Specialization");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "learn", "resource", "show", id]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain(`"id": "${id}"`);
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "learn", "resource", "status", id, "completed"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("is now [completed]");
+  });
+
+  it("learn resource show reports an error for an unknown id", async () => {
+    const program = freshProgram();
+    registerLearnCommand(program);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await program.parseAsync(["node", "ash", "learn", "resource", "show", "does-not-exist"]);
+    expect(errorSpy.mock.calls.flat().join(" ")).toContain("No resource found");
+    errorSpy.mockRestore();
+  });
+
+  it("learn card add/list/review round-trip drives spaced repetition scheduling", async () => {
+    const program = freshProgram();
+    registerLearnCommand(program);
+
+    await program.parseAsync(["node", "ash", "learn", "card", "list"]);
+    let output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("No flashcards yet");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "learn", "card", "add", "What is SM-2?", "A spaced repetition algorithm"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Created flashcard");
+    const id = output.trim().split(/\s+/).pop()!;
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "learn", "card", "list", "--due"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("What is SM-2?");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "learn", "card", "review", id, "good"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("next due");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "learn", "card", "list", "--due"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("No cards due for review");
+  });
+
+  it("learn card review reports an error for an unknown id", async () => {
+    const program = freshProgram();
+    registerLearnCommand(program);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await program.parseAsync(["node", "ash", "learn", "card", "review", "does-not-exist", "good"]);
+    expect(errorSpy.mock.calls.flat().join(" ")).toContain("not found");
+    process.exitCode = 0;
+    errorSpy.mockRestore();
   });
 
   it("innovation idea capture scores raw content into an Opportunity", async () => {

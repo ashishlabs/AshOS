@@ -8,6 +8,7 @@ import { KnowledgeGraph } from "../graph/knowledge-graph";
 import { InboxManager } from "../inbox/inbox-manager";
 import { VaultManager } from "../vault/vault-manager";
 import { WorkspaceManager } from "../workspace/workspace-manager";
+import { LearningManager } from "../learning/learning-manager";
 import { MockProvider } from "../providers/mock-provider";
 
 describe("HybridSearch", () => {
@@ -17,6 +18,7 @@ describe("HybridSearch", () => {
   let inbox: InboxManager;
   let vault: VaultManager;
   let workspace: WorkspaceManager;
+  let learning: LearningManager;
   let search: HybridSearch;
 
   beforeEach(() => {
@@ -26,14 +28,15 @@ describe("HybridSearch", () => {
     inbox = new InboxManager(memory);
     vault = new VaultManager(memory);
     workspace = new WorkspaceManager(memory);
-    search = new HybridSearch(memory, graph, inbox, vault, workspace);
+    learning = new LearningManager(memory);
+    search = new HybridSearch(memory, graph, inbox, vault, workspace, learning);
   });
 
   afterEach(() => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  it("returns nothing across all five stores when empty", async () => {
+  it("returns nothing across all six stores when empty", async () => {
     expect(await search.search("langgraph")).toEqual([]);
   });
 
@@ -83,25 +86,38 @@ describe("HybridSearch", () => {
     expect(afterMore.map((r) => r.source)).toEqual(["workspace", "workspace", "workspace"]);
   });
 
-  it("merges and ranks hits from all five stores together, highest score first", async () => {
+  it("finds a matching learning resource and flashcard", async () => {
+    await learning.addResource("LangGraph course", "course");
+    const afterResource = await search.search("langgraph");
+    expect(afterResource.every((r) => r.source === "learning")).toBe(true);
+    expect(afterResource.length).toBeGreaterThan(0);
+
+    await learning.addCard("What is LangGraph?", "An orchestration framework");
+    const afterCard = await search.search("langgraph");
+    expect(afterCard.map((r) => r.source)).toEqual(["learning", "learning"]);
+  });
+
+  it("merges and ranks hits from all six stores together, highest score first", async () => {
     await memory.remember("project", "note-1", { text: "something about langgraph internals" });
     graph.upsertNode({ kind: "technology", label: "LangGraph" }); // exact match -> score 1
     await inbox.capture("random langgraph thought");
     await vault.create("Vault note", "langgraph reference content");
     await workspace.createProject("Langgraph project", "reference content");
+    await learning.addResource("Langgraph resource", "article", { notes: "reference content" });
 
     const results = await search.search("langgraph");
-    expect(results).toHaveLength(5);
+    expect(results).toHaveLength(6);
     expect(results[0].source).toBe("graph");
-    expect(results.map((r) => r.source).sort()).toEqual(["graph", "inbox", "memory", "vault", "workspace"]);
+    expect(results.map((r) => r.source).sort()).toEqual(["graph", "inbox", "learning", "memory", "vault", "workspace"]);
   });
 
-  it("excludes non-matching records from all five stores", async () => {
+  it("excludes non-matching records from all six stores", async () => {
     await memory.remember("project", "unrelated", { text: "something else entirely" });
     graph.upsertNode({ kind: "technology", label: "Kubernetes" });
     await inbox.capture("totally unrelated capture");
     await vault.create("Unrelated note", "nothing to see here");
     await workspace.createProject("Unrelated project", "nothing to see here");
+    await learning.addResource("Unrelated resource", "book");
 
     expect(await search.search("langgraph")).toEqual([]);
   });
@@ -117,9 +133,10 @@ describe("HybridSearch", () => {
     await inbox.capture("a note", { tags: ["langgraph"] });
     await vault.create("A note", "content", { tags: ["langgraph"] });
     await workspace.createProject("A project", "content", { tags: ["langgraph"] });
+    await learning.addResource("A resource", "book", { tags: ["langgraph"] });
 
     const results = await search.search("langgraph");
-    expect(results.map((r) => r.source).sort()).toEqual(["graph", "inbox", "vault", "workspace"]);
+    expect(results.map((r) => r.source).sort()).toEqual(["graph", "inbox", "learning", "vault", "workspace"]);
   });
 
   it("semantic option falls back gracefully without a provider-backed embedding and still returns matches", async () => {
@@ -128,7 +145,15 @@ describe("HybridSearch", () => {
     const inboxForProvider = new InboxManager(memoryWithProvider);
     const vaultForProvider = new VaultManager(memoryWithProvider);
     const workspaceForProvider = new WorkspaceManager(memoryWithProvider);
-    const searchWithProvider = new HybridSearch(memoryWithProvider, graph, inboxForProvider, vaultForProvider, workspaceForProvider);
+    const learningForProvider = new LearningManager(memoryWithProvider);
+    const searchWithProvider = new HybridSearch(
+      memoryWithProvider,
+      graph,
+      inboxForProvider,
+      vaultForProvider,
+      workspaceForProvider,
+      learningForProvider
+    );
 
     await memoryWithProvider.remember("project", "note-1", { text: "LangGraph orchestration notes" });
     const results = await searchWithProvider.search("langgraph", { semantic: true });

@@ -7,12 +7,14 @@ import type { VaultManager } from "../vault/vault-manager";
 import type { VaultNote } from "../vault/types";
 import type { WorkspaceManager } from "../workspace/workspace-manager";
 import type { Milestone, Project, ProjectTask } from "../workspace/types";
+import type { LearningManager } from "../learning/learning-manager";
+import type { Flashcard, LearningResource } from "../learning/types";
 import type { SearchResult } from "./types";
 
 export interface HybridSearchOptions {
-  /** Max results returned, after merging and ranking across all five stores. */
+  /** Max results returned, after merging and ranking across all six stores. */
   limit?: number;
-  /** Use `MemoryManager.searchSemantic()` (embedding cosine similarity, best-effort) for the Memory slice instead of plain keyword matching. Graph/Inbox/Vault/Workspace matching is always keyword-based — none of the four computes embeddings. */
+  /** Use `MemoryManager.searchSemantic()` (embedding cosine similarity, best-effort) for the Memory slice instead of plain keyword matching. Graph/Inbox/Vault/Workspace/Learning matching is always keyword-based — none of the five computes embeddings. */
   semantic?: boolean;
 }
 
@@ -32,18 +34,19 @@ function textScore(haystacks: string[], query: string): number | null {
 }
 
 /**
- * "Find everything about X" across the five stores a Second Brain
+ * "Find everything about X" across the six stores a Second Brain
  * capture/connect flow actually populates — Memory, the general
- * Knowledge Graph, the Inbox, the Knowledge Vault, and Project Workspaces
- * (`docs/second-brain-roadmap.md`). Deliberately not a sixth search
- * index: every slice queries its own store's existing lookup
- * (`MemoryManager.query`/`searchSemantic`, `KnowledgeGraph.listNodes`,
- * `InboxManager.list`, `VaultManager.list`, `WorkspaceManager.list*`) and
- * this class only merges and ranks the results. Graph/Inbox/Vault/
- * Workspace matching is a deterministic substring heuristic (same
- * "transparent heuristic over an LLM/embedding call wherever one is good
- * enough" convention as `codebase/indexer.ts`'s `searchIndex`); Memory
- * matching can opt into the existing semantic vector search instead.
+ * Knowledge Graph, the Inbox, the Knowledge Vault, Project Workspaces,
+ * and the Learning Hub (`docs/second-brain-roadmap.md`). Deliberately
+ * not a seventh search index: every slice queries its own store's
+ * existing lookup (`MemoryManager.query`/`searchSemantic`,
+ * `KnowledgeGraph.listNodes`, `InboxManager.list`, `VaultManager.list`,
+ * `WorkspaceManager.list*`, `LearningManager.list*`) and this class only
+ * merges and ranks the results. Graph/Inbox/Vault/Workspace/Learning
+ * matching is a deterministic substring heuristic (same "transparent
+ * heuristic over an LLM/embedding call wherever one is good enough"
+ * convention as `codebase/indexer.ts`'s `searchIndex`); Memory matching
+ * can opt into the existing semantic vector search instead.
  */
 export class HybridSearch {
   constructor(
@@ -51,7 +54,8 @@ export class HybridSearch {
     private readonly graph: KnowledgeGraph,
     private readonly inbox: InboxManager,
     private readonly vault: VaultManager,
-    private readonly workspace: WorkspaceManager
+    private readonly workspace: WorkspaceManager,
+    private readonly learning: LearningManager
   ) {}
 
   async search(query: string, options: HybridSearchOptions = {}): Promise<SearchResult[]> {
@@ -62,15 +66,16 @@ export class HybridSearch {
       ...this.searchGraph(query),
       ...this.searchInbox(query),
       ...this.searchVault(query),
-      ...this.searchWorkspace(query)
+      ...this.searchWorkspace(query),
+      ...this.searchLearning(query)
     ];
     return results.sort((a, b) => b.score - a.score || b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
   }
 
-  /** `InboxManager`/`VaultManager`/`WorkspaceManager` persist their records *as* Memory records (see `docs/inbox.md`/`docs/knowledge-vault.md`/`docs/project-workspaces.md`) — excluded here so a matching item surfaces once, via its own friendlier title/snippet, not twice. */
+  /** `InboxManager`/`VaultManager`/`WorkspaceManager`/`LearningManager` persist their records *as* Memory records (see `docs/inbox.md`/`docs/knowledge-vault.md`/`docs/project-workspaces.md`/`docs/learning-hub.md`) — excluded here so a matching item surfaces once, via its own friendlier title/snippet, not twice. */
   private isSubsystemBackedRecord(tags: string[] | undefined): boolean {
     if (!tags) return false;
-    return tags.includes("inbox") || tags.includes("vault") || tags.some((t) => t.startsWith("workspace-"));
+    return tags.includes("inbox") || tags.includes("vault") || tags.some((t) => t.startsWith("workspace-") || t.startsWith("learning-"));
   }
 
   private searchMemory(query: string): SearchResult[] {
@@ -215,6 +220,43 @@ export class HybridSearch {
       snippet: `[milestone/${milestone.status}] ${project.name}`,
       tags: [],
       createdAt: milestone.createdAt,
+      score
+    };
+  }
+
+  private searchLearning(query: string): SearchResult[] {
+    const hits: SearchResult[] = [];
+    for (const resource of this.learning.listResources()) {
+      const score = textScore([resource.title, resource.notes, ...resource.tags], query);
+      if (score !== null) hits.push(this.resourceHit(resource, score));
+    }
+    for (const card of this.learning.listCards()) {
+      const score = textScore([card.front, card.back, ...card.tags], query);
+      if (score !== null) hits.push(this.cardHit(card, score));
+    }
+    return hits;
+  }
+
+  private resourceHit(resource: LearningResource, score: number): SearchResult {
+    return {
+      source: "learning",
+      id: resource.id,
+      title: resource.title,
+      snippet: `[${resource.type}/${resource.status}] ${resource.notes}`.trim(),
+      tags: resource.tags,
+      createdAt: resource.createdAt,
+      score
+    };
+  }
+
+  private cardHit(card: Flashcard, score: number): SearchResult {
+    return {
+      source: "learning",
+      id: card.id,
+      title: card.front,
+      snippet: `[flashcard] ${card.back}`,
+      tags: card.tags,
+      createdAt: card.createdAt,
       score
     };
   }

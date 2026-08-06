@@ -48,6 +48,11 @@ reusable:
   node, and its label is prefixed with the project's name
   (`"<project name>: <title>"`) to avoid same-titled tasks across
   different projects merging into one node.
+- `"learning-resource"` was added for the Learning Hub
+  (`docs/learning-hub.md`) — a tracked course/book/video/article.
+  Individual `Flashcard`s deliberately do **not** get graph nodes: a real
+  deck can hold hundreds of cards, and a node per card would add graph
+  noise with no meaningful new connections to show.
 
 ## What gets recorded, and by whom
 

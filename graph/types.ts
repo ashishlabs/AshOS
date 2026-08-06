@@ -18,6 +18,11 @@
  * `AgentTask.id`. Reusing `task` for both would risk merging an
  * ephemeral run record with an unrelated persisted to-do item that
  * happens to share a label — `upsertNode` dedupes by `(kind, label)`.
+ * `learning-resource` is new for the Learning Hub (`learning/`, see
+ * `docs/learning-hub.md`) — a tracked course/book/video/article.
+ * Individual `Flashcard`s deliberately do **not** get graph nodes (see
+ * that doc) — a real deck can have hundreds of cards, and a node per
+ * card would add graph noise with no meaningful new connections to show.
  */
 export type KnowledgeNodeKind =
   | "person"
@@ -43,7 +48,8 @@ export type KnowledgeNodeKind =
   | "resource"
   | "note"
   | "todo"
-  | "milestone";
+  | "milestone"
+  | "learning-resource";
 
 export interface KnowledgeNode {
   id: string;

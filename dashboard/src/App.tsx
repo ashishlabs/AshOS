@@ -7,6 +7,7 @@ import {
   Clock,
   Flag,
   GitBranch,
+  GraduationCap,
   Inbox as InboxIcon,
   LayoutDashboard,
   Library,
@@ -20,6 +21,7 @@ import {
   Play,
   Radar,
   RefreshCw,
+  RotateCw,
   ScrollText,
   Search,
   Send,
@@ -67,6 +69,10 @@ import {
   type ReflectionPeriod,
   type RepositoryProfile,
   type SearchResult,
+  type Flashcard,
+  type LearningResource,
+  type LearningResourceStatus,
+  type LearningResourceType,
   type Milestone,
   type MilestoneStatus,
   type Project,
@@ -74,6 +80,7 @@ import {
   type ProjectStatus,
   type ProjectTask,
   type ProjectTaskStatus,
+  type ReviewGrade,
   type TaskGraph,
   type TaskOutcome,
   type TrendingReposResult,
@@ -83,13 +90,14 @@ import {
 } from "./api";
 import { computeForceLayout, kindColor } from "./graph-layout";
 
-type Tab = "dashboard" | "inbox" | "vault" | "projects" | "timeline" | "search" | "graph" | "plan" | "workflow" | "innovation" | "trending" | "memory" | "logs" | "chat";
+type Tab = "dashboard" | "inbox" | "vault" | "projects" | "learning" | "timeline" | "search" | "graph" | "plan" | "workflow" | "innovation" | "trending" | "memory" | "logs" | "chat";
 
 const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "inbox", label: "Inbox", icon: InboxIcon },
   { id: "vault", label: "Vault", icon: Library },
   { id: "projects", label: "Projects", icon: Briefcase },
+  { id: "learning", label: "Learning", icon: GraduationCap },
   { id: "timeline", label: "Timeline", icon: Clock },
   { id: "search", label: "Search", icon: Search },
   { id: "graph", label: "Graph", icon: Network },
@@ -159,6 +167,7 @@ const TAB_PANELS: Record<Tab, React.ComponentType> = {
   inbox: InboxTab,
   vault: VaultTab,
   projects: ProjectsTab,
+  learning: LearningTab,
   timeline: TimelineTab,
   search: SearchTab,
   graph: GraphTab,
@@ -1856,6 +1865,243 @@ function ProjectsTab() {
   );
 }
 
+const LEARNING_RESOURCE_TYPES: LearningResourceType[] = ["course", "book", "video", "article"];
+const LEARNING_RESOURCE_STATUSES: LearningResourceStatus[] = ["to-learn", "in-progress", "completed"];
+const REVIEW_GRADES: { grade: ReviewGrade; label: string }[] = [
+  { grade: "again", label: "Again" },
+  { grade: "hard", label: "Hard" },
+  { grade: "good", label: "Good" },
+  { grade: "easy", label: "Easy" }
+];
+
+function LearningResourcesCard() {
+  const [resources, setResources] = useState<LearningResource[]>([]);
+  const [status, setStatus] = useState<LearningResourceStatus | "all">("all");
+  const [title, setTitle] = useState("");
+  const [type, setType] = useState<LearningResourceType>("course");
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () =>
+    api
+      .learningResourceList(status === "all" ? {} : { status })
+      .then((r) => {
+        setResources(r);
+        setError(null);
+      })
+      .catch((e) => setError(e.message));
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  const create = async () => {
+    if (!title.trim()) return;
+    setCreating(true);
+    try {
+      await api.learningResourceAdd(title, type);
+      setTitle("");
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const advanceStatus = async (resource: LearningResource) => {
+    const next: LearningResourceStatus = resource.status === "to-learn" ? "in-progress" : "completed";
+    try {
+      await api.learningResourceStatus(resource.id, next);
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Resources</CardTitle>
+        <CardDescription>Courses, books, videos, and articles you're learning from.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Resource title..." />
+          <Select value={type} onValueChange={(v) => setType(v as LearningResourceType)}>
+            <SelectTrigger className="w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LEARNING_RESOURCE_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={create} disabled={creating || !title.trim()} className="shrink-0">
+            {creating ? "…" : "Add"}
+          </Button>
+        </div>
+
+        <Select value={status} onValueChange={(v) => setStatus(v as LearningResourceStatus | "all")}>
+          <SelectTrigger className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">all</SelectItem>
+            {LEARNING_RESOURCE_STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <LoadError error={error} />
+        {resources.length === 0 && !error ? (
+          <EmptyState>No resources tracked yet.</EmptyState>
+        ) : (
+          <ul className="divide-y">
+            {resources.map((resource) => (
+              <li key={resource.id} className="flex items-center justify-between gap-2 py-2.5 text-sm">
+                <span className="min-w-0 flex-1 break-words">
+                  <Badge variant="outline" className="mr-1.5">
+                    {resource.type}
+                  </Badge>
+                  <Badge variant={resource.status === "completed" ? "secondary" : "outline"} className="mr-2">
+                    {resource.status}
+                  </Badge>
+                  {resource.title}
+                </span>
+                {resource.status !== "completed" && (
+                  <Button variant="ghost" size="sm" onClick={() => advanceStatus(resource)}>
+                    {resource.status === "to-learn" ? "Start" : "Complete"}
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function FlashcardsCard() {
+  const [dueCards, setDueCards] = useState<Flashcard[]>([]);
+  const [index, setIndex] = useState(0);
+  const [revealed, setRevealed] = useState(false);
+  const [front, setFront] = useState("");
+  const [back, setBack] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () =>
+    api
+      .learningCardsDue()
+      .then((cards) => {
+        setDueCards(cards);
+        setIndex(0);
+        setRevealed(false);
+        setError(null);
+      })
+      .catch((e) => setError(e.message));
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const create = async () => {
+    if (!front.trim() || !back.trim()) return;
+    setCreating(true);
+    try {
+      await api.learningCardAdd(front, back);
+      setFront("");
+      setBack("");
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const review = async (grade: ReviewGrade) => {
+    const current = dueCards[index];
+    if (!current) return;
+    try {
+      await api.learningCardReview(current.id, grade);
+      const remaining = dueCards.filter((c) => c.id !== current.id);
+      setDueCards(remaining);
+      setIndex(0);
+      setRevealed(false);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const current = dueCards[index];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Flashcards</CardTitle>
+        <CardDescription>Reviewed via the SuperMemo-2 spaced repetition algorithm — the interval between reviews grows the more consistently you recall a card.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Input value={front} onChange={(e) => setFront(e.target.value)} placeholder="Front (question)..." />
+          <Textarea rows={2} value={back} onChange={(e) => setBack(e.target.value)} placeholder="Back (answer)..." />
+          <Button onClick={create} disabled={creating || !front.trim() || !back.trim()}>
+            {creating ? "…" : "Add flashcard"}
+          </Button>
+        </div>
+
+        <LoadError error={error} />
+        {!current ? (
+          <EmptyState>No cards due for review.</EmptyState>
+        ) : (
+          <div className="space-y-3 rounded-md border p-4">
+            <p className="flex items-center gap-1 text-xs text-muted-foreground">
+              <RotateCw className="h-3 w-3" /> {dueCards.length} card{dueCards.length === 1 ? "" : "s"} due
+            </p>
+            <p className="text-sm font-medium">{current.front}</p>
+            {revealed ? (
+              <>
+                <p className="text-sm text-muted-foreground">{current.back}</p>
+                <div className="flex flex-wrap gap-2">
+                  {REVIEW_GRADES.map(({ grade, label }) => (
+                    <Button key={grade} size="sm" variant="outline" onClick={() => review(grade)}>
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => setRevealed(true)}>
+                Show answer
+              </Button>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function LearningTab() {
+  return (
+    <div className="space-y-4">
+      <FlashcardsCard />
+      <LearningResourcesCard />
+    </div>
+  );
+}
+
 interface TimelineEntry {
   id: string;
   timestamp: string;
@@ -1900,6 +2146,14 @@ function summarizeEvent(event: AshOSEvent): string {
       return `Created milestone "${str(p.title) ?? "?"}"`;
     case event.name === "workspace:milestone-updated":
       return `Milestone marked ${str(p.status) ?? "?"}`;
+    case event.name === "learning:resource-added":
+      return `Tracking new resource "${str(p.title) ?? "?"}"`;
+    case event.name === "learning:resource-updated":
+      return `Resource marked ${str(p.status) ?? "?"}`;
+    case event.name === "learning:flashcard-added":
+      return "Added a flashcard";
+    case event.name === "learning:flashcard-reviewed":
+      return `Reviewed a flashcard (${str(p.grade) ?? "?"})`;
     case event.name === "codebase:indexed":
       return `Indexed ${String(p.fileCount ?? "?")} file(s) in ${str(p.root) ?? "?"}`;
     case event.name.startsWith("innovation:"):
@@ -2016,7 +2270,8 @@ const SEARCH_SOURCE_VARIANT: Record<SearchResult["source"], "secondary" | "outli
   graph: "outline",
   inbox: "default",
   vault: "secondary",
-  workspace: "default"
+  workspace: "default",
+  learning: "outline"
 };
 
 function SearchTab() {
@@ -2043,7 +2298,7 @@ function SearchTab() {
     <Card>
       <CardHeader>
         <CardTitle>Search</CardTitle>
-        <CardDescription>Hybrid search across Memory, the Knowledge Graph, the Inbox, the Vault, and Projects — "find everything about X."</CardDescription>
+        <CardDescription>Hybrid search across Memory, the Knowledge Graph, the Inbox, the Vault, Projects, and Learning — "find everything about X."</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row">

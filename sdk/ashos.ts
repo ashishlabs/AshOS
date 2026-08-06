@@ -31,6 +31,7 @@ import { KnowledgeGraph } from "../graph/knowledge-graph";
 import { InboxManager } from "../inbox/inbox-manager";
 import { VaultManager } from "../vault/vault-manager";
 import { WorkspaceManager } from "../workspace/workspace-manager";
+import { LearningManager } from "../learning/learning-manager";
 import { HybridSearch } from "../search/hybrid-search";
 import { saveReflection, type SavedReflection } from "../agents/reflection-store";
 import type { ReflectionData, ReflectionPeriod } from "../agents/reflection";
@@ -68,7 +69,9 @@ export class AshOS {
   readonly vault: VaultManager;
   /** Project Workspaces — a real, persisted Project/Task/Milestone data model, distinct from the label-only `project` Knowledge Graph node `BaseAgent` auto-creates. See `docs/project-workspaces.md`. */
   readonly workspace: WorkspaceManager;
-  /** Cross-store hybrid search over Memory, the general Knowledge Graph, the Inbox, the Vault, and Project Workspaces. See `docs/search.md`. */
+  /** Learning Hub — tracked courses/books/videos/articles plus flashcards reviewed via the SuperMemo-2 spaced repetition algorithm. See `docs/learning-hub.md`. */
+  readonly learning: LearningManager;
+  /** Cross-store hybrid search over Memory, the general Knowledge Graph, the Inbox, the Vault, Project Workspaces, and the Learning Hub. See `docs/search.md`. */
   readonly search: HybridSearch;
 
   constructor(opts: AshOSOptions = {}) {
@@ -88,7 +91,8 @@ export class AshOS {
     });
     this.vault = new VaultManager(this.memory, { eventBus: this.kernel.eventBus, graph: this.knowledgeGraph });
     this.workspace = new WorkspaceManager(this.memory, { eventBus: this.kernel.eventBus, graph: this.knowledgeGraph });
-    this.search = new HybridSearch(this.memory, this.knowledgeGraph, this.inbox, this.vault, this.workspace);
+    this.learning = new LearningManager(this.memory, { eventBus: this.kernel.eventBus, graph: this.knowledgeGraph });
+    this.search = new HybridSearch(this.memory, this.knowledgeGraph, this.inbox, this.vault, this.workspace, this.learning);
 
     this.tools = new ToolRegistry();
     this.tools.register(new ShellTool(this.kernel.permissions));

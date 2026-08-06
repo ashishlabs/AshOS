@@ -40,10 +40,10 @@ Refactor.
 | Today's Focus widget | ✅ | 100% (for its scope) | High | Real composition of 3 live endpoints, polls every 15s |
 | Idea Lab | 🟡 | 60% | High | Storage/scoring/dedup/lifecycle all real; "AI evaluation"/"market analysis" are deterministic heuristic formulas, not LLM reasoning; no related-projects link |
 | Reflection Agent | ✅ | 90% | High | Real daily/weekly/monthly narrative with graceful offline fallback |
-| Cross-store Hybrid Search | 🟡 | 70% | High | Real merge across Memory/Graph/Inbox; semantic mode is Memory-only, Graph/Inbox always keyword-only |
+| Cross-store Hybrid Search | 🟡 | 75% | High | Real merge across Memory/Graph/Inbox/Vault/Workspace/Learning (six stores); semantic mode is Memory-only, the rest always keyword-only |
 | Knowledge Vault | ✅ | 80% | High | `vault/` package — pages (`VaultNote`), tags, backlinks, related-notes links, Hybrid Search + Knowledge Graph integration all real; flashcards/revision history remain absent (flashcards belong to Learning Hub, not Vault) |
 | Project Workspace | ✅ | 75% | High | `workspace/` package — Project/Task/Milestone entities, CRUD via CLI/REST, a dashboard Projects tab, and computed progress tracking all real; Roadmap/Architecture-docs/Definition-of-Done/Risk-tracking as data models and AI recommendations remain deliberately out of scope |
-| Learning Hub | 🔴 | 0% | — | No code anywhere — courses, flashcards, quizzes, learning paths all absent |
+| Learning Hub | ✅ | 65% | High | `learning/` package — tracked courses/books/videos/articles and flashcards reviewed via a real SuperMemo-2 spaced repetition implementation (`learning/srs.ts`), independently unit tested; Learning paths, Quizzes, and AI recommendations remain deliberately out of scope |
 | AI recommendations (dashboard-wide) | 🔴 | 0% | — | No recommendation engine exists in any subsystem |
 | AI documentation generation | 🔴 | 0% | — | No agent/capability produces documentation |
 | AI roadmap generation | 🔴 | 0% | — | All roadmap docs in this repo are hand-written |

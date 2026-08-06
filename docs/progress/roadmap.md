@@ -52,20 +52,20 @@ ones, and removes the single largest regression risk in the codebase.
    wired to use it, and there's no dedicated *search* (topic → URLs)
    tool, only *fetch* (URL → text).
 
-## Phase 3 — The scope decision, then the real net-new work
+## Phase 3 — now fully shipped
 
-**Estimated effort:** 1-2 months once scoped for the remaining item;
-**do not start without an explicit decision first.** Knowledge Vault
-(item 10) and the persisted Project/Task/Milestone entity (item 9) both
-turned out not to belong in this phase after all — both shipped without
-needing the scope decision, see below.
-**Dependencies:** none remaining — item 9's Project/Task entity, the
-prerequisite the rest of this phase depended on, has shipped.
-**Risks:** highest in this roadmap. Learning Hub is genuinely new domain
-logic with no existing analogue to reuse — underestimating this is the
-single most likely way this roadmap goes over budget.
-**Expected impact:** if built, closes the one remaining fully-unimplemented
-pillar (Learning Hub).
+**Estimated effort:** none remaining. Every item in this phase shipped —
+Knowledge Vault (item 10) and the persisted Project/Task/Milestone entity
+(item 9) turned out not to need this phase's scope decision at all;
+Learning Hub (item 11) did need genuinely new domain logic (the
+SuperMemo-2 spaced repetition algorithm), but shipped anyway once
+actually scoped and attempted.
+**Dependencies:** none remaining.
+**Risks:** none remaining for this phase — item 11 was the one carrying
+real risk (new algorithmic logic with no analogue to reuse), and it's
+shipped and tested (`learning/srs.ts` + `learning/srs.test.ts`).
+**Expected impact:** closed all three previously fully-unimplemented
+pillars (Knowledge Vault, Project Workspace, Learning Hub).
 
 9. ✅ **Shipped, and didn't need this phase's scope decision after
     all** — Persisted Project/Task/Milestone entity (`workspace/`, see
@@ -81,12 +81,16 @@ pillar (Learning Hub).
     Search/Knowledge Graph integration all reused existing infrastructure
     (`MemoryManager` records + `KnowledgeGraph` edges), the same pattern
     every other Second Brain feature in Phase 1/2 used. Revision history
-    and flashcards remain unbuilt — flashcards were never really a Vault
-    feature, they belong to Learning Hub (item 11).
-11. **Learning Hub** — courses, flashcards, quizzes, spaced repetition,
-    learning paths. Entirely new domain, no existing subsystem to build
-    on top of. The one item in this phase that still needs the explicit
-    scope decision.
+    remains unbuilt (no version chain on edits); flashcards were never
+    really a Vault feature, they belong to Learning Hub (item 11).
+11. ✅ **Shipped** — Learning Hub (`learning/`, see `docs/learning-hub.md`):
+    tracked courses/books/videos/articles, plus flashcards reviewed via a
+    real, independently unit-tested SuperMemo-2 implementation
+    (`learning/srs.ts`) — the one genuinely new algorithm this whole
+    Second Brain roadmap needed; storage still reused the
+    `MemoryManager`-record-plus-tag pattern. Quizzes and Learning paths,
+    the other two named capabilities, remain deliberately out of scope —
+    see that doc's "What's not implemented."
 12. **A recommendation engine** for the dashboard's "AI recommendations"
     surface — depends on item 11 existing (item 9's Project/Task data
     already exists) to have enough structured data to recommend over.

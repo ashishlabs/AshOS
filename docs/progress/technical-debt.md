@@ -109,9 +109,12 @@ collaborator), not an accident, per the comments in `idea-agent.ts` and
 
 - **Zero dashboard automated tests** — the single largest test-coverage
   gap in the project, unchanged and worsened in absolute surface area
-  (11 tabs now, up from 8) since the last audit.
-- **Accessibility is thin** — 7 `aria-*` attributes total across a
-  1,745-line, 11-tab UI. Not broken, but not deliberately built either.
+  (15 tabs now, up from 8 at the start of this audit's history, 11 at
+  its most recent update before Vault/Projects/Learning shipped) since
+  the last audit.
+- **Accessibility is thin** — 10 `aria-*` attributes total (re-verified)
+  across a 2,775-line, 15-tab UI. Not broken, but not deliberately built
+  either.
 
 ## What is *not* debt (confirmed, not assumed)
 

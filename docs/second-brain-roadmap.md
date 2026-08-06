@@ -135,9 +135,15 @@ Cross-store hybrid search) is live.
    `Project` record with its own CRUD surface, not just a `project`
    Knowledge Graph node identified by working directory" — turned out to
    be exactly buildable the same reuse-first way, once actually attempted.
-8. **Learning Hub** (flashcards, spaced repetition, quizzes) — genuinely
-   new domain logic, no existing analogue to reuse. Biggest net-new scope
-   in the whole brief.
+8. ✅ **Learning Hub — shipped.** Genuinely new domain logic, no existing
+   analogue to reuse — the SuperMemo-2 spaced repetition algorithm
+   (`learning/srs.ts`) is the one real net-new algorithm this entire
+   Second Brain roadmap needed, everything else (Inbox/Vault/Workspace)
+   was a recombination of `MemoryManager` + `KnowledgeGraph`. Storage
+   itself still followed the same reuse convention, though — see
+   `docs/learning-hub.md`. Quizzes and learning paths, the other two
+   named capabilities in this item, remain out of scope (see that doc's
+   "What's not implemented").
 9. **Voice/image/screenshot capture** — blocked on the same media-pipeline
    gap `docs/roadmap.md` already tracks for Video/Vision/Voice agents;
    revisit together, not separately, once that's scoped.
@@ -176,6 +182,17 @@ Cross-store hybrid search) is live.
   kinds, distinct from the ephemeral `"task"` kind `BaseAgent` already
   uses for agent-run records (`docs/knowledge-graph.md`). See
   `docs/project-workspaces.md`. Tier 3 item 7 is now fully shipped.
+- **Tier 3 item 8 — Learning Hub**: `learning/` package, `AshOS.learning`,
+  `ash learn resource add/list/show/status`, `ash learn card add/list/show/review`
+  CLI, `/learning/*` REST routes, and a dashboard Learning tab (a
+  Flashcards review card — front, "Show answer," grade — above a
+  Resources tracker card). Flashcards are reviewed via the SuperMemo-2
+  spaced repetition algorithm (`learning/srs.ts`), the one genuinely new
+  algorithm this roadmap needed. Also wired into `HybridSearch` and into
+  the general `KnowledgeGraph` via a new `"learning-resource"` node kind
+  (flashcards deliberately get none). See `docs/learning-hub.md`. All of
+  Tier 3 is now shipped except voice/image/screenshot capture (item 9,
+  blocked on the media-pipeline gap noted there).
 
 ## Follow-up: closing the two biggest usability gaps in what's shipped
 

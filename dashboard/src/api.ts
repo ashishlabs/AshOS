@@ -269,7 +269,7 @@ export interface TrendingReposResult {
   error?: string;
 }
 
-export type SearchResultSource = "memory" | "graph" | "inbox" | "vault" | "workspace";
+export type SearchResultSource = "memory" | "graph" | "inbox" | "vault" | "workspace" | "learning";
 export interface SearchResult {
   source: SearchResultSource;
   id: string;
@@ -283,7 +283,7 @@ export interface SearchResult {
 export type KnowledgeNodeKind =
   | "person" | "company" | "repository" | "product" | "idea" | "problem" | "industry" | "technology"
   | "community" | "language" | "framework" | "market" | "startup" | "paper" | "workflow" | "agent"
-  | "project" | "skill" | "tool" | "task" | "resource" | "note" | "todo" | "milestone";
+  | "project" | "skill" | "tool" | "task" | "resource" | "note" | "todo" | "milestone" | "learning-resource";
 export interface KnowledgeNode {
   id: string;
   kind: KnowledgeNodeKind;
@@ -370,6 +370,36 @@ export interface ProjectProgress {
   percent: number;
 }
 
+export type LearningResourceType = "course" | "book" | "video" | "article";
+export type LearningResourceStatus = "to-learn" | "in-progress" | "completed";
+export interface LearningResource {
+  id: string;
+  title: string;
+  type: LearningResourceType;
+  url?: string;
+  notes: string;
+  status: LearningResourceStatus;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ReviewGrade = "again" | "hard" | "good" | "easy";
+export interface Flashcard {
+  id: string;
+  front: string;
+  back: string;
+  tags: string[];
+  interval: number;
+  easeFactor: number;
+  repetitions: number;
+  dueDate: string;
+  reviewCount: number;
+  lastReviewedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const api = {
   health: () => get<Health>("/health"),
   githubTrending: (limit?: number) => get<TrendingReposResult>(`/agents/github-trending${limit ? `?limit=${limit}` : ""}`),
@@ -427,6 +457,21 @@ export const api = {
   projectMilestoneList: (projectId: string) => get<Milestone[]>(`/workspace/projects/${encodeURIComponent(projectId)}/milestones`),
   projectMilestoneStatus: (milestoneId: string, status: MilestoneStatus) =>
     post<Milestone>(`/workspace/milestones/${encodeURIComponent(milestoneId)}/status`, { status }),
+
+  learningResourceAdd: (title: string, type: LearningResourceType, opts: { url?: string; tags?: string[] } = {}) =>
+    post<LearningResource>("/learning/resources", { title, type, url: opts.url, tags: opts.tags }),
+  learningResourceList: (opts: { status?: LearningResourceStatus; type?: LearningResourceType } = {}) => {
+    const params = new URLSearchParams();
+    if (opts.status) params.set("status", opts.status);
+    if (opts.type) params.set("type", opts.type);
+    const qs = params.toString();
+    return get<LearningResource[]>(`/learning/resources${qs ? `?${qs}` : ""}`);
+  },
+  learningResourceStatus: (id: string, status: LearningResourceStatus) =>
+    post<LearningResource>(`/learning/resources/${encodeURIComponent(id)}/status`, { status }),
+  learningCardAdd: (front: string, back: string, tags?: string[]) => post<Flashcard>("/learning/cards", { front, back, tags }),
+  learningCardsDue: () => get<Flashcard[]>("/learning/cards?due=true"),
+  learningCardReview: (id: string, grade: ReviewGrade) => post<Flashcard>(`/learning/cards/${encodeURIComponent(id)}/review`, { grade }),
 
   captureIdea: (input: { inboxId?: string; content?: string; tags?: string[]; domain?: IntelligenceDomain }) =>
     post<{ opportunity: Opportunity; created: boolean }>("/innovation/ideas", input),

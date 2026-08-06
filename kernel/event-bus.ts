@@ -43,6 +43,10 @@ export type AshOSEventName =
   | "workspace:task-updated"
   | "workspace:milestone-created"
   | "workspace:milestone-updated"
+  | "learning:resource-added"
+  | "learning:resource-updated"
+  | "learning:flashcard-added"
+  | "learning:flashcard-reviewed"
   | "log";
 
 export interface AshOSEvent<T = unknown> {

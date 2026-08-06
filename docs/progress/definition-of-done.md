@@ -153,16 +153,23 @@ handling for orphaned edges (moot today since nothing deletes nodes).
 
 ---
 
-### Dashboard (6 of 9 checklist elements present)
+### Dashboard (7 of 9 checklist elements present)
 
 - ✔ **Done:** home dashboard, Today's Focus widget, quick capture
   (Inbox), search, recent activity (Logs + Timeline), consistent
-  nav/theming across all 11 tabs.
-- ✖ **Missing:** AI recommendations, project summary, learning summary —
-  all three depend on features (recommendation engine, Project entity,
-  Learning Hub) that don't exist yet.
-- ⚠ **Should be improved:** zero automated tests for any of the 11 tabs;
-  accessibility coverage is thin (7 `aria-*` attributes total).
+  nav/theming across all 15 tabs. Project and Learning Hub entities now
+  exist too (their own dedicated Projects/Learning tabs), even though
+  neither is summarized on the Dashboard home tab specifically — see below.
+- ✖ **Missing:** AI recommendations (no recommendation engine exists in
+  any subsystem); a Dashboard-home-tab project summary and learning
+  summary widget — the underlying `Project`/`LearningResource` entities
+  both exist now, but nothing pulls them into `DashboardTab` the way
+  `TodaysFocusCard` does for Inbox/Innovation/Outcome Memory.
+- ⚠ **Should be improved:** zero automated tests for any of the 15 tabs;
+  accessibility coverage is thin (7 `aria-*` attributes total, not
+  recounted since Vault/Projects/Learning shipped).
 - 🚀 **Next implementation step:** start a dashboard test suite with the
-  4 newest, least-proven tabs (Inbox, Timeline, Search, Today's Focus)
-  before adding any more UI surface on top of them.
+  4 newest, least-proven tabs at the time this line was last true
+  (Inbox, Timeline, Search, Today's Focus) — now a much larger backlog
+  including Vault, Projects, Graph, and Learning — before adding any
+  more UI surface on top of them.

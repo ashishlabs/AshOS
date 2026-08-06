@@ -750,6 +750,116 @@ describe("AshOS API", () => {
     expect(((await statusRes.json()) as { status: string }).status).toBe("done");
   });
 
+  it("POST /learning/resources 400s without title/type", async () => {
+    const res = await fetch(`${baseUrl}/learning/resources`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({})
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("POST /learning/resources creates a resource; GET lists it; GET /:id fetches it", async () => {
+    const createRes = await fetch(`${baseUrl}/learning/resources`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "Deep Learning Specialization", type: "course", tags: ["ml"] })
+    });
+    expect(createRes.status).toBe(201);
+    const resource = (await createRes.json()) as { id: string; status: string };
+    expect(resource.status).toBe("to-learn");
+
+    const listRes = await fetch(`${baseUrl}/learning/resources`);
+    const list = (await listRes.json()) as { id: string }[];
+    expect(list.some((r) => r.id === resource.id)).toBe(true);
+
+    const getRes = await fetch(`${baseUrl}/learning/resources/${resource.id}`);
+    expect(getRes.status).toBe(200);
+    expect(((await getRes.json()) as { id: string }).id).toBe(resource.id);
+  });
+
+  it("GET /learning/resources/:id 404s for an unknown id", async () => {
+    const res = await fetch(`${baseUrl}/learning/resources/does-not-exist`);
+    expect(res.status).toBe(404);
+  });
+
+  it("POST /learning/resources/:id/status updates status; unknown id 404s", async () => {
+    const createRes = await fetch(`${baseUrl}/learning/resources`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "A book", type: "book" })
+    });
+    const resource = (await createRes.json()) as { id: string };
+
+    const statusRes = await fetch(`${baseUrl}/learning/resources/${resource.id}/status`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ status: "completed" })
+    });
+    expect(statusRes.status).toBe(200);
+    expect(((await statusRes.json()) as { status: string }).status).toBe("completed");
+
+    const missingRes = await fetch(`${baseUrl}/learning/resources/does-not-exist/status`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ status: "completed" })
+    });
+    expect(missingRes.status).toBe(404);
+  });
+
+  it("POST /learning/cards 400s without front/back", async () => {
+    const res = await fetch(`${baseUrl}/learning/cards`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({})
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("flashcards: create, list due, review, and confirm rescheduling", async () => {
+    const createRes = await fetch(`${baseUrl}/learning/cards`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ front: "What is SM-2?", back: "A spaced repetition algorithm" })
+    });
+    expect(createRes.status).toBe(201);
+    const card = (await createRes.json()) as { id: string; interval: number };
+    expect(card.interval).toBe(0);
+
+    const dueRes = await fetch(`${baseUrl}/learning/cards?due=true`);
+    const due = (await dueRes.json()) as { id: string }[];
+    expect(due.some((c) => c.id === card.id)).toBe(true);
+
+    const getRes = await fetch(`${baseUrl}/learning/cards/${card.id}`);
+    expect(getRes.status).toBe(200);
+
+    const reviewRes = await fetch(`${baseUrl}/learning/cards/${card.id}/review`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ grade: "good" })
+    });
+    expect(reviewRes.status).toBe(200);
+    const reviewed = (await reviewRes.json()) as { repetitions: number; reviewCount: number };
+    expect(reviewed.repetitions).toBe(1);
+    expect(reviewed.reviewCount).toBe(1);
+
+    const dueAfterRes = await fetch(`${baseUrl}/learning/cards?due=true`);
+    const dueAfter = (await dueAfterRes.json()) as { id: string }[];
+    expect(dueAfter.some((c) => c.id === card.id)).toBe(false);
+
+    const missingReviewRes = await fetch(`${baseUrl}/learning/cards/does-not-exist/review`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ grade: "good" })
+    });
+    expect(missingReviewRes.status).toBe(404);
+  });
+
+  it("GET /learning/cards/:id 404s for an unknown id", async () => {
+    const res = await fetch(`${baseUrl}/learning/cards/does-not-exist`);
+    expect(res.status).toBe(404);
+  });
+
   it("POST /innovation/ideas 400s without inboxId or content", async () => {
     const res = await fetch(`${baseUrl}/innovation/ideas`, {
       method: "POST",
@@ -900,6 +1010,19 @@ describe("AshOS API", () => {
     expect(res.status).toBe(200);
     const results = (await res.json()) as { source: string; title: string }[];
     expect(results.some((r) => r.source === "workspace")).toBe(true);
+  });
+
+  it("GET /search finds a real learning resource captured earlier on this shared server", async () => {
+    await fetch(`${baseUrl}/learning/resources`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "zzzlearningsearchable-marker-zzz", type: "book" })
+    });
+
+    const res = await fetch(`${baseUrl}/search?q=zzzlearningsearchable-marker-zzz`);
+    expect(res.status).toBe(200);
+    const results = (await res.json()) as { source: string; title: string }[];
+    expect(results.some((r) => r.source === "learning")).toBe(true);
   });
 
   it("GET /search respects the limit parameter", async () => {

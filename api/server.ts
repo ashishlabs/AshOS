@@ -585,6 +585,91 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     }
   });
 
+  app.post("/learning/resources", async (req, res) => {
+    const { title, type, url, notes, tags } = req.body ?? {};
+    if (!isNonEmptyString(title) || !isNonEmptyString(type)) {
+      res.status(400).json({ error: "'title' and 'type' must be non-empty strings" });
+      return;
+    }
+    try {
+      const resource = await ashos.learning.addResource(title, type as never, { url, notes, tags: Array.isArray(tags) ? tags : undefined });
+      res.status(201).json(resource);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  app.get("/learning/resources", (req, res) => {
+    const status = req.query.status as never;
+    const type = req.query.type as never;
+    res.json(ashos.learning.listResources({ status: status || undefined, type: type || undefined }));
+  });
+
+  app.get("/learning/resources/:id", (req, res) => {
+    const resource = ashos.learning.getResource(req.params.id);
+    if (!resource) {
+      res.status(404).json({ error: `learning resource "${req.params.id}" not found` });
+      return;
+    }
+    res.json(resource);
+  });
+
+  app.post("/learning/resources/:id/status", async (req, res) => {
+    const status = req.body?.status;
+    if (!isNonEmptyString(status)) {
+      res.status(400).json({ error: "'status' must be a non-empty string" });
+      return;
+    }
+    try {
+      const resource = await ashos.learning.updateResourceStatus(req.params.id, status as never);
+      res.json(resource);
+    } catch (error) {
+      res.status(404).json({ error: (error as Error).message });
+    }
+  });
+
+  app.post("/learning/cards", async (req, res) => {
+    const { front, back, tags } = req.body ?? {};
+    if (!isNonEmptyString(front) || !isNonEmptyString(back)) {
+      res.status(400).json({ error: "'front' and 'back' must be non-empty strings" });
+      return;
+    }
+    try {
+      const card = await ashos.learning.addCard(front, back, { tags: Array.isArray(tags) ? tags : undefined });
+      res.status(201).json(card);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  app.get("/learning/cards", (req, res) => {
+    const due = req.query.due === "true";
+    res.json(ashos.learning.listCards({ due }));
+  });
+
+  app.get("/learning/cards/:id", (req, res) => {
+    const card = ashos.learning.getCard(req.params.id);
+    if (!card) {
+      res.status(404).json({ error: `flashcard "${req.params.id}" not found` });
+      return;
+    }
+    res.json(card);
+  });
+
+  app.post("/learning/cards/:id/review", async (req, res) => {
+    const grade = req.body?.grade;
+    if (!isNonEmptyString(grade)) {
+      res.status(400).json({ error: "'grade' must be a non-empty string" });
+      return;
+    }
+    try {
+      const card = await ashos.learning.reviewCard(req.params.id, grade as never);
+      res.json(card);
+    } catch (error) {
+      res.status(404).json({ error: (error as Error).message });
+    }
+  });
+
   app.get("/search", async (req, res) => {
     const query = req.query.q as string | undefined;
     if (!isNonEmptyString(query)) {

@@ -1,12 +1,14 @@
 # Hybrid Search
 
 `HybridSearch` (`search/hybrid-search.ts`, `AshOS.search`) answers "find
-everything about X" across the five stores a Second Brain capture/connect
+everything about X" across the six stores a Second Brain capture/connect
 flow actually populates — Memory, the general Knowledge Graph, the
-Inbox, the Vault, and Project Workspaces — without adding a sixth search
-index. It's Tier 2 item 6 of `docs/second-brain-roadmap.md`, closing out
-that tier (the Vault and Workspace slices were each added once their own
-subsystem shipped, see `docs/knowledge-vault.md`/`docs/project-workspaces.md`).
+Inbox, the Vault, Project Workspaces, and the Learning Hub — without
+adding a seventh search index. It's Tier 2 item 6 of
+`docs/second-brain-roadmap.md`, closing out that tier (the Vault/
+Workspace/Learning slices were each added once their own subsystem
+shipped, see `docs/knowledge-vault.md`/`docs/project-workspaces.md`/
+`docs/learning-hub.md`).
 
 ## Quick start
 
@@ -36,13 +38,15 @@ VaultManager.list()                    — keyword: title/content/tag substring 
         │
 WorkspaceManager.list*()               — keyword: name/title/description/tag substring match
         │
+LearningManager.list*()                — keyword: title/notes/front/back/tag substring match
+        │
 merge, sort by score desc (tie-break: newest first), slice to `limit`
 ```
 
-Graph/Inbox/Vault/Workspace matching is always a deterministic substring
-heuristic — same "transparent heuristic over an LLM/embedding call
-wherever one is good enough" convention as `codebase/indexer.ts`'s
-`searchIndex` — since none of the four computes embeddings. Memory
+Graph/Inbox/Vault/Workspace/Learning matching is always a deterministic
+substring heuristic — same "transparent heuristic over an LLM/embedding
+call wherever one is good enough" convention as `codebase/indexer.ts`'s
+`searchIndex` — since none of the five computes embeddings. Memory
 matching can opt into the existing `MemoryManager.searchSemantic()`
 (best-effort, requires an active provider; falls back to keyword matching
 without one, per `MemoryManager`'s own documented behavior) via
@@ -52,7 +56,10 @@ The Workspace slice searches all three entity types (projects, tasks,
 milestones) and returns every match under one `"workspace"` source —
 a task/milestone hit's snippet names its parent project
 (e.g. `[task/done] Website redesign`) since a bare task title alone
-wouldn't be identifiable in a merged results list.
+wouldn't be identifiable in a merged results list. The Learning slice
+similarly searches both resources and flashcards under one `"learning"`
+source — a flashcard hit's title is its front, with the back shown in the
+snippet.
 
 ## Scoring
 
@@ -66,26 +73,29 @@ Semantic Memory hits use rank position (`searchSemantic` returns results
 already ordered by cosine similarity, but doesn't expose the raw score)
 converted into a comparable `0-1` value.
 
-## Inbox, Vault, and Workspace records never double up as Memory hits
+## Inbox, Vault, Workspace, and Learning records never double up as Memory hits
 
-None of Universal Inbox, Knowledge Vault, or Project Workspaces has a
-persistence engine of its own — every `InboxItem` is a `MemoryManager`
-project-scope record tagged `"inbox"`, every `VaultNote` is one tagged
-`"vault"`, and every `Project`/`ProjectTask`/`Milestone` is one tagged
-`"workspace-project"`/`"workspace-task"`/`"workspace-milestone"` (see
-`docs/inbox.md`/`docs/knowledge-vault.md`/`docs/project-workspaces.md`).
-Without deduplication, a query matching one of these would return it
-twice: once as a raw `memory` hit (JSON dump) and once as a properly
-formatted hit from its own slice. `HybridSearch` excludes any Memory
-record tagged `"inbox"`, `"vault"`, or with any tag starting with
-`"workspace-"` from the Memory slice — each subsystem's own slice already
-surfaces it with a friendlier title and snippet.
+None of Universal Inbox, Knowledge Vault, Project Workspaces, or the
+Learning Hub has a persistence engine of its own — every `InboxItem` is a
+`MemoryManager` project-scope record tagged `"inbox"`, every `VaultNote`
+is one tagged `"vault"`, every `Project`/`ProjectTask`/`Milestone` is one
+tagged `"workspace-project"`/`"workspace-task"`/`"workspace-milestone"`,
+and every `LearningResource`/`Flashcard` is one tagged
+`"learning-resource"`/`"learning-flashcard"` (see
+`docs/inbox.md`/`docs/knowledge-vault.md`/`docs/project-workspaces.md`/
+`docs/learning-hub.md`). Without deduplication, a query matching one of
+these would return it twice: once as a raw `memory` hit (JSON dump) and
+once as a properly formatted hit from its own slice. `HybridSearch`
+excludes any Memory record tagged `"inbox"`, `"vault"`, or with any tag
+starting with `"workspace-"` or `"learning-"` from the Memory slice —
+each subsystem's own slice already surfaces it with a friendlier title
+and snippet.
 
 ## REST API
 
 | Method | Path | Body | Description |
 |---|---|---|---|
-| GET | `/search?q=&limit=&semantic=` | — | Merged, ranked results across Memory/Graph/Inbox/Vault/Workspace. `400` if `q` is missing. |
+| GET | `/search?q=&limit=&semantic=` | — | Merged, ranked results across Memory/Graph/Inbox/Vault/Workspace/Learning. `400` if `q` is missing. |
 
 ## CLI
 

@@ -17,6 +17,7 @@ import { registerGraphCommand } from "./commands/graph";
 import { registerInboxCommand } from "./commands/inbox";
 import { registerVaultCommand } from "./commands/vault";
 import { registerProjectCommand } from "./commands/project";
+import { registerLearnCommand } from "./commands/learn";
 import { registerReflectCommand } from "./commands/reflect";
 import { registerSearchCommand } from "./commands/search";
 
@@ -39,6 +40,7 @@ registerGraphCommand(program);
 registerInboxCommand(program);
 registerVaultCommand(program);
 registerProjectCommand(program);
+registerLearnCommand(program);
 registerReflectCommand(program);
 registerSearchCommand(program);
 
