@@ -20,7 +20,7 @@ Refactor.
 | Workflow Engine | ✅ | 100% | High | `ash workflow run <file>` closes the CLI gap — reachable from CLI, REST, and SDK now |
 | Scheduler | ✅ | 100% | High | `ash schedule add/list/remove` + `/scheduler` REST routes, backed by a new `ScheduleStore` for durability across process restarts — reachable from CLI, REST, and SDK now |
 | Plugin System | ✅ | 100% | Medium | Local-only install path, no registry |
-| REST API | ✅ | 100% | High | 79 routes (re-counted; the "50 routes" figure predates Vault/Workspace/Learning/Search/Graph-edges/Scheduler shipping), no authentication |
+| REST API | ✅ | 100% | High | 80 routes (re-counted; the "50 routes" figure predates Vault/Workspace/Learning/Search/Graph-edges/Scheduler/vault-history shipping), no authentication |
 | CLI (`ash`) | ✅ | 100% | High | 16 command groups |
 | Dashboard shell (nav, theming, layout) | ✅ | 100% | Medium | Zero automated tests |
 | Local Codebase Intelligence | ✅ | 100% (v1 scope) | High | Substring search only, no semantic code search |
@@ -41,7 +41,7 @@ Refactor.
 | Idea Lab | 🟡 | 60% | High | Storage/scoring/dedup/lifecycle all real; "AI evaluation"/"market analysis" are deterministic heuristic formulas, not LLM reasoning; no related-projects link |
 | Reflection Agent | ✅ | 90% | High | Real daily/weekly/monthly narrative with graceful offline fallback |
 | Cross-store Hybrid Search | 🟡 | 90% | High | Real merge across Memory/Graph/Inbox/Vault/Workspace/Learning (six stores); semantic mode now covers 5 of 6 (Memory/Inbox/Vault/Workspace/Learning, one `searchSemantic()` call routed by subsystem tag) — only Graph stays keyword-only, since `KnowledgeNode`s have no embedding storage |
-| Knowledge Vault | ✅ | 80% | High | `vault/` package — pages (`VaultNote`), tags, backlinks, related-notes links, Hybrid Search + Knowledge Graph integration all real; flashcards/revision history remain absent (flashcards belong to Learning Hub, not Vault) |
+| Knowledge Vault | ✅ | 90% | High | `vault/` package — pages (`VaultNote`), tags, backlinks, related-notes links, revision history (`history()`/`ash vault history`/`GET /vault/:id/history`), Hybrid Search + Knowledge Graph integration all real; flashcards remain absent (they belong to Learning Hub, not Vault) |
 | Project Workspace | ✅ | 75% | High | `workspace/` package — Project/Task/Milestone entities, CRUD via CLI/REST, a dashboard Projects tab, and computed progress tracking all real; Roadmap/Architecture-docs/Definition-of-Done/Risk-tracking as data models and AI recommendations remain deliberately out of scope |
 | Learning Hub | ✅ | 65% | High | `learning/` package — tracked courses/books/videos/articles and flashcards reviewed via a real SuperMemo-2 spaced repetition implementation (`learning/srs.ts`), independently unit tested; Learning paths, Quizzes, and AI recommendations remain deliberately out of scope |
 | AI recommendations (dashboard-wide) | 🔴 | 0% | — | No recommendation engine exists in any subsystem |

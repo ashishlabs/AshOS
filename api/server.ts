@@ -474,6 +474,10 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     res.json(ashos.vault.backlinks(req.params.id));
   });
 
+  app.get("/vault/:id/history", (req, res) => {
+    res.json(ashos.vault.history(req.params.id));
+  });
+
   app.post("/workspace/projects", async (req, res) => {
     const { name, description, tags } = req.body ?? {};
     if (!isNonEmptyString(name)) {

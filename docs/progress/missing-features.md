@@ -135,11 +135,21 @@ brief plus the existing North Star roadmap.
     Real gap against the vision's "AI Layer" section, but low urgency —
     nothing currently depends on it.
 
-15. **Per-record revision history** (Memory/Inbox/Vault/Workspace/
-    Learning/Knowledge Graph nodes are all overwrite-on-update, no
-    version chain). Now a real, live gap rather than a hypothetical one —
-    Knowledge Vault shipped, so "what did this note used to say" is an
-    actual question a user can ask today with no way to answer it.
+15. **~~Per-record revision history~~ Mostly closed.**
+    `MemoryManager.remember()` now snapshots a record's old value into
+    `.ashos/memory/{project,global}-revisions.json` immediately before an
+    overwrite, exposed via `memory.revisions(scope, key)` — since
+    Inbox/Vault/Workspace/Learning records are themselves Memory records,
+    they all get this for free, same "extend the shared primitive once"
+    pattern semantic search used. **Knowledge Vault has the one dedicated
+    wrapper today** (`VaultManager.history(id)`, `ash vault history <id>`,
+    `GET /vault/:id/history`) — the pillar that explicitly motivated this
+    feature — while Inbox/Workspace/Learning would need the same small,
+    bounded wrapper added to get an equally convenient API (the
+    underlying tracking already works for them). **Knowledge Graph nodes
+    are the one exception**: they're stored separately from
+    `MemoryManager` (own JSON file, no revision tracking), so this doesn't
+    apply to them — same boundary the semantic-search extension hit.
 
 16. **~~Product Hunt collector~~ Closed.** `innovation/collectors/product-hunt-collector.ts`
     (`product-hunt-live`, `market` domain) parses Product Hunt's public RSS

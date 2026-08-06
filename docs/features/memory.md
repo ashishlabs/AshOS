@@ -61,6 +61,16 @@ the SDK (`ashos.memory.searchSemantic("rate limiting approach")`) — every
 provider so this works automatically as long as your provider supports
 embeddings (see [AI Providers](./ai-providers.md)).
 
+**Revision history** — `project`/`global` scope now keep the old value
+every time a `remember()` call overwrites an existing key:
+```ts
+ashos.memory.revisions("project", "style-guide"); // every prior value, newest first
+```
+Knowledge Vault (`ash vault history <id>`, `GET /vault/:id/history`) is
+the one subsystem with a dedicated wrapper over this today, since it's
+what motivated the feature — but Inbox/Workspace/Learning records get the
+same tracking for free, since they're Memory records the same way.
+
 ## 4. Example walkthrough
 
 You want AshOS to remember a project convention so future runs respect it:

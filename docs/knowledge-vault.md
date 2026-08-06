@@ -25,13 +25,14 @@ ash vault show <id>
 ash vault link <id> <targetId>              # link one note to another
 ash vault backlinks <id>                    # notes that link to <id>
 ash vault archive <id>
+ash vault history <id>                      # prior versions of this note, newest first
 ```
 
 Or the REST API: `POST /vault`, `GET /vault[?status=][&tag=]`,
 `GET /vault/:id`, `POST /vault/:id/archive`, `POST /vault/:id/link`,
-`GET /vault/:id/backlinks`. Or the dashboard's Vault tab (create + list +
-expand-to-view-links-and-backlinks + link + archive), and the "Promote to
-Vault" button on each Inbox tab item.
+`GET /vault/:id/backlinks`, `GET /vault/:id/history`. Or the dashboard's
+Vault tab (create + list + expand-to-view-links-and-backlinks + link +
+archive), and the "Promote to Vault" button on each Inbox tab item.
 
 ## How it works
 
@@ -77,6 +78,27 @@ array contains `id` — computed by scanning `list()`, not a second stored
 index, since Vault's typical size (curated notes, not raw captures) makes
 an O(n) scan a non-issue.
 
+## Revision history — "what did this note used to say"
+
+`VaultManager.history(id)` returns every prior version of a note, newest
+first. No new storage: every note-updating call (`archive`, `link`, a
+future edit) already goes through `MemoryManager.remember()` with the
+same scope+key, and `MemoryManager` itself now snapshots a record's old
+value into `.ashos/memory/project-revisions.json` immediately before
+overwriting it — the same "extend the shared primitive once, every
+subsystem on top of it gets it for free" pattern semantic search used
+(see `docs/search.md`). This means
+Inbox/Workspace/Learning records get the exact same capability for free
+via `memory.revisions("project", <their own key format>)`, even though
+only Vault has a dedicated `history()` wrapper and CLI/REST surface today
+— see "What's not implemented" below.
+
+A revision holds the full old value (e.g. a complete past `VaultNote`,
+including its `content`/`tags`/`links`/`status` at that point in time),
+not a diff — simple, and correct for AshOS's read-a-past-version use
+case; a diff view would be a presentation-layer concern built on top of
+this, not a storage-layer one.
+
 ## Knowledge Graph integration
 
 Best-effort only — a graph write failure never fails note creation or
@@ -107,13 +129,15 @@ directly.
 | POST | `/vault/:id/archive` | — | Mark a note archived; `404` if unknown. |
 | POST | `/vault/:id/link` | `{ targetId }` | Link the note to another note; `404` if either id is unknown. |
 | GET | `/vault/:id/backlinks` | — | Notes that link to `:id`. |
+| GET | `/vault/:id/history` | — | Prior versions of `:id`, newest first — `[]` if it's never been updated since creation. |
 
 ## CLI
 
 `ash vault add <title> <content...> [--tags]`,
 `ash vault promote <inboxId> [--title]`, `ash vault list [--status] [--tag]`,
 `ash vault show <id>`, `ash vault archive <id>`,
-`ash vault link <id> <targetId>`, `ash vault backlinks <id>`.
+`ash vault link <id> <targetId>`, `ash vault backlinks <id>`,
+`ash vault history <id>`.
 
 ## What's not implemented
 
@@ -131,3 +155,15 @@ directly.
   associated with a project informally (a shared tag, or a manual
   `ash vault link`/graph edge) — there's no `note.projectId` field or
   equivalent first-class relationship yet.
+- **No revision history CLI/REST/UI for Inbox, Workspace, or Learning** —
+  `MemoryManager.revisions()` already tracks it for them too (they're
+  Memory records the same way Vault notes are), but only Vault got a
+  dedicated `history()` wrapper and `ash vault history`/`GET
+  /vault/:id/history` surface, since it was the pillar that explicitly
+  motivated this feature ("what did this note used to say"). Adding the
+  same thin wrapper to the other managers is a small, bounded follow-up,
+  not a new capability.
+- **No revision limit or pruning** — every overwrite adds one more entry
+  to `.ashos/memory/project-revisions.json`/`global-revisions.json`
+  forever; fine at Second Brain's current scale, a real concern if a
+  single record is edited very frequently over a long period.

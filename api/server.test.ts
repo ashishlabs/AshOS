@@ -656,6 +656,25 @@ describe("AshOS API", () => {
     expect(backlinks.map((n) => n.id)).toEqual([a.id]);
   });
 
+  it("GET /vault/:id/history is empty for an unedited note, then reflects prior versions after an edit", async () => {
+    const createRes = await fetch(`${baseUrl}/vault`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "Note to edit", content: "v1" })
+    });
+    const note = (await createRes.json()) as { id: string };
+
+    const before = (await (await fetch(`${baseUrl}/vault/${note.id}/history`)).json()) as unknown[];
+    expect(before).toEqual([]);
+
+    await fetch(`${baseUrl}/vault/${note.id}/archive`, { method: "POST" });
+
+    const after = (await (await fetch(`${baseUrl}/vault/${note.id}/history`)).json()) as { status: string; content: string }[];
+    expect(after).toHaveLength(1);
+    expect(after[0].status).toBe("active");
+    expect(after[0].content).toBe("v1");
+  });
+
   it("POST /vault with inboxId promotes an existing inbox item and marks it reviewed", async () => {
     const captureRes = await fetch(`${baseUrl}/inbox`, {
       method: "POST",

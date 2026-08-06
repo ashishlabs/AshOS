@@ -62,7 +62,7 @@ collaborator), not an accident, per the comments in `idea-agent.ts` and
 | File | Lines | Verdict |
 |---|---|---|
 | `dashboard/src/App.tsx` | **1,745** | ⚠ Needs refactor — grew from ~1,200 before Second Brain's 3 new tabs (Inbox, Timeline, Search) plus the Today's Focus widget. Still a single file holding every tab component. Splitting into per-tab files is the natural next step and was already flagged before this audit — the growth since confirms the concern rather than introducing a new one. |
-| `api/server.ts` | **792** | ⚠ Needs refactor — grew further (re-counted; was 472) with Vault/Workspace/Learning/Search/Graph-edges/Scheduler routes. All 79 REST routes in one file. Natural split: `routes/inbox.ts`, `routes/search.ts`, etc. |
+| `api/server.ts` | **796** | ⚠ Needs refactor — grew further (re-counted; was 472) with Vault/Workspace/Learning/Search/Graph-edges/Scheduler/vault-history routes. All 80 REST routes in one file. Natural split: `routes/inbox.ts`, `routes/search.ts`, etc. |
 | `innovation/innovation-module.ts` | 267 | Acceptable — coordinates but doesn't itself implement most logic |
 | `sdk/ashos.ts` | 143 | Acceptable — thin composition root, as designed |
 

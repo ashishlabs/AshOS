@@ -102,4 +102,20 @@ export function registerVaultCommand(program: Command): void {
       }
       for (const note of notes) console.log(`${note.id}  ${note.title}`);
     });
+
+  cmd
+    .command("history <id>")
+    .description("Show prior versions of a note, newest first")
+    .action((id: string) => {
+      const ashos = new AshOS();
+      const versions = ashos.vault.history(id);
+      if (versions.length === 0) {
+        console.log("No prior versions — this note hasn't been edited since it was created.");
+        return;
+      }
+      versions.forEach((version, i) => {
+        console.log(`--- version ${versions.length - i} of ${versions.length} (superseded) ---`);
+        console.log(JSON.stringify(version, null, 2));
+      });
+    });
 }

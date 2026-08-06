@@ -83,6 +83,25 @@ describe("VaultManager", () => {
     expect(vault.backlinks(b.id).map((n) => n.id)).toEqual([a.id]);
   });
 
+  it("history() is empty for a note that's never been updated", async () => {
+    const note = await vault.create("A", "content a");
+    expect(vault.history(note.id)).toEqual([]);
+  });
+
+  it("history() returns prior versions of a note, newest first", async () => {
+    const a = await vault.create("A", "content a");
+    const b = await vault.create("B", "content b");
+    await vault.link(a.id, b.id); // mutates and re-persists `a`
+    await vault.archive(a.id); // mutates and re-persists `a` again
+
+    const history = vault.history(a.id);
+    expect(history).toHaveLength(2);
+    expect(history[0].status).toBe("active");
+    expect(history[0].links).toEqual([b.id]);
+    expect(history[1].links).toEqual([]);
+    expect(vault.get(a.id)?.status).toBe("archived");
+  });
+
   it("linking the same pair twice is idempotent", async () => {
     const a = await vault.create("A", "content a");
     const b = await vault.create("B", "content b");

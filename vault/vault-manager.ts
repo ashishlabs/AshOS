@@ -120,6 +120,11 @@ export class VaultManager {
     return this.list().filter((note) => note.links.includes(id));
   }
 
+  /** Every prior version of this note, newest first — "what did this note used to say." Free via `MemoryManager.revisions()`, since every note is already a project-scope Memory record; no separate version-chain storage needed. */
+  history(id: string): VaultNote[] {
+    return this.memory.revisions("project", key(id)).map((r) => r.value as VaultNote);
+  }
+
   private async persist(note: VaultNote): Promise<void> {
     await this.memory.remember("project", key(note.id), note, {
       tags: [TAG, statusTag(note.status), ...note.tags]

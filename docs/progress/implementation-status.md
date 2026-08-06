@@ -165,7 +165,7 @@ Hub territory (Section 8, still not started).
 | Related notes | ✅ `VaultManager.link()` — explicit note-to-note links, not inferred from content (no `[[wiki-link]]` parsing, see `docs/knowledge-vault.md`'s "What's not implemented") |
 | References | ✅ A note promoted from an Inbox item records `sourceInboxId` and gets a `relates-to` graph edge back to that item's `resource` node |
 | AI summaries | 🔴 None on Vault notes themselves — a promoted note's `content` is the Inbox item's *original* text, not its `InboxItem.summary` |
-| Revision history | 🔴 None — Memory records are overwritten on update, no version chain (title is immutable by design; content/tags/links are overwrite-on-edit) |
+| Revision history | ✅ `VaultManager.history(id)` (`ash vault history`, `GET /vault/:id/history`) — `MemoryManager.remember()` now snapshots a record's old value before every overwrite, exposed generically via `memory.revisions(scope, key)`; title is still immutable by design, but content/tags/links edits are now recoverable, not silently overwritten |
 | Flashcards | 🔴 None — out of scope for Vault, tracked separately as Learning Hub (Section 8) |
 | Search | ✅ `HybridSearch`'s Vault slice (Section 14) — title/content/tag substring matching in keyword mode; also has real semantic search now (`{ semantic: true }`), since Vault notes persist through `MemoryManager.remember()` and already carry a best-effort embedding |
 | Knowledge graph integration | ✅ Every note becomes a `note` node (new `KnowledgeNodeKind`) on the general `KnowledgeGraph`; links become `relates-to` edges |
@@ -455,9 +455,9 @@ during this audit:
 
 - `dashboard/src/App.tsx`: **1,745 lines** (grew from ~1,200 before the
   Second Brain tabs; still one file for all 11 tab components).
-- `api/server.ts`: **792 lines** (re-counted; grew from 371 at the
+- `api/server.ts`: **796 lines** (re-counted; grew from 371 at the
   original audit date through Vault/Workspace/Learning/Search/
-  Graph-edges/Scheduler routes), all 79 REST routes in one file.
+  Graph-edges/Scheduler/vault-history routes), all 80 REST routes in one file.
 - `TODO`/`FIXME` comments: **0** (confirmed by grep across the whole tree).
 - `evolution/` and `tests/` remain empty leftover directories
   (`evolution/` has one empty nested `dashboard/` folder; `tests/` is

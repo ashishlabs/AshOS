@@ -513,6 +513,29 @@ describe("CLI commands", () => {
     expect(output).toContain(idA);
   });
 
+  it("vault history reports no prior versions, then reflects an edit", async () => {
+    const program = freshProgram();
+    registerVaultCommand(program);
+
+    await program.parseAsync(["node", "ash", "vault", "add", "Note", "content", "v1"]);
+    const created = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    const id = created.trim().split(/\s+/).pop()!;
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "vault", "history", id]);
+    let output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("No prior versions");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "vault", "archive", id]);
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "vault", "history", id]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("version 1 of 1");
+    expect(output).toContain(`"status": "active"`);
+  });
+
   it("vault promote turns an inbox item into a note and marks it reviewed", async () => {
     const program = freshProgram();
     registerInboxCommand(program);

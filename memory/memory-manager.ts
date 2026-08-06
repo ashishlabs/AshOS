@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import type { EventBus } from "../kernel/event-bus";
 import type { AIProvider } from "../providers/types";
 import { VectorStore } from "./vector-store";
-import type { MemoryQuery, MemoryRecord, MemoryScope } from "./types";
+import type { MemoryQuery, MemoryRecord, MemoryRevision, MemoryScope } from "./types";
 
 interface ShortTermEntry {
   record: MemoryRecord;
@@ -27,6 +27,8 @@ export class MemoryManager {
 
   private projectFile: string;
   private globalFile: string;
+  private projectRevisionsFile: string;
+  private globalRevisionsFile: string;
 
   constructor(
     private root: string,
@@ -34,6 +36,12 @@ export class MemoryManager {
   ) {
     this.projectFile = path.join(root, ".ashos", "memory", "project.json");
     this.globalFile = path.join(opts.globalDir ?? path.join(process.env.HOME ?? root, ".ashos"), "memory", "global.json");
+    this.projectRevisionsFile = path.join(root, ".ashos", "memory", "project-revisions.json");
+    this.globalRevisionsFile = path.join(
+      opts.globalDir ?? path.join(process.env.HOME ?? root, ".ashos"),
+      "memory",
+      "global-revisions.json"
+    );
   }
 
   private readFile(file: string): MemoryRecord[] {
@@ -51,6 +59,24 @@ export class MemoryManager {
 
   private fileFor(scope: "project" | "global"): string {
     return scope === "project" ? this.projectFile : this.globalFile;
+  }
+
+  private revisionsFileFor(scope: "project" | "global"): string {
+    return scope === "project" ? this.projectRevisionsFile : this.globalRevisionsFile;
+  }
+
+  private readRevisions(scope: "project" | "global"): MemoryRevision[] {
+    try {
+      return JSON.parse(fs.readFileSync(this.revisionsFileFor(scope), "utf-8"));
+    } catch {
+      return [];
+    }
+  }
+
+  private writeRevisions(scope: "project" | "global", revisions: MemoryRevision[]): void {
+    const file = this.revisionsFileFor(scope);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify(revisions, null, 2));
   }
 
   async remember(scope: MemoryScope, key: string, value: unknown, opts: { tags?: string[]; ttlMs?: number } = {}): Promise<MemoryRecord> {
@@ -79,7 +105,21 @@ export class MemoryManager {
       this.session.set(key, record);
     } else {
       const file = this.fileFor(scope);
-      const records = this.readFile(file).filter((r) => r.key !== key);
+      const existing = this.readFile(file);
+      const superseded = existing.find((r) => r.key === key);
+      if (superseded) {
+        const revisions = this.readRevisions(scope);
+        revisions.push({
+          id: randomUUID(),
+          scope,
+          key,
+          value: superseded.value,
+          tags: superseded.tags,
+          supersededAt: record.createdAt
+        });
+        this.writeRevisions(scope, revisions);
+      }
+      const records = existing.filter((r) => r.key !== key);
       records.push(record);
       this.writeFile(file, records);
     }
@@ -125,6 +165,22 @@ export class MemoryManager {
     return hits.map((h) => all.find((r) => r.id === h.id)).filter((r): r is MemoryRecord => Boolean(r));
   }
 
+  /**
+   * Every prior value a project/global record held before being overwritten
+   * by a newer `remember()` call with the same scope+key, newest first —
+   * "what did this used to say." Inbox/Vault/Workspace/Learning records are
+   * themselves Memory records (see `HybridSearch.isSubsystemBackedRecord`),
+   * so this works for all of them with no changes to those managers; only
+   * `short-term`/`session` are excluded, since those scopes were never
+   * persisted in the first place.
+   */
+  revisions(scope: "project" | "global", key: string): MemoryRevision[] {
+    // Revisions are appended in chronological order, so reversing (not sorting by `supersededAt`) gives newest-first even when two writes land in the same millisecond.
+    return this.readRevisions(scope)
+      .filter((r) => r.key === key)
+      .reverse();
+  }
+
   forget(scope: MemoryScope, key: string): void {
     if (scope === "short-term") {
       const entry = this.shortTerm.get(key);
@@ -138,5 +194,6 @@ export class MemoryManager {
     }
     const file = this.fileFor(scope);
     this.writeFile(file, this.readFile(file).filter((r) => r.key !== key));
+    this.writeRevisions(scope, this.readRevisions(scope).filter((r) => r.key !== key));
   }
 }

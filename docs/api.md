@@ -26,7 +26,7 @@ Start it with `npm run api`.
 | GET | `/reflect?period=` | — | Runs the `reflection` agent: a daily (default)/weekly/monthly review narrative from Outcome Memory + Inbox + Knowledge Graph activity in that window. See `docs/second-brain-roadmap.md`'s Reflection Agent entry. |
 | GET | `/reflect?period=&cached=true` | — | Reads today's already-saved reflection from `.ashos/reflections/` without calling the LLM again; `404` if none has been saved today for that period. |
 | GET | `/reflect?period=&save=true` | — | Same as the plain call, but also persists the result so a later `cached=true` call reads it back for free. This is what `AshOS.startScheduledJobs()`'s daily job calls internally. |
-| GET | `/search?q=&limit=&semantic=` | — | Hybrid search: merges and ranks results from Memory, the Knowledge Graph, and the Inbox. `400` if `q` is missing. `semantic=true` uses embedding similarity for the Memory slice. See `docs/search.md`. |
+| GET | `/search?q=&limit=&semantic=` | — | Hybrid search: merges and ranks results across Memory, the Knowledge Graph, the Inbox, the Vault, Project Workspaces, and the Learning Hub. `400` if `q` is missing. `semantic=true` uses embedding similarity for every source except Graph (see `docs/search.md`). |
 
 ### Innovation Intelligence (`/innovation/*`)
 
