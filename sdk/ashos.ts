@@ -15,6 +15,11 @@ import { GitAgent } from "../agents/git-agent";
 import { TestingAgent } from "../agents/testing-agent";
 import { GitHubTrendingAgent } from "../agents/github-trending-agent";
 import { ReflectionAgent } from "../agents/reflection-agent";
+import { ReviewerAgent } from "../agents/reviewer-agent";
+import { SecurityAuditorAgent } from "../agents/security-auditor-agent";
+import { DevOpsAgent } from "../agents/devops-agent";
+import { UIDesignerAgent } from "../agents/ui-designer-agent";
+import { ArchitectAgent } from "../agents/architect-agent";
 import { Planner } from "../planner/planner";
 import { TaskExecutor } from "../planner/executor";
 import { WorkflowEngine } from "../workflow/workflow-engine";
@@ -91,6 +96,11 @@ export class AshOS {
     this.agents.register(new TestingAgent());
     this.agents.register(new GitHubTrendingAgent());
     this.agents.register(new ReflectionAgent());
+    this.agents.register(new ReviewerAgent());
+    this.agents.register(new SecurityAuditorAgent());
+    this.agents.register(new DevOpsAgent());
+    this.agents.register(new UIDesignerAgent());
+    this.agents.register(new ArchitectAgent());
     this.agents.register(new CodebaseAnalystAgent(this.codebase));
 
     this.innovation = new InnovationModule({ kernel: this.kernel, providers: this.providers, agents: this.agents, tools: this.tools });

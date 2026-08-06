@@ -56,6 +56,15 @@ describe("AshOS SDK facade", () => {
     expect(ashos.agents.findByCapability("github-trending")?.name).toBe("github-trending");
   });
 
+  it("registers the five specialist agents (Reviewer, Security Auditor, DevOps, UI Designer, Architect)", async () => {
+    const ashos = new AshOS({ root });
+    expect(ashos.agents.findByCapability("review")?.name).toBe("reviewer");
+    expect(ashos.agents.findByCapability("security-audit")?.name).toBe("security-auditor");
+    expect(ashos.agents.findByCapability("devops")?.name).toBe("devops");
+    expect(ashos.agents.findByCapability("ui-design")?.name).toBe("ui-designer");
+    expect(ashos.agents.findByCapability("architecture")?.name).toBe("architect");
+  });
+
   it("wires the Innovation Intelligence module in, with its agents registered on the shared AgentRegistry", async () => {
     const ashos = new AshOS({ root });
     expect(ashos.agents.findByCapability("intelligence:market")).toBeDefined();

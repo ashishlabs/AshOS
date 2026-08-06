@@ -52,8 +52,10 @@ Every agent already declares its own `capabilities` (e.g. `"generic"`,
 primary capability to a sensible default tier —
 `generic`/`testing`/`git`/`github-trending`/`codebase-analyst`/
 `repository-analyst`/`technology-radar` default to `simple`;
-`code`/`research` default to `standard`; anything unlisted defaults to
-`standard` rather than guessing cheap. A specific task can override this
+`code`/`research` default to `standard`; the five specialist agents
+(`review`/`security-audit`/`devops`/`ui-design`/`architecture`) are
+unlisted, so they also get `standard` — the same "anything unlisted
+defaults to `standard` rather than guessing cheap" rule. A specific task can override this
 by setting `AgentTask.complexity` explicitly — that always wins over the
 agent-level default.
 

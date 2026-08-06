@@ -323,8 +323,10 @@ anyone deciding whether to build `MemoryAgent`/`PlannerAgent` wrapper
 classes purely for framing consistency (low value) vs. actually needing
 new agent-level behavior neither class has today (real work).
 
-**Total registered agents (verified via grep, not memory): 17** — up from
-15 before the Reflection and Idea agents shipped.
+**Total registered agents (verified via grep, not memory): 22** — up from
+17 before the five named specialist agents (Reviewer, Security Auditor,
+DevOps, UI Designer, Architect — `docs/roadmap-v2.md` goal #5) shipped.
+See `docs/features/multi-agent-specialist-roles.md`.
 
 ---
 

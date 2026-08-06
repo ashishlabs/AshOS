@@ -1,6 +1,6 @@
 # Feature: Agents
 
-**Status:** ✅ Complete (15 agents registered)
+**Status:** ✅ Complete (21 agents registered)
 
 ## 1. What is this feature?
 
@@ -42,6 +42,12 @@ curl http://localhost:4700/agents # names + capabilities + descriptions
 | Git | `git`, `vcs` | Version-control operations via the Git tool. |
 | Testing | `test`, `verify` | Runs the project's test suite (also the Verification Gate's default verifier). |
 | GitHub Trending | `github-trending`, `trending-repos` | Live GitHub Search API query for trending repos. |
+| Reflection | `reflection` | Generates the daily/weekly/monthly review narrative behind `ash reflect`. |
+| Reviewer | `review`, `code-review` | Reviews code/diffs for correctness, style, security, and maintainability. |
+| Security Auditor | `security-audit` | Audits code for real, exploitable vulnerabilities (injection, broken auth, secrets, SSRF, path traversal, ...). |
+| DevOps | `devops` | Produces deployment/CI-CD/infrastructure artifacts (Dockerfiles, CI configs, deploy scripts) or reviews of them. |
+| UI Designer | `ui-design` | Proposes component structure, interaction states, and accessibility considerations for a described feature. |
+| Architect | `architecture` | Proposes module boundaries, data flow, and design tradeoffs for a described feature or system. |
 | Codebase Analyst | `codebase-analyst`, `codebase-intelligence` | Answers "where does X live" in your local repo. |
 | Repository Analyst | `repository-analyst`, `repository-intelligence` | Analyzes an *external* GitHub repo. |
 | Technology Radar | `technology-radar` | Classifies technologies as emerging/growing/stable/declining/obsolete. |
@@ -79,9 +85,13 @@ You never picked an agent by name — capability matching did it.
 
 - Routing is first-match by capability, not a bidding/negotiation
   system — if two agents shared a capability, the first registered wins.
-- Six named specialist roles from the North Star vision don't exist yet:
-  Reviewer, Security Auditor, DevOps Engineer, UI Designer, Architect,
-  Video Creator — see [Multi-Agent Specialist Roles](./multi-agent-specialist-roles.md).
+- Five named specialist roles from the North Star vision are now shipped
+  (Reviewer, Security Auditor, DevOps, UI Designer, Architect) — each is a
+  role-specific system prompt over the same `CodeAgent` shape: an optional
+  `task.input.file` to read for context (Reviewer/Security Auditor) or
+  write the produced artifact to (DevOps/UI Designer/Architect). Only
+  Video Creator remains unbuilt, deferred with Creative Studio — see
+  [Multi-Agent Specialist Roles](./multi-agent-specialist-roles.md).
 - Every agent execution is automatically recorded into
   [Outcome Memory](./outcome-memory.md) and the
   [Knowledge Graph](./knowledge-graph.md) — no extra setup needed.

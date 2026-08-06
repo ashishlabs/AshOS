@@ -31,12 +31,15 @@ brief plus the existing North Star roadmap.
 
 ## High
 
-4. **Named specialist agent roles** (Reviewer, Security Auditor, DevOps
-   Engineer, UI Designer, Architect). Zero new infrastructure needed —
-   each is a `BaseAgent` subclass with a role-specific prompt, following
-   the exact pattern `agents/code-agent.ts` already establishes. This is
-   the one remaining gap keeping the (separate, already-tracked) North
-   Star v2 milestone off 100%.
+4. **~~Named specialist agent roles~~ Closed.** Reviewer (`review`),
+   Security Auditor (`security-audit`), DevOps (`devops`), UI Designer
+   (`ui-design`), and Architect (`architecture`) are now real `BaseAgent`
+   subclasses with role-specific prompts, following the exact pattern
+   `agents/code-agent.ts` already established — registered in
+   `sdk/ashos.ts`, routable by the Planner, and reachable via
+   `AshOS.runAgent()`. This closed the North Star v2 milestone to 100%.
+   See `docs/features/multi-agent-specialist-roles.md`. Only
+   Documentation Writer and Video Creator remain unbuilt named roles.
 
 5. **A persisted, standing Project/Task entity.** Tasks currently exist
    only for the duration of one Planner/TaskExecutor run; there is no

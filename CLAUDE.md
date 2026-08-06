@@ -45,8 +45,10 @@ There is one `tsconfig.json` / one `vitest.config.ts` for everything except
 
 **Composition root is `sdk/ashos.ts` (`AshOS` class).** It constructs a
 `Kernel`, a `ProviderRegistry`, a `MemoryManager`, a `ToolRegistry`
-(pre-registering shell/git/fs tools), and an `AgentRegistry` (pre-registering
-generic/code/research/git/testing/github-trending agents), and exposes
+(pre-registering shell/git/fs/web-fetch tools), and an `AgentRegistry` (pre-registering
+generic/code/research/git/testing/github-trending/reflection/reviewer/
+security-auditor/devops/ui-designer/architect agents, plus the Innovation
+and Codebase Analyst agents), and exposes
 `chat()`, `plan()`, `run()` (plan + execute), `runAgent()` (find-by-capability
 + execute a single agent directly, bypassing the planner — for deterministic
 capabilities like `github-trending` that don't need an LLM to decide how to

@@ -22,7 +22,7 @@ subsystem's own detailed design.
 | Stage | Goal | Actual completeness |
 |---|---|---|
 | v1 | AI workspace with chat, tools, memory, and local/cloud models | **~100%** — already shipped |
-| v2 | Multi-agent orchestration and persistent repository intelligence | **~97%** — orchestration ✅, local + external repo intelligence ✅, genuinely *persistent* and connected via the General Knowledge Graph (Stage 4, shipped), and code-producing tasks are now verified before being reported done (Stage 5, shipped). Remaining gap: named specialist agent roles beyond the 15 already registered (goal #5) — see Tier 2 below. |
+| v2 | Multi-agent orchestration and persistent repository intelligence | **~100%** — orchestration ✅, local + external repo intelligence ✅, genuinely *persistent* and connected via the General Knowledge Graph (Stage 4, shipped), code-producing tasks are now verified before being reported done (Stage 5, shipped), and named specialist agent roles now exist (Tier 2 item #6, shipped — goal #5). Only Video Creator (Tier 3, Creative Studio scope, deprioritized) remains unnamed. |
 | v3 | Autonomous research, planning, and execution of complex projects | **~50%** — planning/execution ✅, general-purpose research ❌ (only AI-ecosystem-scoped) |
 | v4 | Continuous learning, innovation discovery, and self-optimization | **~30%** — innovation discovery ✅ (fully shipped), learning/self-optimization ❌ |
 | v5 | A true AI OS managing dev, knowledge, automation, and creative production end-to-end | **~10%** — automation infra ✅, creative production ❌, full autonomy loop ❌ |
@@ -35,7 +35,7 @@ subsystem's own detailed design.
 | 2 | Unified AI Workspace | 🟡 Partial | Local (Ollama/LM Studio) + cloud (Anthropic/OpenAI) providers, plus shell/git/fs tools, all exist. Missing: MCP client, Docker tool, browser automation — all three already named "deferred" in `docs/roadmap.md`. |
 | 3 | Persistent Memory | ✅ Done | `MemoryManager` (4 scopes + semantic vector search) is a solid substrate, and Outcome Memory (Stage 3, shipped) now auto-writes every agent task's attempt — success/failure, error, duration — with no opt-in needed. See `docs/outcome-memory.md`. |
 | 4 | Repository Intelligence | ✅ Done | `RepositoryAnalystAgent` analyzes **external** GitHub repos (stars, license, deps) for Innovation Intelligence. `codebase/`'s `CodebaseAnalystAgent` (Stage 1, shipped) now covers the other half: deep-indexing the **local working repository** — file tree, modules, symbols, git-commit-cached — so an agent can answer "where does feature X live" without re-scanning. See `docs/codebase-intelligence.md`. |
-| 5 | Multi-Agent Collaboration | 🟡 Partial | 14 agents registered today (Generic/Code/Research/Git/Testing/GitHubTrending + 8 Innovation agents). Missing named roles: Reviewer, Security Auditor, DevOps, UI Designer, Architect, Video Creator. |
+| 5 | Multi-Agent Collaboration | ✅ Done | 21 agents registered today (Generic/Code/Research/Git/Testing/GitHubTrending/Reflection/CodebaseAnalyst + Reviewer/Security Auditor/DevOps/UI Designer/Architect + 8 Innovation agents). Only Video Creator remains unnamed — deliberately deferred with the rest of Creative Studio (#13), blocked on media-generation provider infrastructure this codebase doesn't have. |
 | 6 | Local-First AI | ✅ Done | Local providers exist, and `ModelRouter` (Stage 2, shipped) now defaults routine work to a configured cheap/local model and escalates only when a task is tagged (or defaults to) a higher tier. Off by default — see `docs/model-router.md`. |
 | 7 | Innovation Engine | ✅ Done | GitHub/HN/Reddit/arXiv/Hugging Face collectors, event dedup, knowledge graph, opportunity scoring, Daily Brief, and a Markdown news digest are all shipped. Only Product Hunt (explicitly named) is missing, same collector pattern as the rest. |
 | 8 | Autonomous Research | 🟡 Partial | A `WebFetchTool` now exists (`tools/web-fetch-tool.ts`, Tier 2 item 7) and is used by the Inbox's summarizer, but `ResearchAgent` itself hasn't been wired to call it yet — it still reasons from the model alone. The Innovation collectors prove the multi-source pattern works; it's just scoped to AI-ecosystem signals, not arbitrary topics. |
@@ -83,7 +83,7 @@ much new architecture it requires.
 
 ### Tier 2 — new agents/tools, moderate effort, no new architecture
 
-6. Add Reviewer, Documentation Writer, Security Auditor, Architect agents — role prompts over existing tools, no new infrastructure. Closes most of #5.
+6. ✅ Named specialist agents — **shipped**: `agents/reviewer-agent.ts` (capability `review`), `security-auditor-agent.ts` (`security-audit`), `devops-agent.ts` (`devops`), `ui-designer-agent.ts` (`ui-design`), `architect-agent.ts` (`architecture`) — each a role-specific system prompt over `context.provider.chat()`, following `CodeAgent`'s shape (optional `task.input.file` to read for context or write the produced artifact), reachable via the Planner, a workflow step, or `AshOS.runAgent()`. Closes #5 except Video Creator (Tier 3, Creative Studio).
 7. 🟡 `WebFetchTool` — **shipped** (`tools/web-fetch-tool.ts`, capability `web-fetch`): fetches a URL and extracts readable text, http(s)-only with private/loopback/link-local addresses blocked, no redirects, timeout + size caps. Used by the Inbox's AI summarizer (`docs/inbox.md`) and available to any agent via `context.tools.get("web-fetch")`. Remaining: no dedicated `WebSearchTool` (finding URLs, not just fetching a known one) and `ResearchAgent` itself hasn't been updated to call it — still reasons model-only. Closes half of #8.
 8. MCP client support — one standardized integration point instead of hand-building Docker/browser/etc. one at a time. Biggest lever for #2.
 9. Kanban view over the existing task graph (UI only, backend already exists).
@@ -109,6 +109,9 @@ up after Tier 1 lands.
 - Stage 4 (General Knowledge Graph) — **shipped**.
 - Stage 5 (Verification Gate) — **shipped**.
 
-All five Tier 1 stages are now shipped, closing v2 to ~97% (the remaining
-gap — named specialist agent roles beyond the 15 already registered — is
-Tier 2 item #6, not scheduled as a task yet).
+- Tier 2 item 6 (Named specialist agents) — **shipped**.
+
+All five Tier 1 stages plus Tier 2 item #6 are now shipped, closing v2 to
+~100%. Remaining Tier 2 items (MCP client, Kanban view, Product Hunt
+collector, and wiring `ResearchAgent` to `WebFetchTool`) are not yet
+scheduled as tasks.

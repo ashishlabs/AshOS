@@ -110,20 +110,28 @@ handling for orphaned edges (moot today since nothing deletes nodes).
 
 ---
 
-### Multi-Agent Specialist Roles (5 of 11 named roles exist)
+### Multi-Agent Specialist Roles (9 of 11 named roles exist or have a direct equivalent)
 
 - ✔ **Done:** Code, Research, Testing, Git, Generic agents all real and
-  registered; Reflection and Idea agents added since the last audit,
-  bringing total registered agents to 17.
-- ✖ **Missing:** Reviewer, Security Auditor, DevOps Engineer, UI
-  Designer, Architect, Video Creator — confirmed absent via grep across
-  `agents/` and `innovation/agents/`.
-- ⚠ **Should be improved:** nothing about the existing 5 needs rework —
-  this is purely a "hasn't been built yet" gap, not a quality issue.
-- 🚀 **Next implementation step:** build the first of the missing five
-  (Reviewer is the highest-leverage, since it composes naturally with
-  the already-shipped Verification Gate) as a `BaseAgent` subclass with a
-  role-specific system prompt — no new tools or infrastructure required.
+  registered; Reflection agent added since the last audit; Reviewer
+  (`review`), Security Auditor (`security-audit`), DevOps (`devops`), UI
+  Designer (`ui-design`), and Architect (`architecture`) are now also
+  real `BaseAgent` subclasses, each following `agents/code-agent.ts`'s
+  shape (optional `task.input.file` to read for context or write the
+  produced artifact) — bringing total registered agents to 21. Confirmed
+  via `agents/agents.test.ts` (per-agent behavior) and
+  `sdk/ashos.test.ts` (registration under the correct capability).
+- ✖ **Missing:** Documentation Writer, Video Creator — confirmed absent
+  via grep across `agents/` and `innovation/agents/`. Video Creator is
+  additionally blocked on missing media-generation provider
+  infrastructure this codebase doesn't have.
+- ⚠ **Should be improved:** nothing about the existing 9 needs rework —
+  this is purely a "hasn't been built yet" gap for the remaining two, not
+  a quality issue.
+- 🚀 **Next implementation step:** build Documentation Writer as a
+  `BaseAgent` subclass with a role-specific system prompt — no new tools
+  or infrastructure required, same pattern as the five specialists just
+  shipped. Video Creator stays deferred with Creative Studio.
 
 ---
 

@@ -29,15 +29,18 @@ ones, and removes the single largest regression risk in the codebase.
 
 ## Phase 2 — Close the last named North Star gap + visualize existing data
 
-**Estimated effort:** 2-3 weeks (~1 week remaining — items 6 and half of
-8 are done).
+**Estimated effort:** 2-3 weeks (items 5, 6, and half of 8 are done).
 **Dependencies:** none new for agents (reuses `BaseAgent`).
 **Risks:** low.
 **Expected impact:** closes North Star v2 to 100%.
 
-5. Named specialist agents: Reviewer, Security Auditor, DevOps Engineer,
-   UI Designer, Architect (role-prompt subclasses of `BaseAgent`, same
-   pattern as `agents/code-agent.ts`).
+5. ✅ **Shipped** — named specialist agents: Reviewer (`review`), Security
+   Auditor (`security-audit`), DevOps (`devops`), UI Designer
+   (`ui-design`), Architect (`architecture`) — role-prompt subclasses of
+   `BaseAgent`, same pattern as `agents/code-agent.ts`, registered in
+   `sdk/ashos.ts` and reachable via the Planner (its system prompt lists
+   all five capabilities), a workflow step, or `AshOS.runAgent()`
+   directly. See `docs/features/multi-agent-specialist-roles.md`.
 6. ✅ **Shipped** — interactive Knowledge Graph visualization in the
    dashboard (`GraphTab`, `dashboard/src/graph-layout.ts`, new
    `GET /graph/edges` route): force-directed layout, colored/filterable

@@ -7,7 +7,7 @@ Decompose the user's goal into a dependency graph of concrete tasks.
 Respond with ONLY valid JSON matching this shape, no prose, no markdown fences:
 {
   "tasks": [
-    { "id": "string-slug", "title": "short title", "description": "what to do", "capability": "research|code|test|git|generic", "dependsOn": ["id", ...] }
+    { "id": "string-slug", "title": "short title", "description": "what to do", "capability": "research|code|test|git|review|security-audit|devops|ui-design|architecture|generic", "dependsOn": ["id", ...] }
   ]
 }
 Keep the graph small (3-10 tasks). Use dependsOn only for real ordering constraints so independent tasks can run in parallel.`;

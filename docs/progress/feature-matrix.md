@@ -29,7 +29,7 @@ Refactor.
 | Knowledge Graph (data model + population + visualization) | ✅ | 95% | High | Real, auto-populated, and now visualized in a dashboard Graph tab (force layout, colored/filterable by kind, click to highlight connections); still no `repository` nodes from external Repository Intelligence |
 | Innovation Intelligence (discovery, scoring, digest) | ✅ | 100% | High | Only GitHub collector proven live in this sandbox; HN/Reddit/arXiv are real but unverified live here |
 | Verification Gate | ✅ | 100% | High | On by default, tested (pass + fail paths, live-verified) |
-| Multi-Agent Specialist Roles | 🟡 | 45% | Medium | 5 of 11 named roles exist; still missing Reviewer, Security Auditor, DevOps, UI Designer, Architect, Video Creator |
+| Multi-Agent Specialist Roles | ✅ | 90% | High | 9 of 11 named roles exist or have a direct equivalent — Reviewer, Security Auditor, DevOps, UI Designer, Architect now shipped as real `BaseAgent` subclasses; only Documentation Writer and Video Creator remain missing |
 
 ## "AI Second Brain" Vision Layer
 
