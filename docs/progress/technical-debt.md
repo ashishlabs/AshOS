@@ -107,11 +107,14 @@ collaborator), not an accident, per the comments in `idea-agent.ts` and
 
 ## UI/UX-adjacent debt
 
-- **Zero dashboard automated tests** — the single largest test-coverage
-  gap in the project, unchanged and worsened in absolute surface area
-  (15 tabs now, up from 8 at the start of this audit's history, 11 at
-  its most recent update before Vault/Projects/Learning shipped) since
-  the last audit.
+- **~~Zero dashboard automated tests~~ Partially closed.** `dashboard/`
+  now has `vitest.config.ts` + `src/test-setup.ts` (jsdom, React Testing
+  Library, `@testing-library/user-event`) and a real suite
+  (`graph-layout.test.ts` + `App.test.tsx`, 16 tests, ~40% statement
+  coverage on `src/`) covering Dashboard, Inbox, Vault, Search, and
+  Timeline — run in CI via `npm run test:coverage -w dashboard`. Still
+  open: 10 of the 15 tabs (Projects, Learning, Graph, Plan, Workflow,
+  Innovation, Trending, Memory, Logs, Chat) have no test coverage yet.
 - **Accessibility is thin** — 10 `aria-*` attributes total (re-verified)
   across a 2,775-line, 15-tab UI. Not broken, but not deliberately built
   either.

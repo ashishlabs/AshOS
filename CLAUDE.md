@@ -15,6 +15,7 @@ npm run cli -- <args>       # run the `ash` CLI from source via tsx, e.g. npm ru
 npm run api                 # start the REST API (tsx api/server.ts) on :4700
 npm run dashboard:dev       # Vite dev server on :5173, proxies /api -> :4700
 npm run dashboard:build     # build the dashboard workspace
+npm run dashboard:test      # vitest run, inside the dashboard workspace (RTL + jsdom)
 npm run dev:full            # both api and dashboard:dev together (via concurrently)
 ```
 
@@ -27,14 +28,20 @@ Tests are colocated as `*.test.ts` next to their source file (e.g.
 with tests, add its glob there or the tests won't run.
 
 There is no separate lint script; `npm run typecheck` (strict TS) is the
-quality gate. CI (`.github/workflows/ci.yml`) runs `typecheck` then
-`test:coverage` on Node 22.
+quality gate. CI (`.github/workflows/ci.yml`) runs `typecheck`, `test:coverage`,
+then the dashboard's own build and `test:coverage` on Node 22.
 
 The `dashboard/` package is its own npm workspace with its own
 `tsconfig.json` (ESM/Vite, DOM lib) — it is excluded from the root
 `tsconfig.json` and from `vitest.config.ts`. Don't try to import root
 packages (`kernel/`, `sdk/`, etc.) into `dashboard/`; it only talks to the
-system over the REST API (`dashboard/src/api.ts`).
+system over the REST API (`dashboard/src/api.ts`). It has its own
+`vitest.config.ts` (jsdom environment, `@` path alias mirrored from
+`vite.config.ts`, `src/test-setup.ts` registers jest-dom matchers and RTL's
+`cleanup()` since `test.globals` is off here too) and tests
+(`src/*.test.tsx`) using React Testing Library — since only `App` is
+exported from `App.tsx`, tests render `<App />` and navigate via simulated
+sidebar-nav clicks rather than importing individual tab components.
 
 ## Architecture
 

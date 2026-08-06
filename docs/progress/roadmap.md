@@ -21,9 +21,12 @@ ones, and removes the single largest regression risk in the codebase.
    captured URLs.
 2. Semantic search extended to the Graph and Inbox slices of
    `HybridSearch`, not just Memory.
-3. Dashboard automated test suite — start with the 4 newest tabs
-   (Inbox, Timeline, Search, Today's Focus) since they're the least
-   proven.
+3. ✅ **Shipped (partially)** — dashboard automated test suite
+   (`dashboard/vitest.config.ts`, jsdom + React Testing Library, 16 tests
+   in `graph-layout.test.ts` + `App.test.tsx`, run in CI). Covers the
+   Dashboard, Inbox, Vault, Search, and Timeline tabs against a mocked
+   `fetch`. Still open: the other 10 tabs (Projects, Learning, Graph,
+   Plan, Workflow, Innovation, Trending, Memory, Logs, Chat).
 4. `ash workflow run <file>` CLI command (thin wrapper over the existing
    `WorkflowEngine`/REST path — no engine changes).
 

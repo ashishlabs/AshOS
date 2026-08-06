@@ -165,11 +165,23 @@ handling for orphaned edges (moot today since nothing deletes nodes).
   summary widget — the underlying `Project`/`LearningResource` entities
   both exist now, but nothing pulls them into `DashboardTab` the way
   `TodaysFocusCard` does for Inbox/Innovation/Outcome Memory.
-- ⚠ **Should be improved:** zero automated tests for any of the 15 tabs;
-  accessibility coverage is thin (7 `aria-*` attributes total, not
-  recounted since Vault/Projects/Learning shipped).
-- 🚀 **Next implementation step:** start a dashboard test suite with the
-  4 newest, least-proven tabs at the time this line was last true
-  (Inbox, Timeline, Search, Today's Focus) — now a much larger backlog
-  including Vault, Projects, Graph, and Learning — before adding any
-  more UI surface on top of them.
+- ✔ **Done:** ~~zero automated tests for any of the 15 tabs~~ Closed. A
+  real dashboard test suite now exists (`dashboard/vitest.config.ts`,
+  jsdom + React Testing Library + `@testing-library/user-event`, 16 tests
+  across `graph-layout.test.ts` and `App.test.tsx`) covering the Dashboard
+  tab's data loading (Today's Focus, Reflection, Status, Recent activity,
+  including an API-unreachable error path), the Inbox capture flow, the
+  Vault create-note flow, the Search flow (results and empty state), and
+  the Timeline tab (event/memory merge-and-sort plus keyword filtering) —
+  all against a mocked `fetch` per `dashboard/src/api.ts`'s real endpoint
+  paths, no live network. Wired into CI (`.github/workflows/ci.yml`) and
+  `npm run dashboard:test` at the root. See `CLAUDE.md`'s Commands section.
+- ⚠ **Should be improved:** accessibility coverage is thin (10 `aria-*`
+  attributes total across a 2,775-line, 15-tab UI); coverage on `App.tsx`
+  itself is still partial (~35% statements) — the 5 tabs above are
+  covered, the remaining 10 (Projects, Learning, Graph, Plan, Workflow,
+  Innovation, Trending, Memory, Logs, Chat) are not yet.
+- 🚀 **Next implementation step:** extend the same RTL pattern to the
+  remaining 10 tabs, prioritizing Vault backlinks/note-linking and Graph's
+  node-selection interaction next (the two with the most non-trivial
+  client-side state), then tackle the accessibility pass.

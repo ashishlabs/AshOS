@@ -48,23 +48,23 @@ been recalculated — treat them as a stale lower bound, not current.)
 1. **~~No Learning Hub / Knowledge Vault / Project Workspace code exists.~~ Closed.** All three now have real implementations — see Sections 5, 6, and 8.
 2. **~~The Inbox has no AI in it.~~ Closed.** `InboxManager.capture()` now best-effort asks the active provider for a one-sentence summary, grounded in a captured URL's fetched page text via `WebFetchTool`. See Section 4.
 3. **~~The Knowledge Graph has no visual/interactive UI.~~ Closed.** A dashboard **Graph** tab now renders the whole graph via a dependency-free force layout, colored/filterable by kind, click-to-highlight-connections.
-4. **Zero dashboard automated tests.** All passing tests are backend-only; the UI layer has no test coverage. The one blocker remaining from this original list.
+4. **~~Zero dashboard automated tests.~~ Partially closed.** `dashboard/` now has its own `vitest.config.ts` (jsdom + React Testing Library) and a real suite (16 tests across `graph-layout.test.ts` + `App.test.tsx`) covering 5 of 15 tabs — Dashboard, Inbox, Vault, Search, Timeline — run in CI. The remaining 10 tabs still have no coverage; see Section 3.
 
 ### Biggest risks
 
 - **JSON-file persistence under Second Brain's higher write volume.** Every Inbox capture, every Vault note, every Project/Task/Milestone record, every Learning resource/flashcard, every Outcome Memory record, every reflection is a full read-modify-write of one project-scope JSON file (`memory/memory-manager.ts`). This was an accepted tradeoff at AshOS-core scale; Second Brain's "capture everything" pattern is exactly the workload that breaks that assumption first.
 - **No authentication anywhere.** Fine for a local single-user tool; a hard blocker the moment this is positioned as something a team shares.
-- **Zero dashboard automated tests**, restated as a risk not just a blocker: an 8-pillar UI surface (soon to be more, if any sub-capability work continues) with no repeatable verification beyond manual Playwright walkthroughs at build time.
+- **Dashboard automated tests, partially closed**: 5 of 15 tabs (Dashboard, Inbox, Vault, Search, Timeline) now have real RTL coverage in CI; the other 10 (Projects, Learning, Graph, Plan, Workflow, Innovation, Trending, Memory, Logs, Chat) still rely on manual verification only — a smaller, bounded remaining risk rather than the original "nothing is tested" gap.
 
 ### Top priorities (see `roadmap.md` for phased detail)
 
-1. Dashboard test coverage — now the single biggest risk-to-regression ratio in the codebase, with every named pillar's UI shipped and zero automated coverage over any of it.
-2. Recalculate the completion percentage and health/quality scores above against what's actually shipped now (Inbox AI, Graph viz, Knowledge Vault, Project Workspaces, Learning Hub, five specialist agents) — the current numbers predate all of it.
+1. Extend dashboard test coverage to the remaining 10 tabs — Vault's backlink/linking interaction and Graph's node-selection are the two with the most non-trivial client state and should go first.
+2. Recalculate the completion percentage and health/quality scores above against what's actually shipped now (Inbox AI, Graph viz, Knowledge Vault, Project Workspaces, Learning Hub, five specialist agents, dashboard test suite) — the current numbers predate all of it.
 3. Decide whether any of the deliberately-deferred sub-capabilities (Learning paths, Quizzes, AI recommendations across Dashboard/Idea Lab/Learning Hub, Roadmaps/Definition-of-Done/Risk-tracking as data models) are worth building — none are blocking a pillar's "does it exist" verdict anymore, so this is now a prioritization question, not a scope-gate.
 
 ### Estimated work remaining
 
-- Dashboard test coverage: **~1-2 weeks** for one experienced engineer, no new architecture required.
+- Remaining dashboard test coverage (10 of 15 tabs): **~3-5 days** for one experienced engineer, following the pattern already established in `App.test.tsx`.
 - Any of the deferred sub-capabilities above: scope individually: some (e.g. Learning paths, sequencing existing resources) are small; others (a cross-pillar AI recommendation engine) are genuinely new work.
 
 ---
@@ -100,9 +100,12 @@ logs, chat.
 anywhere in the codebase (no ranking/suggestion logic outside Innovation's
 opportunity scoring, which isn't personal-task-shaped); real `Project`
 and `LearningResource` entities now exist (Sections 6, 8) but neither is
-summarized on the Dashboard home tab specifically. **Zero automated
-tests** for any of these 15 tabs — confirmed via
-`find dashboard -name "*.test.*"` returning nothing.
+summarized on the Dashboard home tab specifically. **Automated tests now
+exist for 5 of these 15 tabs** (Dashboard, Inbox, Vault, Search, Timeline
+— `dashboard/src/App.test.tsx`, `dashboard/src/graph-layout.test.ts`, 16
+tests, jsdom + React Testing Library, run in CI); the other 10 (Projects,
+Learning, Graph, Plan, Workflow, Innovation, Trending, Memory, Logs, Chat)
+still have none.
 
 ---
 
@@ -459,8 +462,9 @@ during this audit:
   (`evolution/` has one empty nested `dashboard/` folder; `tests/` is
   fully empty) — dead weight from the removed Evolution Engine and an
   early, unused test-directory convention.
-- Dashboard: **zero automated tests** (`find dashboard -name "*.test.*"`
-  returns nothing).
+- Dashboard: **16 automated tests** across 5 of 15 tabs (`dashboard/src/App.test.tsx`,
+  `dashboard/src/graph-layout.test.ts`) — up from zero; 10 tabs still
+  untested (`find dashboard -name "*.test.*"` now returns 2 files, not 0).
 
 ---
 
@@ -497,7 +501,7 @@ during this audit:
 | Dimension | Score | Basis |
 |---|---|---|
 | Overall completion | **~46%** | 8/21 audited areas complete, 7 partial, 6 zero |
-| Overall quality | **78/100** | strict typecheck clean, 406 real tests, zero TODOs, consistent conventions — docked for zero dashboard tests |
+| Overall quality | **78/100** (pre-dashboard-test-suite, not recalculated) | strict typecheck clean, 566 real backend tests + 16 dashboard tests across 5/15 tabs, zero TODOs, consistent conventions |
 | Architecture maturity | **85/100** | every new feature (Inbox, Reflection, Idea, Search) genuinely reused existing infra (Memory, Graph, BaseAgent) rather than inventing parallel systems — a real, demonstrated discipline, not just a claim |
 | Production readiness | **55/100** | no auth, no real database, single-process JSON persistence — fine for local/single-user, not for anything shared |
 | Maintainability | **75/100** | consistent per-subsystem doc convention, but two oversized files (`App.tsx`, `server.ts`) and two dead directories |
@@ -509,11 +513,11 @@ during this audit:
 work remaining" in the sense of the existing code being broken or low
 quality — it isn't, and unlike the original version of this audit, there
 is no longer a named pillar with zero implementation. What's left —
-dashboard test coverage, and a set of individually-scoped
-sub-capabilities (Learning paths, Quizzes, AI recommendations,
-Roadmaps/Definition-of-Done/Risk-tracking as data) — is real but bounded
-work, not an open scope question. The numeric scores in this table were
-computed before Knowledge Vault, Project Workspaces, Learning Hub, Inbox
+dashboard test coverage for the remaining 10 of 15 tabs, and a set of
+individually-scoped sub-capabilities (Learning paths, Quizzes, AI
+recommendations, Roadmaps/Definition-of-Done/Risk-tracking as data) — is
+real but bounded work, not an open scope question. The numeric scores in
+this table were computed before Knowledge Vault, Project Workspaces, Learning Hub, Inbox
 AI summarization, and the Knowledge Graph dashboard visualization shipped
 and have not been recalculated — treat every percentage above as a stale
 lower bound, not a current measurement.

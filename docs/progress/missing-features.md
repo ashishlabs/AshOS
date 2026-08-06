@@ -57,12 +57,14 @@ brief plus the existing North Star roadmap.
    or research item to a `Project` yet (no `projectId` field, no
    automatic association).
 
-6. **Dashboard automated tests.** Zero exist for what's now a 15-tab
-   application (up from 11 at the original audit date — Vault, Projects,
-   Graph, and Learning have all shipped their own tabs since). Every
-   Second Brain UI addition shipped with no repeatable verification
-   beyond manual Playwright screenshots at build time — the single
-   biggest regression risk in the codebase today.
+6. **~~Dashboard automated tests.~~ Partially closed.** `dashboard/` now
+   has its own `vitest.config.ts` (jsdom + React Testing Library) and a
+   real test suite (`graph-layout.test.ts`, `App.test.tsx`, 16 tests)
+   covering 5 of the 15 tabs — Dashboard, Inbox, Vault, Search, Timeline —
+   against a mocked `fetch`, wired into CI. The other 10 tabs (Projects,
+   Learning, Graph, Plan, Workflow, Innovation, Trending, Memory, Logs,
+   Chat) still have no coverage — a smaller, bounded backlog rather than
+   the "zero tests anywhere" gap this item originally named.
 
 7. **Semantic search for Graph and Inbox slices**, not just Memory.
    `HybridSearch`'s `--semantic` flag only affects the Memory query today;
