@@ -124,4 +124,57 @@ describe("MemoryManager", () => {
     manager.forget("project", "note-1");
     expect(manager.revisions("project", "note-1")).toEqual([]);
   });
+
+  describe("migration from the pre-SQLite JSON store", () => {
+    it("imports records and revisions from an existing project.json/project-revisions.json on first open", () => {
+      const memoryDir = path.join(root, ".ashos", "memory");
+      fs.mkdirSync(memoryDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(memoryDir, "project.json"),
+        JSON.stringify([
+          { id: "id-1", scope: "project", key: "note-1", value: { text: "current" }, tags: ["vault"], createdAt: "2026-01-02T00:00:00.000Z" },
+          { id: "id-2", scope: "project", key: "note-2", value: "plain string", createdAt: "2026-01-01T00:00:00.000Z" }
+        ])
+      );
+      fs.writeFileSync(
+        path.join(memoryDir, "project-revisions.json"),
+        JSON.stringify([
+          { id: "rev-1", scope: "project", key: "note-1", value: { text: "old" }, tags: ["vault"], supersededAt: "2026-01-02T00:00:00.000Z" }
+        ])
+      );
+
+      const manager = new MemoryManager(root, { globalDir: path.join(root, "g") });
+
+      expect(manager.recall("project", "note-1")?.value).toEqual({ text: "current" });
+      expect(manager.recall("project", "note-2")?.value).toBe("plain string");
+      expect(manager.query({ scope: "project", tag: "vault" }).map((r) => r.key)).toEqual(["note-1"]);
+      const revisions = manager.revisions("project", "note-1");
+      expect(revisions).toHaveLength(1);
+      expect(revisions[0].value).toEqual({ text: "old" });
+
+      expect(fs.existsSync(path.join(memoryDir, "project.db"))).toBe(true);
+    });
+
+    it("only migrates once — a second manager instance doesn't re-import or duplicate data", () => {
+      const memoryDir = path.join(root, ".ashos", "memory");
+      fs.mkdirSync(memoryDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(memoryDir, "project.json"),
+        JSON.stringify([{ id: "id-1", scope: "project", key: "note-1", value: { text: "v1" }, createdAt: "2026-01-01T00:00:00.000Z" }])
+      );
+
+      const globalDir = path.join(root, "g");
+      const manager1 = new MemoryManager(root, { globalDir });
+      expect(manager1.recall("project", "note-1")?.value).toEqual({ text: "v1" });
+
+      const manager2 = new MemoryManager(root, { globalDir });
+      expect(manager2.query({ scope: "project" })).toHaveLength(1);
+    });
+
+    it("starts with an empty store when no old JSON files exist (fresh project)", () => {
+      const manager = new MemoryManager(root, { globalDir: path.join(root, "g") });
+      expect(manager.query({ scope: "project" })).toEqual([]);
+      expect(fs.existsSync(path.join(root, ".ashos", "memory", "project.db"))).toBe(true);
+    });
+  });
 });

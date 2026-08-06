@@ -177,11 +177,25 @@ and run through the same `DagExecutor`.
 
 **`memory/`** (`MemoryManager`) unifies four scopes: `short-term` and
 `session` live in-process (Maps, the former TTL-able via `setTimeout`);
-`project` and `global` persist to `.ashos/memory/project.json` and
-`~/.ashos/memory/global.json` respectively. Every `remember()` call also
+`project` and `global` persist to SQLite databases
+(`.ashos/memory/project.db` and `~/.ashos/memory/global.db`, via Node's
+built-in `node:sqlite` — no native dependency) instead of a whole-file JSON
+array, so a `remember()` call is a single indexed write and `query({ tag
+})` — the shape every subsystem's `list()` actually calls — is an indexed
+join through a `record_tags` table rather than a full scan. `node:sqlite`
+is still experimental and only ships from Node 22.5+, hence
+`package.json`'s `engines.node`; its static `import` doesn't resolve under
+Vite/Vitest 5.x's builtin-module allowlist, so `memory-manager.ts` pulls
+the runtime binding in via `createRequire` while keeping a normal
+`import type` for the type — see the comment there before changing it. An
+older `.ashos/memory/project.json`/`global.json` (plus their
+`*-revisions.json` sidecar) is imported into the new `.db` file once, on
+first open, so upgrading never loses captured data; the old JSON files are
+left in place afterward, untouched. Every `remember()` call also
 best-effort computes an embedding via the active provider and indexes it in
-an in-process `VectorStore` (brute-force cosine similarity) for
-`searchSemantic()`.
+an in-process `VectorStore` (brute-force cosine similarity, rehydrated from
+the database on construction so semantic search survives process
+restarts) for `searchSemantic()`.
 
 **`plugins/`** — a plugin is a directory with `manifest.json` + `index.ts`
 exporting a `Plugin` whose `register(host)` receives a `PluginHost`

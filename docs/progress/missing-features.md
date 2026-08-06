@@ -128,10 +128,27 @@ brief plus the existing North Star roadmap.
     `raw.githubusercontent.com`. Non-PDF binary formats (images, ...) are
     still rejected by content-type.
 
-12. **An actual embedded database** (e.g. SQLite) to replace whole-file
-    JSON read-modify-write. Not urgent at current scale, but Second
-    Brain's "capture everything" pattern is exactly the write-volume
-    growth pattern that breaks this fastest.
+12. **~~An actual embedded database~~ Mostly closed.** `MemoryManager`'s
+    project/global scopes — the store Inbox, Vault, Workspace, Learning,
+    and Outcome Memory all persist through — now use SQLite via Node's
+    built-in `node:sqlite` (`.ashos/memory/project.db`,
+    `~/.ashos/memory/global.db`; no `better-sqlite3` or other native
+    dependency) instead of a whole-file JSON array: a `remember()` call is
+    a single indexed write instead of a read-modify-write of every
+    record, and `query({ tag })` — the shape every subsystem's `list()`
+    actually calls — is an indexed join through a `record_tags` table
+    instead of a full scan. An older `project.json`/`global.json` (plus
+    its `*-revisions.json` sidecar) is imported into the new `.db` file
+    once, on first open, so upgrading an existing `.ashos/` directory
+    never loses captured data — live-verified against a real pre-existing
+    `project.json`. `node:sqlite` requires Node 22.5+ and is still
+    Node-experimental, hence the `package.json` `engines.node` bump (this
+    repo's CI/Dockerfile already run Node 22, so no practical
+    compatibility cost here). **Still JSON files**: the Knowledge Graph
+    (both the general and Innovation-namespaced ones) and Innovation's
+    per-file opportunity/event/repository-profile stores — none of them
+    see Inbox-capture-level write volume, so extending this pattern to
+    them is deliberately left for if/when that changes.
 
 ## Low
 

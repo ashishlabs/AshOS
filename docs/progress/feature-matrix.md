@@ -30,6 +30,7 @@ Refactor.
 | Innovation Intelligence (discovery, scoring, digest) | ✅ | 100% | High | Only GitHub collector proven live in this sandbox; HN/Reddit/arXiv are real but unverified live here |
 | Verification Gate | ✅ | 100% | High | On by default, tested (pass + fail paths, live-verified) |
 | Multi-Agent Specialist Roles | ✅ | 90% | High | 9 of 11 named roles exist or have a direct equivalent — Reviewer, Security Auditor, DevOps, UI Designer, Architect now shipped as real `BaseAgent` subclasses; only Documentation Writer and Video Creator remain missing |
+| Real database (vs. JSON files) | 🟡 | 50% | High | `MemoryManager`'s project/global scopes — the store Inbox/Vault/Workspace/Learning/Outcome Memory all ride on — now persist to SQLite via `node:sqlite` (indexed writes + a tag index, replacing whole-file JSON read-modify-write); the Knowledge Graph and Innovation's per-file JSON stores are unchanged. See `implementation-status.md` Section 15. |
 
 ## "AI Second Brain" Vision Layer
 
@@ -58,7 +59,6 @@ Refactor.
 | Authentication | 🔴 | No auth dependency or code anywhere |
 | Self-Improvement / Evolution Engine | 🔴 | Deliberately removed (commit `8f7400b`); rebuild gated on an explicit, still-undecided user choice |
 | Creative Studio (media generation) | 🔴 | No image/video/audio provider or dependency |
-| Real database (vs. JSON files) | 🔴 | See `implementation-status.md` Section 15 |
 
-**Rollup:** 21 ✅/mostly-complete rows, 7 🟡 partial rows, 10 🔴 not-started
+**Rollup:** 21 ✅/mostly-complete rows, 8 🟡 partial rows, 9 🔴 not-started
 rows across 38 tracked features.

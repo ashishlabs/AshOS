@@ -392,14 +392,17 @@ Implementation: `search/hybrid-search.ts` (`HybridSearch`), `ash search`,
 
 ## 15. Database Audit
 
-**There is no database.** Confirmed via `package.json` — no `pg`,
-`mongodb`, `sqlite3`, `prisma`, `mongoose`, `typeorm`, or any ORM/driver
-dependency anywhere. Every subsystem persists to plain JSON files:
+**Memory now has a real embedded database.** `MemoryManager`'s
+project/global scopes — the store Inbox, Vault, Workspace, Learning, and
+Outcome Memory are all built on — persist to SQLite via Node's built-in
+`node:sqlite` (no `pg`, `mongodb`, `prisma`, `mongoose`, `typeorm`, or
+`better-sqlite3` dependency; confirmed via `package.json`) instead of a
+whole-file JSON array. Everything else still persists to plain JSON files:
 
-| "Table" (JSON file) | Location | Notes |
+| "Table" | Location | Notes |
 |---|---|---|
 | Config | `.ashos/config.json` | Single object, whole-file read/write |
-| Memory (project/global) | `.ashos/memory/project.json`, `~/.ashos/memory/global.json` | Array of records; Inbox items and Outcome Memory records both live here, tagged, not in their own file |
+| **Memory (project/global)** | **`.ashos/memory/project.db`, `~/.ashos/memory/global.db`** | **SQLite (`records` + `record_tags` + `revisions` tables), via `node:sqlite`** — Inbox items and Outcome Memory records both live here, tagged, not in their own file |
 | Knowledge Graph (general) | `.ashos/graph.json` | `{ nodes: [], edges: [] }` |
 | Knowledge Graph (innovation, namespaced) | `.ashos/innovation/graph.json` | Same shape, separate file |
 | Opportunities | `.ashos/innovation/opportunities/<id>.json` | One file per record |
@@ -407,14 +410,16 @@ dependency anywhere. Every subsystem persists to plain JSON files:
 | Repository profiles | `.ashos/innovation/repositories/<owner>_<repo>.json` | One file per record |
 | Permissions | `.ashos/permissions.json` | Allow/deny decisions |
 
-**Schema:** implicit, defined only by TypeScript interfaces
-(`*/types.ts`), not enforced at the storage layer — a hand-edited or
-corrupted JSON file would not be caught until read time, and only if the
-reading code happens to touch the malformed field.
+**Schema:** Memory's schema is now enforced at the storage layer (SQLite
+column types, `NOT NULL`, `PRIMARY KEY`). Everything else remains implicit,
+defined only by TypeScript interfaces (`*/types.ts`) — a hand-edited or
+corrupted JSON file for those stores would not be caught until read time.
 
-**Indexes:** none. Every query (`MemoryManager.query()`,
-`KnowledgeGraph.listNodes()`, `InboxManager.list()`) is a full linear scan
-over the parsed JSON array.
+**Indexes:** Memory's `record_tags` table is indexed on `tag`, so
+`query({ tag })` — the shape every subsystem's `list()` (Inbox/Vault/
+Workspace/Learning) actually calls — is an indexed join instead of a full
+scan. Everything else (`KnowledgeGraph.listNodes()`, the per-file
+Innovation stores) is still a full linear/directory scan.
 
 **Relationships:** enforced only in application code (Knowledge Graph
 edges reference node IDs by convention, with no referential-integrity
@@ -422,29 +427,37 @@ check — deleting a node would silently orphan its edges; nothing currently
 deletes nodes, so this hasn't surfaced as a bug, but it is a real latent
 gap).
 
-**Scalability:** `MemoryManager`'s project/global writes do a full
-read-modify-write of the *entire* file on every single call (confirmed by
-reading `memory/memory-manager.ts`) — this was an accepted tradeoff before
-Second Brain's higher write frequency (every Inbox capture, every task
-outcome, every reflection all go through this path) made it a more
-pressing concern.
+**~~Scalability~~ Fixed for Memory.** `MemoryManager`'s project/global
+writes used to do a full read-modify-write of the *entire* file on every
+single call — this was the single highest-leverage infrastructure
+complaint from the prior audit, since every Inbox capture, every task
+outcome, and every reflection all go through this path. A `remember()`
+call is now a single indexed SQL write. An older `project.json`/
+`global.json` (plus its `*-revisions.json` sidecar) is imported into the
+new `.db` file once, on first open, so upgrading an existing `.ashos/`
+directory never loses captured data; the old JSON files are left in place,
+untouched, afterward. The remaining per-file JSON stores (Innovation's
+opportunities/events/repository profiles, both Knowledge Graphs) still
+have this scalability profile — deliberately out of scope for this pass,
+since none of them see Inbox-capture-level write volume.
 
 **~~Missing tables~~ Closed.** A persisted Project/Milestone/Task-standing-list
 entity (Section 6), a Knowledge Vault page entity (Section 5), and a
-Learning Hub resource/flashcard entity (Section 8) all now exist —
-though still as `MemoryManager`-backed JSON records, not real database
-tables, so the scalability concern above applies to all three equally.
+Learning Hub resource/flashcard entity (Section 8) all now exist as
+`MemoryManager`-backed records — which means they now ride on the real
+SQLite tables above for free, with no changes to their own manager code.
 
 **Redundant tables:** none found — Inbox items deliberately reuse the
 Memory store rather than duplicating persistence (`inbox-manager.ts`'s own
 doc comment states this explicitly), which is good design, not debt.
 
-**Potential improvements:** an actual embedded database (SQLite via
-`better-sqlite3`, still zero external services) would fix the
-full-file-rewrite and linear-scan issues without violating AshOS's
-local-first, no-server-dependency philosophy — this is the single highest-
-leverage infrastructure change available if Second Brain's data volume
-grows.
+**Remaining potential improvements:** extending the same SQLite pattern to
+the Knowledge Graph and Innovation's per-file JSON stores would close the
+rest of this gap, if their write volume ever grows to match Second
+Brain's. `node:sqlite` itself is still Node-experimental (stable API not
+yet guaranteed across Node versions) and requires Node 22.5+, which is why
+`package.json`'s `engines.node` was raised — this repo's CI and Dockerfile
+already run Node 22, so this had no practical compatibility cost here.
 
 ---
 
