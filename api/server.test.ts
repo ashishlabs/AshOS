@@ -617,6 +617,139 @@ describe("AshOS API", () => {
     expect(res.status).toBe(400);
   });
 
+  it("POST /workspace/projects 400s without a name", async () => {
+    const res = await fetch(`${baseUrl}/workspace/projects`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({})
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("POST /workspace/projects creates a project; GET lists it; GET /:id fetches it", async () => {
+    const createRes = await fetch(`${baseUrl}/workspace/projects`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Website redesign", description: "Refresh the site", tags: ["marketing"] })
+    });
+    expect(createRes.status).toBe(201);
+    const project = (await createRes.json()) as { id: string; name: string; status: string };
+    expect(project.name).toBe("Website redesign");
+    expect(project.status).toBe("active");
+
+    const listRes = await fetch(`${baseUrl}/workspace/projects`);
+    const list = (await listRes.json()) as { id: string }[];
+    expect(list.some((p) => p.id === project.id)).toBe(true);
+
+    const getRes = await fetch(`${baseUrl}/workspace/projects/${project.id}`);
+    expect(getRes.status).toBe(200);
+    expect(((await getRes.json()) as { id: string }).id).toBe(project.id);
+  });
+
+  it("GET /workspace/projects/:id 404s for an unknown id", async () => {
+    const res = await fetch(`${baseUrl}/workspace/projects/does-not-exist`);
+    expect(res.status).toBe(404);
+  });
+
+  it("POST /workspace/projects/:id/archive archives a project; unknown id 404s", async () => {
+    const createRes = await fetch(`${baseUrl}/workspace/projects`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Archive me via api" })
+    });
+    const project = (await createRes.json()) as { id: string };
+
+    const archiveRes = await fetch(`${baseUrl}/workspace/projects/${project.id}/archive`, { method: "POST" });
+    expect(archiveRes.status).toBe(200);
+    expect(((await archiveRes.json()) as { status: string }).status).toBe("archived");
+
+    const missingRes = await fetch(`${baseUrl}/workspace/projects/does-not-exist/archive`, { method: "POST" });
+    expect(missingRes.status).toBe(404);
+  });
+
+  it("workspace tasks: create, list, update status, and drive project progress", async () => {
+    const projectRes = await fetch(`${baseUrl}/workspace/projects`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Project with tasks" })
+    });
+    const project = (await projectRes.json()) as { id: string };
+
+    const zeroProgressRes = await fetch(`${baseUrl}/workspace/projects/${project.id}/progress`);
+    expect((await zeroProgressRes.json()) as unknown).toEqual({ totalTasks: 0, doneTasks: 0, percent: 0 });
+
+    const taskRes = await fetch(`${baseUrl}/workspace/projects/${project.id}/tasks`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "Write docs" })
+    });
+    expect(taskRes.status).toBe(201);
+    const task = (await taskRes.json()) as { id: string; status: string };
+    expect(task.status).toBe("todo");
+
+    const listTasksRes = await fetch(`${baseUrl}/workspace/projects/${project.id}/tasks`);
+    const tasks = (await listTasksRes.json()) as { id: string }[];
+    expect(tasks.some((t) => t.id === task.id)).toBe(true);
+
+    const statusRes = await fetch(`${baseUrl}/workspace/tasks/${task.id}/status`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ status: "done" })
+    });
+    expect(statusRes.status).toBe(200);
+    expect(((await statusRes.json()) as { status: string }).status).toBe("done");
+
+    const progressRes = await fetch(`${baseUrl}/workspace/projects/${project.id}/progress`);
+    expect((await progressRes.json()) as unknown).toEqual({ totalTasks: 1, doneTasks: 1, percent: 100 });
+
+    const missingStatusRes = await fetch(`${baseUrl}/workspace/tasks/does-not-exist/status`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ status: "done" })
+    });
+    expect(missingStatusRes.status).toBe(404);
+  });
+
+  it("POST /workspace/projects/:id/tasks 404s for an unknown project", async () => {
+    const res = await fetch(`${baseUrl}/workspace/projects/does-not-exist/tasks`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "Write docs" })
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it("workspace milestones: create, list, update status", async () => {
+    const projectRes = await fetch(`${baseUrl}/workspace/projects`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Project with milestones" })
+    });
+    const project = (await projectRes.json()) as { id: string };
+
+    const milestoneRes = await fetch(`${baseUrl}/workspace/projects/${project.id}/milestones`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "Launch", dueDate: "2026-09-01" })
+    });
+    expect(milestoneRes.status).toBe(201);
+    const milestone = (await milestoneRes.json()) as { id: string; status: string; dueDate: string };
+    expect(milestone.status).toBe("pending");
+    expect(milestone.dueDate).toBe("2026-09-01");
+
+    const listRes = await fetch(`${baseUrl}/workspace/projects/${project.id}/milestones`);
+    const milestones = (await listRes.json()) as { id: string }[];
+    expect(milestones.some((m) => m.id === milestone.id)).toBe(true);
+
+    const statusRes = await fetch(`${baseUrl}/workspace/milestones/${milestone.id}/status`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ status: "done" })
+    });
+    expect(statusRes.status).toBe(200);
+    expect(((await statusRes.json()) as { status: string }).status).toBe("done");
+  });
+
   it("POST /innovation/ideas 400s without inboxId or content", async () => {
     const res = await fetch(`${baseUrl}/innovation/ideas`, {
       method: "POST",
@@ -754,6 +887,19 @@ describe("AshOS API", () => {
     expect(res.status).toBe(200);
     const results = (await res.json()) as { source: string; title: string }[];
     expect(results.some((r) => r.source === "vault")).toBe(true);
+  });
+
+  it("GET /search finds a real workspace project captured earlier on this shared server", async () => {
+    await fetch(`${baseUrl}/workspace/projects`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "zzzworkspacesearchable-marker-zzz" })
+    });
+
+    const res = await fetch(`${baseUrl}/search?q=zzzworkspacesearchable-marker-zzz`);
+    expect(res.status).toBe(200);
+    const results = (await res.json()) as { source: string; title: string }[];
+    expect(results.some((r) => r.source === "workspace")).toBe(true);
   });
 
   it("GET /search respects the limit parameter", async () => {

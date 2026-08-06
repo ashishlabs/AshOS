@@ -125,8 +125,9 @@ directly.
 - **No wiki-style `[[note title]]` link syntax parsed out of note
   content** — links are explicit, via `ash vault link`/`POST
   /vault/:id/link`, not inferred from the text.
-- **No standalone Project/Task entity** — a Vault note can be tagged, but
-  there's no first-class "this note belongs to Project X" relationship
-  beyond whatever a shared tag or an explicit graph edge implies. This is
-  the same missing-entity gap tracked in `docs/second-brain-roadmap.md`
-  Tier 3 item 7 for Project Workspaces generally.
+- **No first-class link between a Vault note and a Project Workspace** —
+  Project Workspaces (`workspace/`, see `docs/project-workspaces.md`) now
+  exist as a real, persisted entity, but a Vault note can only be
+  associated with a project informally (a shared tag, or a manual
+  `ash vault link`/graph edge) — there's no `note.projectId` field or
+  equivalent first-class relationship yet.

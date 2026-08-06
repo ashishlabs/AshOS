@@ -42,7 +42,7 @@ Refactor.
 | Reflection Agent | ✅ | 90% | High | Real daily/weekly/monthly narrative with graceful offline fallback |
 | Cross-store Hybrid Search | 🟡 | 70% | High | Real merge across Memory/Graph/Inbox; semantic mode is Memory-only, Graph/Inbox always keyword-only |
 | Knowledge Vault | ✅ | 80% | High | `vault/` package — pages (`VaultNote`), tags, backlinks, related-notes links, Hybrid Search + Knowledge Graph integration all real; flashcards/revision history remain absent (flashcards belong to Learning Hub, not Vault) |
-| Project Workspace | 🔴 | 5% | — | Only a bare `project` Knowledge Graph node exists; no Project/Milestone/Task/Risk entities, no CRUD, no UI |
+| Project Workspace | ✅ | 75% | High | `workspace/` package — Project/Task/Milestone entities, CRUD via CLI/REST, a dashboard Projects tab, and computed progress tracking all real; Roadmap/Architecture-docs/Definition-of-Done/Risk-tracking as data models and AI recommendations remain deliberately out of scope |
 | Learning Hub | 🔴 | 0% | — | No code anywhere — courses, flashcards, quizzes, learning paths all absent |
 | AI recommendations (dashboard-wide) | 🔴 | 0% | — | No recommendation engine exists in any subsystem |
 | AI documentation generation | 🔴 | 0% | — | No agent/capability produces documentation |

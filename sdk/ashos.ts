@@ -30,6 +30,7 @@ import { CodebaseIndexStore } from "../codebase/codebase-store";
 import { KnowledgeGraph } from "../graph/knowledge-graph";
 import { InboxManager } from "../inbox/inbox-manager";
 import { VaultManager } from "../vault/vault-manager";
+import { WorkspaceManager } from "../workspace/workspace-manager";
 import { HybridSearch } from "../search/hybrid-search";
 import { saveReflection, type SavedReflection } from "../agents/reflection-store";
 import type { ReflectionData, ReflectionPeriod } from "../agents/reflection";
@@ -65,7 +66,9 @@ export class AshOS {
   readonly inbox: InboxManager;
   /** Knowledge Vault — curated, long-form notes with links between them, one step further triaged than a raw Inbox capture. See `docs/knowledge-vault.md`. */
   readonly vault: VaultManager;
-  /** Cross-store hybrid search over Memory, the general Knowledge Graph, the Inbox, and the Vault. See `docs/search.md`. */
+  /** Project Workspaces — a real, persisted Project/Task/Milestone data model, distinct from the label-only `project` Knowledge Graph node `BaseAgent` auto-creates. See `docs/project-workspaces.md`. */
+  readonly workspace: WorkspaceManager;
+  /** Cross-store hybrid search over Memory, the general Knowledge Graph, the Inbox, the Vault, and Project Workspaces. See `docs/search.md`. */
   readonly search: HybridSearch;
 
   constructor(opts: AshOSOptions = {}) {
@@ -84,7 +87,8 @@ export class AshOS {
       webFetch: webFetchTool
     });
     this.vault = new VaultManager(this.memory, { eventBus: this.kernel.eventBus, graph: this.knowledgeGraph });
-    this.search = new HybridSearch(this.memory, this.knowledgeGraph, this.inbox, this.vault);
+    this.workspace = new WorkspaceManager(this.memory, { eventBus: this.kernel.eventBus, graph: this.knowledgeGraph });
+    this.search = new HybridSearch(this.memory, this.knowledgeGraph, this.inbox, this.vault, this.workspace);
 
     this.tools = new ToolRegistry();
     this.tools.register(new ShellTool(this.kernel.permissions));

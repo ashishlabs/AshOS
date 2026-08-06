@@ -11,6 +11,13 @@
  * triaged into something more specific like an `idea` or `paper`. `note`
  * is new for the Knowledge Vault (`vault/`, see `docs/knowledge-vault.md`)
  * — a curated, titled note, one step further triaged than a raw `resource`.
+ * `todo` and `milestone` are new for Project Workspaces (`workspace/`, see
+ * `docs/project-workspaces.md`) — a persisted `ProjectTask`/`Milestone`
+ * record, distinct from the existing `task` kind, which `BaseAgent`
+ * already uses for a one-off agent *execution* record identified by
+ * `AgentTask.id`. Reusing `task` for both would risk merging an
+ * ephemeral run record with an unrelated persisted to-do item that
+ * happens to share a label — `upsertNode` dedupes by `(kind, label)`.
  */
 export type KnowledgeNodeKind =
   | "person"
@@ -34,7 +41,9 @@ export type KnowledgeNodeKind =
   | "tool"
   | "task"
   | "resource"
-  | "note";
+  | "note"
+  | "todo"
+  | "milestone";
 
 export interface KnowledgeNode {
   id: string;

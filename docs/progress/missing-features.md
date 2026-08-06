@@ -21,18 +21,18 @@ brief plus the existing North Star roadmap.
    force layout (`dashboard/src/graph-layout.ts`) over `GET /graph/nodes`
    + the new `GET /graph/edges`.
 
-3. **~~Knowledge Vault~~ Closed. Explicit scope decision still needed on
-   Project Workspace and Learning Hub.** Knowledge Vault now has a real
-   implementation (`vault/`, see `docs/knowledge-vault.md`) — it turned
-   out to need no new persistence engine or entity type, just the same
-   `MemoryManager`-record-plus-`KnowledgeGraph`-edge pattern Inbox already
-   established. Project Workspace and Learning Hub are a different shape
-   of gap: Project Workspace genuinely needs a first-class `Project`
-   entity with its own CRUD surface, and Learning Hub (flashcards, spaced
-   repetition) has no existing analogue to reuse at all. Continuing to
-   build adjacent features without deciding whether these two are in
-   scope risks a system that's permanently "almost a Second Brain" rather
-   than definitively one thing or another.
+3. **~~Knowledge Vault~~ Closed. ~~Project Workspace~~ Closed. Explicit
+   scope decision still needed on Learning Hub.** Knowledge Vault
+   (`vault/`, see `docs/knowledge-vault.md`) and Project Workspace
+   (`workspace/`, see `docs/project-workspaces.md`) both now have real
+   implementations — neither turned out to need a new persistence engine,
+   just the same `MemoryManager`-record-plus-`KnowledgeGraph`-edge
+   pattern Inbox already established. Learning Hub is a different shape
+   of gap: flashcards, spaced repetition, and quizzes have no existing
+   analogue to reuse anywhere in this codebase. Continuing to build
+   adjacent features without deciding whether it's in scope risks a
+   system that's permanently "almost a Second Brain" rather than
+   definitively one thing or another.
 
 ## High
 
@@ -46,12 +46,16 @@ brief plus the existing North Star roadmap.
    See `docs/features/multi-agent-specialist-roles.md`. Only
    Documentation Writer and Video Creator remain unbuilt named roles.
 
-5. **A persisted, standing Project/Task entity.** Tasks currently exist
-   only for the duration of one Planner/TaskExecutor run; there is no
-   "show me my open tasks across all projects" view, because nothing
-   persists a task past its own execution. This blocks Project Workspace,
-   Idea Lab's "related projects," and Research Hub's "project linking" —
-   three separate gaps all trace back to this one missing entity.
+5. **~~A persisted, standing Project/Task entity.~~ Closed.**
+   `WorkspaceManager` (`workspace/`, see `docs/project-workspaces.md`)
+   now provides exactly this — `ash project task list <projectId>`
+   answers "show me my open tasks for this project" with real, persisted
+   data, distinct from the ephemeral `AgentTask`/`PlannedTask` objects
+   that only exist during one Planner/TaskExecutor run. Idea Lab's
+   "related projects" and Research Hub's "project linking" remain open —
+   the entity they needed now exists, but nothing links an `Opportunity`
+   or research item to a `Project` yet (no `projectId` field, no
+   automatic association).
 
 6. **Dashboard automated tests.** Zero exist for an 11-tab application.
    Every Second Brain UI addition (Inbox, Timeline, Search, Today's

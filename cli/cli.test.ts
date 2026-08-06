@@ -15,6 +15,7 @@ import { registerCodebaseCommand } from "./commands/codebase";
 import { registerGraphCommand } from "./commands/graph";
 import { registerInboxCommand } from "./commands/inbox";
 import { registerVaultCommand } from "./commands/vault";
+import { registerProjectCommand } from "./commands/project";
 import { registerReflectCommand } from "./commands/reflect";
 import { registerSearchCommand } from "./commands/search";
 import { isInitialized, configPath } from "../kernel/config";
@@ -540,6 +541,124 @@ describe("CLI commands", () => {
     expect(process.exitCode).toBe(1);
     process.exitCode = 0;
     errorSpy.mockRestore();
+  });
+
+  it("project list reports empty, then create/list/show/archive round-trip", async () => {
+    const program = freshProgram();
+    registerProjectCommand(program);
+
+    await program.parseAsync(["node", "ash", "project", "list"]);
+    let output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("No projects yet");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "project", "create", "Website redesign", "--description", "Refresh the site"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Created project");
+    const id = output.trim().split(/\s+/).pop()!;
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "project", "list"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("[active]");
+    expect(output).toContain("Website redesign");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "project", "show", id]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain(`"id": "${id}"`);
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "project", "archive", id]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain(`Archived ${id}`);
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "project", "list", "--status", "archived"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("[archived]");
+  });
+
+  it("project show reports an error for an unknown id", async () => {
+    const program = freshProgram();
+    registerProjectCommand(program);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await program.parseAsync(["node", "ash", "project", "show", "does-not-exist"]);
+    expect(errorSpy.mock.calls.flat().join(" ")).toContain("No project found");
+    errorSpy.mockRestore();
+  });
+
+  it("project task add/list/status round-trip and drive progress", async () => {
+    const program = freshProgram();
+    registerProjectCommand(program);
+
+    await program.parseAsync(["node", "ash", "project", "create", "A project"]);
+    let output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    const projectId = output.trim().split(/\s+/).pop()!;
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "project", "progress", projectId]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("0% complete (0/0 tasks done)");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "project", "task", "add", projectId, "Write", "docs"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Created task");
+    const taskId = output.trim().split(/\s+/).pop()!;
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "project", "task", "list", projectId]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("[todo]");
+    expect(output).toContain("Write docs");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "project", "task", "status", taskId, "done"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("is now [done]");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "project", "progress", projectId]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("100% complete (1/1 tasks done)");
+  });
+
+  it("project task add reports an error for an unknown project", async () => {
+    const program = freshProgram();
+    registerProjectCommand(program);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await program.parseAsync(["node", "ash", "project", "task", "add", "does-not-exist", "Write", "docs"]);
+    expect(errorSpy.mock.calls.flat().join(" ")).toContain("not found");
+    process.exitCode = 0;
+    errorSpy.mockRestore();
+  });
+
+  it("project milestone add/list/status round-trip", async () => {
+    const program = freshProgram();
+    registerProjectCommand(program);
+
+    await program.parseAsync(["node", "ash", "project", "create", "A project"]);
+    let output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    const projectId = output.trim().split(/\s+/).pop()!;
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "project", "milestone", "add", projectId, "Launch", "--due", "2026-09-01"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Created milestone");
+    const milestoneId = output.trim().split(/\s+/).pop()!;
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "project", "milestone", "list", projectId]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("[pending]");
+    expect(output).toContain("Launch");
+    expect(output).toContain("due 2026-09-01");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "project", "milestone", "status", milestoneId, "done"]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("is now [done]");
   });
 
   it("innovation idea capture scores raw content into an Opportunity", async () => {

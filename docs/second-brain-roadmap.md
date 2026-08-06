@@ -123,17 +123,18 @@ Cross-store hybrid search) is live.
 
 ### Tier 3 — needs explicit scoping before building
 
-7. 🟡 **Knowledge Vault** — **shipped**; **Project Workspaces** — still
-   open. Knowledge Vault turned out not to need a new persisted entity
-   type after all: `VaultNote` reuses the exact `MemoryManager`
-   project-scope-record-plus-tag pattern `InboxManager` already
-   established (no new store), and links between notes are just another
-   `KnowledgeGraph` edge kind (`relates-to`) — see
-   `docs/knowledge-vault.md`. Project Workspaces is a different shape of
-   gap: it genuinely needs a first-class `Project` record (name,
-   description, status) with its own CRUD surface, not just a `project`
-   Knowledge Graph node identified by working directory — that's still
-   unscoped.
+7. ✅ **Knowledge Vault and Project Workspaces — both shipped.** Neither
+   turned out to need the "genuine new domain logic" scoping this tier
+   header warns about: `VaultNote`/`Project`/`ProjectTask`/`Milestone`
+   all reuse the exact `MemoryManager` project-scope-record-plus-tag
+   pattern `InboxManager` established (no new store), and both
+   note-to-note links and task/milestone-to-project relationships are
+   just more `KnowledgeGraph` edges (`relates-to`/`part-of`) — see
+   `docs/knowledge-vault.md` and `docs/project-workspaces.md`. The
+   original framing — Project Workspaces "genuinely needs a first-class
+   `Project` record with its own CRUD surface, not just a `project`
+   Knowledge Graph node identified by working directory" — turned out to
+   be exactly buildable the same reuse-first way, once actually attempted.
 8. **Learning Hub** (flashcards, spaced repetition, quizzes) — genuinely
    new domain logic, no existing analogue to reuse. Biggest net-new scope
    in the whole brief.
@@ -158,15 +159,23 @@ Cross-store hybrid search) is live.
   "what's waiting for you, right now" — unread Inbox count, the
   top-scored Innovation opportunity, and the most recent Outcome Memory
   failures. Tier 1 of the Second Brain roadmap is now fully shipped.
-- **Tier 3 item 7 (partial) — Knowledge Vault**: `vault/` package,
+- **Tier 3 item 7 — Knowledge Vault**: `vault/` package,
   `AshOS.vault`, `ash vault add/promote/list/show/archive/link/backlinks`
   CLI, `/vault*` REST routes, a dashboard Vault tab (create, expand a
   note to see/add links and backlinks, archive), and a "Promote to Vault"
-  button on each Inbox tab item. Also wired into `HybridSearch` as a
-  fourth source (`docs/search.md`) and into the general `KnowledgeGraph`
-  via a new `"note"` node kind (`docs/knowledge-graph.md`). See
-  `docs/knowledge-vault.md`. Project Workspaces, the other half of Tier 3
-  item 7, remains unscoped.
+  button on each Inbox tab item. Also wired into `HybridSearch` and into
+  the general `KnowledgeGraph` via a new `"note"` node kind
+  (`docs/knowledge-graph.md`). See `docs/knowledge-vault.md`.
+- **Tier 3 item 7 — Project Workspaces**: `workspace/` package,
+  `AshOS.workspace`, `ash project create/list/show/archive/progress`,
+  `ash project task add/list/status`, `ash project milestone add/list/status`
+  CLI, `/workspace/*` REST routes, and a dashboard Projects tab (create,
+  expand a project to see progress/tasks/milestones, add/advance tasks,
+  add/toggle milestones, archive). Also wired into `HybridSearch` and
+  into the general `KnowledgeGraph` via new `"todo"`/`"milestone"` node
+  kinds, distinct from the ephemeral `"task"` kind `BaseAgent` already
+  uses for agent-run records (`docs/knowledge-graph.md`). See
+  `docs/project-workspaces.md`. Tier 3 item 7 is now fully shipped.
 
 ## Follow-up: closing the two biggest usability gaps in what's shipped
 

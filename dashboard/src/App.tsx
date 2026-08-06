@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
   Brain,
+  Briefcase,
+  CheckCircle2,
   Clock,
+  Flag,
   GitBranch,
   Inbox as InboxIcon,
   LayoutDashboard,
@@ -64,6 +67,13 @@ import {
   type ReflectionPeriod,
   type RepositoryProfile,
   type SearchResult,
+  type Milestone,
+  type MilestoneStatus,
+  type Project,
+  type ProjectProgress,
+  type ProjectStatus,
+  type ProjectTask,
+  type ProjectTaskStatus,
   type TaskGraph,
   type TaskOutcome,
   type TrendingReposResult,
@@ -73,12 +83,13 @@ import {
 } from "./api";
 import { computeForceLayout, kindColor } from "./graph-layout";
 
-type Tab = "dashboard" | "inbox" | "vault" | "timeline" | "search" | "graph" | "plan" | "workflow" | "innovation" | "trending" | "memory" | "logs" | "chat";
+type Tab = "dashboard" | "inbox" | "vault" | "projects" | "timeline" | "search" | "graph" | "plan" | "workflow" | "innovation" | "trending" | "memory" | "logs" | "chat";
 
 const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "inbox", label: "Inbox", icon: InboxIcon },
   { id: "vault", label: "Vault", icon: Library },
+  { id: "projects", label: "Projects", icon: Briefcase },
   { id: "timeline", label: "Timeline", icon: Clock },
   { id: "search", label: "Search", icon: Search },
   { id: "graph", label: "Graph", icon: Network },
@@ -147,6 +158,7 @@ const TAB_PANELS: Record<Tab, React.ComponentType> = {
   dashboard: DashboardTab,
   inbox: InboxTab,
   vault: VaultTab,
+  projects: ProjectsTab,
   timeline: TimelineTab,
   search: SearchTab,
   graph: GraphTab,
@@ -1572,6 +1584,278 @@ function VaultTab() {
   );
 }
 
+const PROJECT_STATUSES: ProjectStatus[] = ["active", "completed", "archived"];
+
+function nextTaskStatus(status: ProjectTaskStatus): ProjectTaskStatus {
+  if (status === "todo") return "in-progress";
+  if (status === "in-progress") return "done";
+  return "todo";
+}
+
+function ProjectsTab() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [status, setStatus] = useState<ProjectStatus | "all">("all");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [tasks, setTasks] = useState<ProjectTask[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [progress, setProgress] = useState<ProjectProgress | null>(null);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newMilestoneTitle, setNewMilestoneTitle] = useState("");
+  const [newMilestoneDue, setNewMilestoneDue] = useState("");
+
+  const load = () =>
+    api
+      .projectList(status === "all" ? undefined : status)
+      .then((r) => {
+        setProjects(r);
+        setError(null);
+      })
+      .catch((e) => setError(e.message));
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  const loadDetail = (projectId: string) => {
+    api.projectTaskList(projectId).then(setTasks).catch(() => setTasks([]));
+    api.projectMilestoneList(projectId).then(setMilestones).catch(() => setMilestones([]));
+    api.projectProgress(projectId).then(setProgress).catch(() => setProgress(null));
+  };
+
+  useEffect(() => {
+    if (!selectedId) {
+      setTasks([]);
+      setMilestones([]);
+      setProgress(null);
+      return;
+    }
+    loadDetail(selectedId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
+  const create = async () => {
+    if (!name.trim()) return;
+    setCreating(true);
+    try {
+      await api.projectCreate(name, description);
+      setName("");
+      setDescription("");
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const archive = async (id: string) => {
+    try {
+      await api.projectArchive(id);
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const addTask = async (projectId: string) => {
+    if (!newTaskTitle.trim()) return;
+    try {
+      await api.projectTaskAdd(projectId, newTaskTitle);
+      setNewTaskTitle("");
+      loadDetail(projectId);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const cycleTaskStatus = async (task: ProjectTask) => {
+    try {
+      await api.projectTaskStatus(task.id, nextTaskStatus(task.status));
+      if (selectedId) loadDetail(selectedId);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const addMilestone = async (projectId: string) => {
+    if (!newMilestoneTitle.trim()) return;
+    try {
+      await api.projectMilestoneAdd(projectId, newMilestoneTitle, newMilestoneDue || undefined);
+      setNewMilestoneTitle("");
+      setNewMilestoneDue("");
+      loadDetail(projectId);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const toggleMilestone = async (milestone: Milestone) => {
+    try {
+      await api.projectMilestoneStatus(milestone.id, milestone.status === "done" ? "pending" : "done");
+      if (selectedId) loadDetail(selectedId);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Projects</CardTitle>
+        <CardDescription>A real, persisted Project/Task/Milestone data model — not just a Knowledge Graph label.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Project name..." />
+          <Textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)..." />
+          <Button onClick={create} disabled={creating || !name.trim()}>
+            {creating ? "…" : "Create project"}
+          </Button>
+        </div>
+
+        <Select value={status} onValueChange={(v) => setStatus(v as ProjectStatus | "all")}>
+          <SelectTrigger className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">all</SelectItem>
+            {PROJECT_STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <LoadError error={error} />
+        {projects.length === 0 && !error ? (
+          <EmptyState>No projects yet.</EmptyState>
+        ) : (
+          <ul className="divide-y">
+            {projects.map((project) => (
+              <li key={project.id} className="py-2.5 text-sm">
+                <div className="flex items-start justify-between gap-2">
+                  <button
+                    className="min-w-0 flex-1 text-left"
+                    onClick={() => setSelectedId(selectedId === project.id ? null : project.id)}
+                  >
+                    <span className="break-words">
+                      <Badge variant={project.status === "active" ? "secondary" : "outline"} className="mr-2">
+                        {project.status}
+                      </Badge>
+                      <span className="font-medium">{project.name}</span>
+                    </span>
+                    {project.description && <p className="mt-1 text-xs text-muted-foreground">{project.description}</p>}
+                  </button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {project.status !== "archived" && (
+                      <Button variant="ghost" size="icon" onClick={() => archive(project.id)} aria-label={`Archive ${project.id}`} title="Archive">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {selectedId === project.id && (
+                  <div className="mt-2 space-y-4 rounded-md border bg-muted/30 p-3 text-xs">
+                    {progress && (
+                      <div>
+                        <div className="mb-1 flex items-center justify-between text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3" /> Progress
+                          </span>
+                          <span>
+                            {progress.doneTasks}/{progress.totalTasks} tasks ({progress.percent}%)
+                          </span>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                          <div className="h-full bg-primary transition-all" style={{ width: `${progress.percent}%` }} />
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <p className="mb-1 font-medium text-foreground">Tasks</p>
+                      {tasks.length === 0 ? (
+                        <p className="text-muted-foreground">No tasks yet.</p>
+                      ) : (
+                        <ul className="space-y-1">
+                          {tasks.map((task) => (
+                            <li key={task.id} className="flex items-center gap-2">
+                              <button onClick={() => cycleTaskStatus(task)} title="Click to advance status">
+                                <Badge variant={task.status === "done" ? "secondary" : "outline"}>{task.status}</Badge>
+                              </button>
+                              <span>{task.title}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <div className="mt-2 flex gap-2">
+                        <Input
+                          value={newTaskTitle}
+                          onChange={(e) => setNewTaskTitle(e.target.value)}
+                          placeholder="New task title..."
+                          className="h-8"
+                        />
+                        <Button size="sm" variant="outline" onClick={() => addTask(project.id)} disabled={!newTaskTitle.trim()}>
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="mb-1 flex items-center gap-1 font-medium text-foreground">
+                        <Flag className="h-3 w-3" /> Milestones
+                      </p>
+                      {milestones.length === 0 ? (
+                        <p className="text-muted-foreground">No milestones yet.</p>
+                      ) : (
+                        <ul className="space-y-1">
+                          {milestones.map((milestone) => (
+                            <li key={milestone.id} className="flex items-center gap-2">
+                              <button onClick={() => toggleMilestone(milestone)} title="Click to toggle done">
+                                <Badge variant={milestone.status === "done" ? "secondary" : "outline"}>{milestone.status}</Badge>
+                              </button>
+                              <span>{milestone.title}</span>
+                              {milestone.dueDate && <span className="text-muted-foreground">(due {milestone.dueDate})</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <div className="mt-2 flex gap-2">
+                        <Input
+                          value={newMilestoneTitle}
+                          onChange={(e) => setNewMilestoneTitle(e.target.value)}
+                          placeholder="New milestone title..."
+                          className="h-8"
+                        />
+                        <Input
+                          value={newMilestoneDue}
+                          onChange={(e) => setNewMilestoneDue(e.target.value)}
+                          placeholder="Due date (optional)"
+                          className="h-8 w-40"
+                        />
+                        <Button size="sm" variant="outline" onClick={() => addMilestone(project.id)} disabled={!newMilestoneTitle.trim()}>
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 interface TimelineEntry {
   id: string;
   timestamp: string;
@@ -1604,6 +1888,18 @@ function summarizeEvent(event: AshOSEvent): string {
       return `Vault note marked ${str(p.status) ?? "?"}`;
     case event.name === "vault:linked":
       return "Linked two vault notes";
+    case event.name === "workspace:project-created":
+      return `Created project "${str(p.name) ?? "?"}"`;
+    case event.name === "workspace:project-updated":
+      return `Project marked ${str(p.status) ?? "?"}`;
+    case event.name === "workspace:task-created":
+      return `Created task "${str(p.title) ?? "?"}"`;
+    case event.name === "workspace:task-updated":
+      return `Task marked ${str(p.status) ?? "?"}`;
+    case event.name === "workspace:milestone-created":
+      return `Created milestone "${str(p.title) ?? "?"}"`;
+    case event.name === "workspace:milestone-updated":
+      return `Milestone marked ${str(p.status) ?? "?"}`;
     case event.name === "codebase:indexed":
       return `Indexed ${String(p.fileCount ?? "?")} file(s) in ${str(p.root) ?? "?"}`;
     case event.name.startsWith("innovation:"):
@@ -1719,7 +2015,8 @@ const SEARCH_SOURCE_VARIANT: Record<SearchResult["source"], "secondary" | "outli
   memory: "secondary",
   graph: "outline",
   inbox: "default",
-  vault: "secondary"
+  vault: "secondary",
+  workspace: "default"
 };
 
 function SearchTab() {
@@ -1746,7 +2043,7 @@ function SearchTab() {
     <Card>
       <CardHeader>
         <CardTitle>Search</CardTitle>
-        <CardDescription>Hybrid search across Memory, the Knowledge Graph, and the Inbox — "find everything about X."</CardDescription>
+        <CardDescription>Hybrid search across Memory, the Knowledge Graph, the Inbox, the Vault, and Projects — "find everything about X."</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row">

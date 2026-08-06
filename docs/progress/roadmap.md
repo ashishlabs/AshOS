@@ -54,22 +54,27 @@ ones, and removes the single largest regression risk in the codebase.
 
 ## Phase 3 — The scope decision, then the real net-new work
 
-**Estimated effort:** 2-3 months once scoped for the remaining items;
+**Estimated effort:** 1-2 months once scoped for the remaining item;
 **do not start without an explicit decision first.** Knowledge Vault
-(item 10 below) turned out not to belong in this phase after all — it
-shipped without needing the scope decision, see below.
-**Dependencies:** a persisted Project/Task entity (item 9 below) is a
-prerequisite for the rest of this phase — Idea Lab's "related projects"
-and Research Hub's "project linking" both point back to it.
+(item 10) and the persisted Project/Task/Milestone entity (item 9) both
+turned out not to belong in this phase after all — both shipped without
+needing the scope decision, see below.
+**Dependencies:** none remaining — item 9's Project/Task entity, the
+prerequisite the rest of this phase depended on, has shipped.
 **Risks:** highest in this roadmap. Learning Hub is genuinely new domain
 logic with no existing analogue to reuse — underestimating this is the
 single most likely way this roadmap goes over budget.
-**Expected impact:** if built, closes the two remaining fully-unimplemented
-pillars (Project Workspace, Learning Hub).
+**Expected impact:** if built, closes the one remaining fully-unimplemented
+pillar (Learning Hub).
 
-9. **Persisted Project/Task/Milestone entity** — a real CRUD data model,
-   not just a Knowledge Graph label. This unblocks Project Workspace and
-   partially unblocks Idea Lab/Research Hub's "related projects" gaps.
+9. ✅ **Shipped, and didn't need this phase's scope decision after
+    all** — Persisted Project/Task/Milestone entity (`workspace/`, see
+    `docs/project-workspaces.md`): a real CRUD data model, not just a
+    Knowledge Graph label, reusing the exact `MemoryManager`
+    record-plus-tag pattern every other Second Brain feature uses. This
+    unblocks Project Workspace outright; Idea Lab/Research Hub's "related
+    projects" gaps are still open — the entity now exists, but nothing
+    links an `Opportunity` or research item to a `Project` yet.
 10. ✅ **Shipped, and didn't need this phase's scope decision after
     all** — Knowledge Vault (`vault/`, see `docs/knowledge-vault.md`):
     pages (`VaultNote`), tags, backlinks, related-notes links, and Hybrid
@@ -83,8 +88,8 @@ pillars (Project Workspace, Learning Hub).
     on top of. The one item in this phase that still needs the explicit
     scope decision.
 12. **A recommendation engine** for the dashboard's "AI recommendations"
-    surface — depends on items 9 and 11 existing to have enough
-    structured data to recommend over.
+    surface — depends on item 11 existing (item 9's Project/Task data
+    already exists) to have enough structured data to recommend over.
 
 ## Phase 4 — Infrastructure hardening (parallel-track, not gated on Phase 3)
 

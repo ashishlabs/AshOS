@@ -37,6 +37,12 @@ export type AshOSEventName =
   | "vault:created"
   | "vault:updated"
   | "vault:linked"
+  | "workspace:project-created"
+  | "workspace:project-updated"
+  | "workspace:task-created"
+  | "workspace:task-updated"
+  | "workspace:milestone-created"
+  | "workspace:milestone-updated"
   | "log";
 
 export interface AshOSEvent<T = unknown> {

@@ -474,6 +474,117 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     res.json(ashos.vault.backlinks(req.params.id));
   });
 
+  app.post("/workspace/projects", async (req, res) => {
+    const { name, description, tags } = req.body ?? {};
+    if (!isNonEmptyString(name)) {
+      res.status(400).json({ error: "'name' must be a non-empty string" });
+      return;
+    }
+    try {
+      const project = await ashos.workspace.createProject(name, description, { tags: Array.isArray(tags) ? tags : undefined });
+      res.status(201).json(project);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  app.get("/workspace/projects", (req, res) => {
+    const status = req.query.status as never;
+    res.json(ashos.workspace.listProjects(status ? { status } : undefined));
+  });
+
+  app.get("/workspace/projects/:id", (req, res) => {
+    const project = ashos.workspace.getProject(req.params.id);
+    if (!project) {
+      res.status(404).json({ error: `project "${req.params.id}" not found` });
+      return;
+    }
+    res.json(project);
+  });
+
+  app.post("/workspace/projects/:id/archive", async (req, res) => {
+    try {
+      const project = await ashos.workspace.archiveProject(req.params.id);
+      res.json(project);
+    } catch (error) {
+      res.status(404).json({ error: (error as Error).message });
+    }
+  });
+
+  app.get("/workspace/projects/:id/progress", (req, res) => {
+    if (!ashos.workspace.getProject(req.params.id)) {
+      res.status(404).json({ error: `project "${req.params.id}" not found` });
+      return;
+    }
+    res.json(ashos.workspace.progress(req.params.id));
+  });
+
+  app.post("/workspace/projects/:id/tasks", async (req, res) => {
+    const { title, description } = req.body ?? {};
+    if (!isNonEmptyString(title)) {
+      res.status(400).json({ error: "'title' must be a non-empty string" });
+      return;
+    }
+    try {
+      const task = await ashos.workspace.addTask(req.params.id, title, { description });
+      res.status(201).json(task);
+    } catch (error) {
+      res.status(404).json({ error: (error as Error).message });
+    }
+  });
+
+  app.get("/workspace/projects/:id/tasks", (req, res) => {
+    const status = req.query.status as never;
+    res.json(ashos.workspace.listTasks(req.params.id, status ? { status } : undefined));
+  });
+
+  app.post("/workspace/tasks/:id/status", async (req, res) => {
+    const status = req.body?.status;
+    if (!isNonEmptyString(status)) {
+      res.status(400).json({ error: "'status' must be a non-empty string" });
+      return;
+    }
+    try {
+      const task = await ashos.workspace.updateTaskStatus(req.params.id, status as never);
+      res.json(task);
+    } catch (error) {
+      res.status(404).json({ error: (error as Error).message });
+    }
+  });
+
+  app.post("/workspace/projects/:id/milestones", async (req, res) => {
+    const { title, dueDate } = req.body ?? {};
+    if (!isNonEmptyString(title)) {
+      res.status(400).json({ error: "'title' must be a non-empty string" });
+      return;
+    }
+    try {
+      const milestone = await ashos.workspace.addMilestone(req.params.id, title, { dueDate });
+      res.status(201).json(milestone);
+    } catch (error) {
+      res.status(404).json({ error: (error as Error).message });
+    }
+  });
+
+  app.get("/workspace/projects/:id/milestones", (req, res) => {
+    const status = req.query.status as never;
+    res.json(ashos.workspace.listMilestones(req.params.id, status ? { status } : undefined));
+  });
+
+  app.post("/workspace/milestones/:id/status", async (req, res) => {
+    const status = req.body?.status;
+    if (!isNonEmptyString(status)) {
+      res.status(400).json({ error: "'status' must be a non-empty string" });
+      return;
+    }
+    try {
+      const milestone = await ashos.workspace.updateMilestoneStatus(req.params.id, status as never);
+      res.json(milestone);
+    } catch (error) {
+      res.status(404).json({ error: (error as Error).message });
+    }
+  });
+
   app.get("/search", async (req, res) => {
     const query = req.query.q as string | undefined;
     if (!isNonEmptyString(query)) {

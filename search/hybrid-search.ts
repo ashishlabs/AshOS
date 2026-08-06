@@ -5,12 +5,14 @@ import type { InboxManager } from "../inbox/inbox-manager";
 import type { InboxItem } from "../inbox/types";
 import type { VaultManager } from "../vault/vault-manager";
 import type { VaultNote } from "../vault/types";
+import type { WorkspaceManager } from "../workspace/workspace-manager";
+import type { Milestone, Project, ProjectTask } from "../workspace/types";
 import type { SearchResult } from "./types";
 
 export interface HybridSearchOptions {
-  /** Max results returned, after merging and ranking across all four stores. */
+  /** Max results returned, after merging and ranking across all five stores. */
   limit?: number;
-  /** Use `MemoryManager.searchSemantic()` (embedding cosine similarity, best-effort) for the Memory slice instead of plain keyword matching. Graph/Inbox/Vault matching is always keyword-based — none of the three computes embeddings. */
+  /** Use `MemoryManager.searchSemantic()` (embedding cosine similarity, best-effort) for the Memory slice instead of plain keyword matching. Graph/Inbox/Vault/Workspace matching is always keyword-based — none of the four computes embeddings. */
   semantic?: boolean;
 }
 
@@ -30,37 +32,45 @@ function textScore(haystacks: string[], query: string): number | null {
 }
 
 /**
- * "Find everything about X" across the four stores a Second Brain
+ * "Find everything about X" across the five stores a Second Brain
  * capture/connect flow actually populates — Memory, the general
- * Knowledge Graph, the Inbox, and the Knowledge Vault
- * (`docs/second-brain-roadmap.md`). Deliberately not a fifth search
+ * Knowledge Graph, the Inbox, the Knowledge Vault, and Project Workspaces
+ * (`docs/second-brain-roadmap.md`). Deliberately not a sixth search
  * index: every slice queries its own store's existing lookup
  * (`MemoryManager.query`/`searchSemantic`, `KnowledgeGraph.listNodes`,
- * `InboxManager.list`, `VaultManager.list`) and this class only merges
- * and ranks the results. Graph/Inbox/Vault matching is a deterministic
- * substring heuristic (same "transparent heuristic over an LLM/embedding
- * call wherever one is good enough" convention as
- * `codebase/indexer.ts`'s `searchIndex`); Memory matching can opt into
- * the existing semantic vector search instead.
+ * `InboxManager.list`, `VaultManager.list`, `WorkspaceManager.list*`) and
+ * this class only merges and ranks the results. Graph/Inbox/Vault/
+ * Workspace matching is a deterministic substring heuristic (same
+ * "transparent heuristic over an LLM/embedding call wherever one is good
+ * enough" convention as `codebase/indexer.ts`'s `searchIndex`); Memory
+ * matching can opt into the existing semantic vector search instead.
  */
 export class HybridSearch {
   constructor(
     private readonly memory: MemoryManager,
     private readonly graph: KnowledgeGraph,
     private readonly inbox: InboxManager,
-    private readonly vault: VaultManager
+    private readonly vault: VaultManager,
+    private readonly workspace: WorkspaceManager
   ) {}
 
   async search(query: string, options: HybridSearchOptions = {}): Promise<SearchResult[]> {
     const limit = options.limit ?? 20;
     const memoryHits = options.semantic ? await this.searchMemorySemantic(query, limit) : this.searchMemory(query);
-    const results = [...memoryHits, ...this.searchGraph(query), ...this.searchInbox(query), ...this.searchVault(query)];
+    const results = [
+      ...memoryHits,
+      ...this.searchGraph(query),
+      ...this.searchInbox(query),
+      ...this.searchVault(query),
+      ...this.searchWorkspace(query)
+    ];
     return results.sort((a, b) => b.score - a.score || b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
   }
 
-  /** `InboxManager`/`VaultManager` persist their records *as* Memory records (see `docs/inbox.md`/`docs/knowledge-vault.md`) — excluded here so a matching item surfaces once, via its own friendlier title/snippet, not twice. */
+  /** `InboxManager`/`VaultManager`/`WorkspaceManager` persist their records *as* Memory records (see `docs/inbox.md`/`docs/knowledge-vault.md`/`docs/project-workspaces.md`) — excluded here so a matching item surfaces once, via its own friendlier title/snippet, not twice. */
   private isSubsystemBackedRecord(tags: string[] | undefined): boolean {
-    return Boolean(tags?.includes("inbox") || tags?.includes("vault"));
+    if (!tags) return false;
+    return tags.includes("inbox") || tags.includes("vault") || tags.some((t) => t.startsWith("workspace-"));
   }
 
   private searchMemory(query: string): SearchResult[] {
@@ -151,6 +161,60 @@ export class HybridSearch {
       snippet: `[${note.status}] ${note.content.length > 80 ? `${note.content.slice(0, 77)}...` : note.content}`,
       tags: note.tags,
       createdAt: note.createdAt,
+      score
+    };
+  }
+
+  private searchWorkspace(query: string): SearchResult[] {
+    const hits: SearchResult[] = [];
+    for (const project of this.workspace.listProjects()) {
+      const score = textScore([project.name, project.description, ...project.tags], query);
+      if (score !== null) hits.push(this.projectHit(project, score));
+
+      for (const task of this.workspace.listTasks(project.id)) {
+        const taskScore = textScore([task.title, task.description], query);
+        if (taskScore !== null) hits.push(this.taskHit(task, project, taskScore));
+      }
+      for (const milestone of this.workspace.listMilestones(project.id)) {
+        const milestoneScore = textScore([milestone.title], query);
+        if (milestoneScore !== null) hits.push(this.milestoneHit(milestone, project, milestoneScore));
+      }
+    }
+    return hits;
+  }
+
+  private projectHit(project: Project, score: number): SearchResult {
+    return {
+      source: "workspace",
+      id: project.id,
+      title: project.name,
+      snippet: `[project/${project.status}] ${project.description}`.trim(),
+      tags: project.tags,
+      createdAt: project.createdAt,
+      score
+    };
+  }
+
+  private taskHit(task: ProjectTask, project: Project, score: number): SearchResult {
+    return {
+      source: "workspace",
+      id: task.id,
+      title: task.title,
+      snippet: `[task/${task.status}] ${project.name}`,
+      tags: [],
+      createdAt: task.createdAt,
+      score
+    };
+  }
+
+  private milestoneHit(milestone: Milestone, project: Project, score: number): SearchResult {
+    return {
+      source: "workspace",
+      id: milestone.id,
+      title: milestone.title,
+      snippet: `[milestone/${milestone.status}] ${project.name}`,
+      tags: [],
+      createdAt: milestone.createdAt,
       score
     };
   }

@@ -30,39 +30,39 @@ genuinely working, well-tested, local-first AI agent platform (the
 essentially complete) with a real first layer of "Second Brain"
 capability on top (Universal Inbox with AI summarization, Memory
 Timeline, hybrid Search, a visual Knowledge Graph, an Idea Agent, a
-Reflection Agent, and — as of this update — a Knowledge Vault). Two of
-the vision's named pillars — **Project Workspace, Learning Hub** — still
-do not exist in any form. This is not a system that's "70% done
+Reflection Agent, a Knowledge Vault, and — as of this update — Project
+Workspaces). Only one of the vision's named pillars — **Learning Hub** —
+still does not exist in any form. This is not a system that's "70% done
 everywhere" — it's a system that is **complete in some areas and a zero
 in others**, and the sections below say exactly which. (The completion
 percentage and health/quality scores above predate the Inbox AI
-summarization, Knowledge Graph visualization, and Knowledge Vault work
-described below and have not been recalculated — treat them as a lower
-bound, not current.)
+summarization, Knowledge Graph visualization, Knowledge Vault, and
+Project Workspaces work described below and have not been recalculated —
+treat them as a lower bound, not current.)
 
 ### Major blockers
 
-1. **No Project Workspace or Learning Hub code exists at all.** Zero files, zero types, zero routes. Knowledge Vault, the third pillar this blocker originally named, now has a real implementation — see Section 5.
+1. **No Learning Hub code exists at all.** Zero files, zero types, zero routes. Knowledge Vault and Project Workspace, the other two pillars this blocker originally named, now both have real implementations — see Sections 5 and 6.
 2. **~~The Inbox has no AI in it.~~ Closed.** `InboxManager.capture()` now best-effort asks the active provider for a one-sentence summary, grounded in a captured URL's fetched page text via `WebFetchTool`. See Section 4.
 3. **~~The Knowledge Graph has no visual/interactive UI.~~ Closed.** A dashboard **Graph** tab now renders the whole graph via a dependency-free force layout, colored/filterable by kind, click-to-highlight-connections.
 4. **Zero dashboard automated tests.** All passing tests are backend-only; the UI layer has no test coverage. Still open — the biggest blocker remaining from this list.
 
 ### Biggest risks
 
-- **Scope mismatch between the "Second Brain" vision and what's been built.** The vision describes a Notion/Obsidian/Mem-style personal knowledge system; what exists is a developer-agent platform with a Second Brain layer built incrementally on top. Continuing to build vision features piecemeal without an explicit scope decision on Project Workspace/Learning Hub (see `roadmap.md`) risks half-building those two pillars instead of finishing either.
-- **JSON-file persistence under Second Brain's higher write volume.** Every Inbox capture, every Vault note, every Outcome Memory record, every reflection is a full read-modify-write of one project-scope JSON file (`memory/memory-manager.ts`). This was an accepted tradeoff at AshOS-core scale; Second Brain's "capture everything" pattern is exactly the workload that breaks that assumption first.
+- **Scope mismatch between the "Second Brain" vision and what's been built.** The vision describes a Notion/Obsidian/Mem-style personal knowledge system; what exists is a developer-agent platform with a Second Brain layer built incrementally on top. Continuing to build vision features piecemeal without an explicit scope decision on Learning Hub (see `roadmap.md`) risks half-building it instead of finishing it deliberately.
+- **JSON-file persistence under Second Brain's higher write volume.** Every Inbox capture, every Vault note, every Project/Task/Milestone record, every Outcome Memory record, every reflection is a full read-modify-write of one project-scope JSON file (`memory/memory-manager.ts`). This was an accepted tradeoff at AshOS-core scale; Second Brain's "capture everything" pattern is exactly the workload that breaks that assumption first.
 - **No authentication anywhere.** Fine for a local single-user tool; a hard blocker the moment this is positioned as something a team shares.
 
 ### Top priorities (see `roadmap.md` for phased detail)
 
-1. Decide, explicitly, whether Project Workspace / Learning Hub are in scope at all — building either is genuine new domain logic, not a recombination of existing subsystems, unlike Knowledge Vault which turned out to be exactly that.
+1. Decide, explicitly, whether Learning Hub is in scope at all — it's genuine new domain logic with no existing analogue to reuse, unlike Knowledge Vault and Project Workspaces, which both turned out to be exactly that (a recombination of `MemoryManager` + `KnowledgeGraph`, not new architecture).
 2. Dashboard test coverage — the biggest risk-to-regression ratio in the codebase given how much UI surface has shipped with zero tests.
-3. Recalculate the completion percentage and health/quality scores above against what's actually shipped now (Inbox AI, Graph viz, Knowledge Vault, five specialist agents) — the current numbers predate all of it.
+3. Recalculate the completion percentage and health/quality scores above against what's actually shipped now (Inbox AI, Graph viz, Knowledge Vault, Project Workspaces, five specialist agents) — the current numbers predate all of it.
 
 ### Estimated work remaining
 
 - Dashboard test coverage: **~1-2 weeks** for one experienced engineer, no new architecture required.
-- To build Project Workspace + Learning Hub as designed in the original brief: **~2-3 months**, genuine new domain modeling, and should not be started without the scope decision above.
+- To build Learning Hub as designed in the original brief: **~1-2 months**, genuine new domain modeling (flashcards, spaced repetition, quizzes have no existing analogue anywhere in this codebase), and should not be started without the scope decision above.
 
 ---
 
@@ -83,7 +83,7 @@ See `feature-matrix.md` for the full table. Summary: **8 of 21 audited feature a
 | AI recommendations | 🔴 | No recommendation engine anywhere. `TodaysFocusCard` surfaces raw data (top opportunity, failures) — it doesn't reason about what you should do next |
 | Widgets | ✅ | Today's Focus is the only purpose-built "widget"; other tabs are full views, not widgets |
 | Recent activity | ✅ | `LogsTab` (live event-bus mirror) and `TimelineTab` (`App.tsx:1376`, merges `GET /events` + `GET /memory`) both cover this |
-| Project summary | 🔴 | No project entity exists (see Section 6) — nothing to summarize |
+| Project summary | 🟡 | A real `Project` entity now exists (see Section 6), reachable via its own Projects tab, but the Dashboard home tab itself doesn't summarize it yet — no widget pulls project/progress data into `DashboardTab` the way `TodaysFocusCard` does for Inbox/Innovation/Outcome Memory |
 | Learning summary | 🔴 | No Learning Hub exists (see Section 8) |
 | Quick capture | ✅ | `InboxTab` (`App.tsx:1165`) has a capture form wired to `POST /inbox` |
 | Search | ✅ | `SearchTab` (`App.tsx:1453`) wired to `GET /search`, with a semantic-search toggle |
@@ -165,28 +165,36 @@ Hub territory (Section 8, still not started).
 
 ## 6. Project Workspace
 
-**Verdict: 🔴 Not Started as a first-class entity. Zero implementation.**
-
-Searched for a `Project`/`Milestone`/`Roadmap`-as-data class, a
-Definition-of-Done data model, and risk-tracking fields — none exist.
-`grep` for `class Milestone`, `interface Milestone`, `DefinitionOfDone`,
-`riskLevel` returned nothing.
+**Verdict: ✅ Core implemented.** `workspace/` package (`WorkspaceManager`,
+confirmed real via `workspace/workspace-manager.ts` +
+`workspace/workspace-manager.test.ts`), `AshOS.workspace`, `ash project
+create/list/show/archive/progress`, `ash project task add/list/status`,
+`ash project milestone add/list/status`, `/workspace/*` REST routes, and
+a dashboard Projects tab. See `docs/project-workspaces.md`. Roadmaps,
+Architecture docs, Definition of Done, Risk tracking, and AI
+recommendations were never really "Project Workspace" scope — they're
+either separate hand-written docs (this file included) or downstream
+work that needs a real Project/Task model to reason over before it can
+exist, which is what this section closes.
 
 | Requirement | Status |
 |---|---|
-| Projects | 🟡 Only as a `project`-kind Knowledge Graph node (`kind: "project", label: <path>`) auto-created by `BaseAgent` — a label and a set of edges, not a project record with fields |
-| Tasks | 🟡 Tasks exist only as ephemeral `AgentTask`/`PlannedTask` objects during one `Planner`/`TaskExecutor` run, plus a `task`-kind graph node recording that a task happened. There is no persisted, queryable, standing task list — once a run finishes, there's no "show me open tasks" view |
-| Roadmaps | 🟡 Only as hand-written Markdown docs (`docs/roadmap.md`, `docs/roadmap-v2.md`, `docs/second-brain-roadmap.md`) — not a data structure the system reasons over |
-| Milestones | 🔴 None |
-| Architecture docs | 🟡 `docs/architecture.md` exists as a hand-written doc, not something tied per-project or auto-generated |
-| Progress tracking | 🔴 None — no percentage-complete, no burndown, nothing computed |
-| Definition of Done | 🔴 None as a data model (this audit's own `definition-of-done.md` is the closest thing that exists, and it's a report, not app functionality) |
-| Risk tracking | 🔴 None |
-| AI recommendations | 🔴 None |
+| Projects | ✅ `Project` (name, description, status, tags) — `workspace/types.ts`. The label-only `project`-kind Knowledge Graph node `BaseAgent` auto-creates per working directory still exists too, unrelated to this — see `docs/knowledge-graph.md` |
+| Tasks | ✅ `ProjectTask` (title, description, status: todo/in-progress/done) — a real, persisted, queryable standing task list per project (`ash project task list <projectId>`), distinct from the ephemeral `AgentTask`/`PlannedTask` objects that only exist during one `Planner`/`TaskExecutor` run |
+| Roadmaps | 🟡 Still only as hand-written Markdown docs (`docs/roadmap.md`, `docs/roadmap-v2.md`, `docs/second-brain-roadmap.md`) — not a data structure the system reasons over; out of scope for what shipped here |
+| Milestones | ✅ `Milestone` (title, dueDate?, status: pending/done) — `ash project milestone add/list/status` |
+| Architecture docs | 🟡 `docs/architecture.md` still exists as a hand-written doc, not something tied per-project or auto-generated — unchanged, out of scope |
+| Progress tracking | ✅ `WorkspaceManager.progress(projectId)` — `{ totalTasks, doneTasks, percent }`, computed on the fly from task statuses, shown as a progress bar in the dashboard's Projects tab |
+| Definition of Done | 🔴 Still none as a data model (this audit's own `definition-of-done.md` remains the closest thing that exists, and it's a report, not app functionality) — deliberately out of scope, see `docs/project-workspaces.md`'s "What's not implemented" |
+| Risk tracking | 🔴 None — deliberately out of scope |
+| AI recommendations | 🔴 None — deliberately out of scope; needs the Project/Task data that just shipped to exist before there's anything to recommend over |
 
-**Bottom line:** what the vision calls "Project Workspace" is, today,
-just a label on a Knowledge Graph node plus whatever's in the filesystem.
-There is no CRUD, no UI, no persisted task/milestone/risk state.
+**Bottom line:** the core of what the vision calls "Project Workspace" —
+a real, persisted, CRUD-able Project/Task/Milestone model with computed
+progress — now exists. Roadmaps-as-data, Architecture-docs-as-data,
+Definition of Done as a data model, risk tracking, and AI
+recommendations remain out of scope, each deliberately, as documented in
+`docs/project-workspaces.md`.
 
 ---
 
@@ -209,7 +217,7 @@ each Inbox tab row (`App.tsx:1211`).
 | Priority | ✅ | The `overall` weighted score functions as priority ranking (`ash innovation list`) |
 | Status | ✅ | Full lifecycle state machine (`captured → ... → released`, `innovation/lifecycle.ts`) |
 | Duplicate detection | ✅ | Real — Jaccard tag-overlap similarity (`opportunity-engine.ts`'s `jaccard()`), merges a new idea into an existing opportunity above `mergeThreshold` (default 0.5) instead of creating a duplicate |
-| Related projects | 🔴 | No linkage from an Opportunity to a Project entity (because Project Workspace, Section 6, doesn't exist) |
+| Related projects | 🔴 | A real Project entity now exists (Section 6), but nothing links an `Opportunity` to one yet — no `projectId` field, no automatic association |
 
 ---
 
@@ -222,9 +230,9 @@ Searched for `course`, `flashcard`, `quiz`, `spaced repetition`,
 was the same `inbox/types.ts` doc-comment referencing the vision by name.
 Every single requested capability — Courses, Books, Videos, Progress,
 Learning paths, Revision, Flashcards, Quizzes, AI recommendations — has
-**no code, no types, no route, no UI**. This is now one of two remaining
-fully-unbuilt pillars, alongside Project Workspace — Knowledge Vault
-(Section 5) shipped since the previous version of this audit.
+**no code, no types, no route, no UI**. This is now the only remaining
+fully-unbuilt named pillar — Knowledge Vault (Section 5) and Project
+Workspace (Section 6) both shipped since earlier versions of this audit.
 
 ---
 
@@ -465,14 +473,14 @@ during this audit:
 | Maintainability | **75/100** | consistent per-subsystem doc convention, but two oversized files (`App.tsx`, `server.ts`) and two dead directories |
 | Scalability | **50/100** | full-file JSON read-modify-write and brute-force vector search are real, documented limits that Second Brain's write volume stresses harder than AshOS-core did |
 | AI readiness | **65/100** | real LLM integration exists (chat, planning, reflection, briefs) behind a clean provider abstraction — but large swaths of "Second Brain" (classification, idea evaluation, search ranking) are deliberately non-AI heuristics, which is a design choice, not a defect, but means "AI readiness" for the *vision's* AI-heavy framing is lower than the core platform's own AI readiness |
-| **Second Brain readiness** | **~35/100** (pre-Vault; not recalculated) | Inbox/Timeline/Search/Idea/Reflection/**Vault** are real; Project Workspace and Learning Hub — two of eight pillars — remain completely unbuilt |
+| **Second Brain readiness** | **~35/100** (pre-Vault/Workspace; not recalculated) | Inbox/Timeline/Search/Idea/Reflection/**Vault**/**Project Workspace** are real; Learning Hub — one of eight pillars — remains completely unbuilt |
 
 **Recommendation: Needs improvement.** Not "major work remaining" in the
-sense of the existing code being broken or low quality — it isn't. Two
-named pillars of the vision this audit was asked to measure against
-(Project Workspace, Learning Hub) still have zero implementation, which
-caps how far "needs improvement" can be argued to be close to "ready."
-The numeric scores in this table were computed before Knowledge Vault,
+sense of the existing code being broken or low quality — it isn't. One
+named pillar of the vision this audit was asked to measure against
+(Learning Hub) still has zero implementation, which caps how far "needs
+improvement" can be argued to be close to "ready." The numeric scores in
+this table were computed before Knowledge Vault, Project Workspaces,
 Inbox AI summarization, and the Knowledge Graph dashboard visualization
 shipped and have not been recalculated — treat every percentage above as
 a stale lower bound, not a current measurement. Do not present this

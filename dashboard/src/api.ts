@@ -269,7 +269,7 @@ export interface TrendingReposResult {
   error?: string;
 }
 
-export type SearchResultSource = "memory" | "graph" | "inbox" | "vault";
+export type SearchResultSource = "memory" | "graph" | "inbox" | "vault" | "workspace";
 export interface SearchResult {
   source: SearchResultSource;
   id: string;
@@ -283,7 +283,7 @@ export interface SearchResult {
 export type KnowledgeNodeKind =
   | "person" | "company" | "repository" | "product" | "idea" | "problem" | "industry" | "technology"
   | "community" | "language" | "framework" | "market" | "startup" | "paper" | "workflow" | "agent"
-  | "project" | "skill" | "tool" | "task" | "resource" | "note";
+  | "project" | "skill" | "tool" | "task" | "resource" | "note" | "todo" | "milestone";
 export interface KnowledgeNode {
   id: string;
   kind: KnowledgeNodeKind;
@@ -331,6 +331,45 @@ export interface VaultNote {
   sourceInboxId?: string;
 }
 
+export type ProjectStatus = "active" | "completed" | "archived";
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  status: ProjectStatus;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ProjectTaskStatus = "todo" | "in-progress" | "done";
+export interface ProjectTask {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string;
+  status: ProjectTaskStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type MilestoneStatus = "pending" | "done";
+export interface Milestone {
+  id: string;
+  projectId: string;
+  title: string;
+  dueDate?: string;
+  status: MilestoneStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectProgress {
+  totalTasks: number;
+  doneTasks: number;
+  percent: number;
+}
+
 export const api = {
   health: () => get<Health>("/health"),
   githubTrending: (limit?: number) => get<TrendingReposResult>(`/agents/github-trending${limit ? `?limit=${limit}` : ""}`),
@@ -370,6 +409,24 @@ export const api = {
   vaultArchive: (id: string) => post<VaultNote>(`/vault/${encodeURIComponent(id)}/archive`, {}),
   vaultLink: (id: string, targetId: string) => post<VaultNote>(`/vault/${encodeURIComponent(id)}/link`, { targetId }),
   vaultBacklinks: (id: string) => get<VaultNote[]>(`/vault/${encodeURIComponent(id)}/backlinks`),
+
+  projectCreate: (name: string, description?: string, tags?: string[]) =>
+    post<Project>("/workspace/projects", { name, description, tags }),
+  projectList: (status?: ProjectStatus) => get<Project[]>(`/workspace/projects${status ? `?status=${status}` : ""}`),
+  projectGet: (id: string) => get<Project>(`/workspace/projects/${encodeURIComponent(id)}`),
+  projectArchive: (id: string) => post<Project>(`/workspace/projects/${encodeURIComponent(id)}/archive`, {}),
+  projectProgress: (id: string) => get<ProjectProgress>(`/workspace/projects/${encodeURIComponent(id)}/progress`),
+  projectTaskAdd: (projectId: string, title: string, description?: string) =>
+    post<ProjectTask>(`/workspace/projects/${encodeURIComponent(projectId)}/tasks`, { title, description }),
+  projectTaskList: (projectId: string, status?: ProjectTaskStatus) =>
+    get<ProjectTask[]>(`/workspace/projects/${encodeURIComponent(projectId)}/tasks${status ? `?status=${status}` : ""}`),
+  projectTaskStatus: (taskId: string, status: ProjectTaskStatus) =>
+    post<ProjectTask>(`/workspace/tasks/${encodeURIComponent(taskId)}/status`, { status }),
+  projectMilestoneAdd: (projectId: string, title: string, dueDate?: string) =>
+    post<Milestone>(`/workspace/projects/${encodeURIComponent(projectId)}/milestones`, { title, dueDate }),
+  projectMilestoneList: (projectId: string) => get<Milestone[]>(`/workspace/projects/${encodeURIComponent(projectId)}/milestones`),
+  projectMilestoneStatus: (milestoneId: string, status: MilestoneStatus) =>
+    post<Milestone>(`/workspace/milestones/${encodeURIComponent(milestoneId)}/status`, { status }),
 
   captureIdea: (input: { inboxId?: string; content?: string; tags?: string[]; domain?: IntelligenceDomain }) =>
     post<{ opportunity: Opportunity; created: boolean }>("/innovation/ideas", input),

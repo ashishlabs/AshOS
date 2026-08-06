@@ -37,6 +37,17 @@ reusable:
   curated, titled note, one step further triaged than a raw `resource`. A
   note promoted from an inbox item gets a `relates-to` edge back to its
   originating `resource` node.
+- `"todo"` and `"milestone"` were added for Project Workspaces
+  (`docs/project-workspaces.md`) — a persisted `ProjectTask`/`Milestone`
+  record. Deliberately **not** the existing `"task"` kind: `task` already
+  means a one-off agent *execution* record identified by `AgentTask.id`
+  (see above), and reusing it for a persisted, human-titled to-do item
+  risked an unrelated run and an unrelated to-do merging into one node if
+  their labels ever collided (`upsertNode` de-dupes by `(kind, label)`).
+  Every `todo`/`milestone` node gets a `part-of` edge to its `project`
+  node, and its label is prefixed with the project's name
+  (`"<project name>: <title>"`) to avoid same-titled tasks across
+  different projects merging into one node.
 
 ## What gets recorded, and by whom
 
