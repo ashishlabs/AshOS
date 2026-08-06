@@ -43,8 +43,10 @@ brief plus the existing North Star roadmap.
    `agents/code-agent.ts` already established — registered in
    `sdk/ashos.ts`, routable by the Planner, and reachable via
    `AshOS.runAgent()`. This closed the North Star v2 milestone to 100%.
-   See `docs/features/multi-agent-specialist-roles.md`. Only
-   Documentation Writer and Video Creator remain unbuilt named roles.
+   See `docs/features/multi-agent-specialist-roles.md`. Documentation
+   Writer (`agents/documentation-agent.ts`) was built later in the same
+   pattern — see item 14. Only Video Creator remains an unbuilt named
+   role.
 
 5. **~~A persisted, standing Project/Task entity.~~ Closed.**
    `WorkspaceManager` (`workspace/`, see `docs/project-workspaces.md`)
@@ -178,10 +180,21 @@ brief plus the existing North Star roadmap.
     (`docs/roadmap.md`) rather than force in a cloud-API dependency for
     one narrow feature.
 
-14. **AI-generated documentation/roadmaps.** No agent produces either
-    today; every doc in this repo, including this one, is hand-written.
-    Real gap against the vision's "AI Layer" section, but low urgency —
-    nothing currently depends on it.
+14. **~~AI-generated documentation~~ Closed. Roadmap generation remains
+    open.** `DocumentationAgent` (`agents/documentation-agent.ts`,
+    capability `documentation`/`docs`) writes Markdown grounded in real
+    source — a file's actual content, or a module's real file/symbol
+    structure via Local Codebase Intelligence — and always writes the
+    result to disk (`.ashos/generated-docs/<slug>.md` by default). This
+    also closed the last-but-one named specialist role short of Video
+    Creator (item 4). Deliberately not planner-routed: the Planner's
+    `TaskGraph` never carries a structured `input`, and grounding in real
+    source needs an actual file/dir path, not paraphrased prose — same
+    reasoning `github-trending`/`codebase-analyst` use for staying
+    direct-invoke-only via `ash docs generate`, `POST /docs/generate`, or
+    `runAgent("documentation", ...)`. **AI-generated roadmaps are still
+    hand-written** — every doc in this repo, including this one, is
+    manually authored; low urgency, nothing currently depends on it.
 
 15. **~~Per-record revision history~~ Closed** (except Knowledge Graph
     nodes, a deliberate exception — see below). `MemoryManager.remember()`
