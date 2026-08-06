@@ -125,8 +125,9 @@ brief plus the existing North Star roadmap.
     regardless of `sourceType`, so a captured `pdf`-classified item is now
     summarized against the document's actual content automatically.
     Live-verified against a real PDF fetched from
-    `raw.githubusercontent.com`. Non-PDF binary formats (images, ...) are
-    still rejected by content-type.
+    `raw.githubusercontent.com`. Non-PDF, non-image binary formats
+    (video, archives, ...) are still rejected by content-type — see item
+    13 for image handling, added since.
 
 12. **~~An actual embedded database~~ Mostly closed.** `MemoryManager`'s
     project/global scopes — the store Inbox, Vault, Workspace, Learning,
@@ -152,10 +153,30 @@ brief plus the existing North Star roadmap.
 
 ## Low
 
-13. **Voice and image capture for the Inbox.** Named in the vision, but
-    blocked on the same media-pipeline gap already tracked for
-    Video/Vision/Voice agents (`docs/roadmap.md`) — correctly deferred
-    together rather than half-solved for Inbox alone.
+13. **~~Image capture for the Inbox~~ Closed (OCR only). Voice capture
+    remains deferred.** `WebFetchTool` now OCRs real text out of a
+    captured `image`-classified URL (`.png`/`.jpg`/`.jpeg`/`.gif`/`.bmp`/
+    `.webp`, detected the same way as PDFs — content-type or a generic/
+    absent content-type plus the URL extension) via `tesseract.js`, with
+    its English language data bundled locally by `@tesseract.js-data/eng`
+    instead of tesseract.js's default behavior of fetching it from a CDN
+    at runtime — same "vendor the data file, no network call" fix as
+    `pdfjs-dist`'s standard fonts. This is bounded, deliberately: it
+    extracts real text (screenshots, scanned documents, memes with
+    captions), not general vision *description* — a photo with no text
+    correctly returns "no readable text content found," since that would
+    need `AIProvider.chat()` to accept image input, a breaking interface
+    change across every provider this session chose not to make.
+    `InboxManager` needed no changes, same "already calls
+    `fetchUrlContext()` for any `detectedUrl`" pattern as PDF. Live-
+    verified end-to-end (a stubbed-network real OCR pass, since no
+    reachable host in this sandbox serves a guaranteed text-bearing
+    image). **Voice capture stays out of scope**: no offline/dependency-
+    light speech-to-text option fits this codebase's philosophy the way
+    `tesseract.js` did for OCR, so it remains blocked on the same
+    media-pipeline gap tracked for Video/Vision/Voice agents
+    (`docs/roadmap.md`) rather than force in a cloud-API dependency for
+    one narrow feature.
 
 14. **AI-generated documentation/roadmaps.** No agent produces either
     today; every doc in this repo, including this one, is hand-written.

@@ -1,3 +1,4 @@
+import zlib from "node:zlib";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebFetchTool } from "./web-fetch-tool";
 
@@ -53,6 +54,94 @@ function buildTestPdf(text: string): Buffer {
   pdf += `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
 
   return Buffer.from(pdf, "binary");
+}
+
+function imageResponse(buffer: Buffer, opts: { status?: number; contentType?: string; contentLength?: string } = {}) {
+  const headers = new Map<string, string>();
+  headers.set("content-type", opts.contentType ?? "image/png");
+  if (opts.contentLength) headers.set("content-length", opts.contentLength);
+  return {
+    ok: (opts.status ?? 200) < 400,
+    status: opts.status ?? 200,
+    headers: { get: (key: string) => headers.get(key.toLowerCase()) ?? null },
+    arrayBuffer: async () => buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength),
+    text: async () => buffer.toString("binary")
+  };
+}
+
+const TEST_IMAGE_FONT: Record<string, string[]> = {
+  T: ["11111", "00100", "00100", "00100", "00100", "00100", "00100"],
+  I: ["11111", "00100", "00100", "00100", "00100", "00100", "11111"],
+  L: ["10000", "10000", "10000", "10000", "10000", "10000", "11111"],
+  E: ["11111", "10000", "10000", "11110", "10000", "10000", "11111"]
+};
+
+function pngCrc32(buf: Buffer): number {
+  const table: number[] = [];
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    table[n] = c;
+  }
+  let crc = 0xffffffff;
+  for (let i = 0; i < buf.length; i++) crc = table[(crc ^ buf[i]) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function pngChunk(type: string, data: Buffer): Buffer {
+  const typeBuf = Buffer.from(type, "ascii");
+  const lenBuf = Buffer.alloc(4);
+  lenBuf.writeUInt32BE(data.length, 0);
+  const crcBuf = Buffer.alloc(4);
+  crcBuf.writeUInt32BE(pngCrc32(Buffer.concat([typeBuf, data])), 0);
+  return Buffer.concat([lenBuf, typeBuf, data, crcBuf]);
+}
+
+/**
+ * Hand-builds a grayscale PNG rendering `text` in a blocky 5x7 bitmap font —
+ * only letters in `TEST_IMAGE_FONT` are supported. Deliberately picked
+ * OCR-friendly parameters (scale/padding) empirically verified against
+ * real `tesseract.js` recognition before writing these tests, same
+ * "prove the extraction approach works first" discipline as the PDF fixture.
+ */
+function buildTestImage(text: string, scale = 20, padding = 60): Buffer {
+  const charW = 5;
+  const charH = 7;
+  const gap = 1;
+  const width = text.length * (charW + gap) * scale + padding * 2;
+  const height = charH * scale + padding * 2;
+  const pixels: number[][] = Array.from({ length: height }, () => new Array(width).fill(255));
+
+  for (let ci = 0; ci < text.length; ci++) {
+    const glyph = TEST_IMAGE_FONT[text[ci]];
+    if (!glyph) continue;
+    for (let row = 0; row < charH; row++) {
+      for (let col = 0; col < charW; col++) {
+        if (glyph[row][col] !== "1") continue;
+        for (let sy = 0; sy < scale; sy++) {
+          for (let sx = 0; sx < scale; sx++) {
+            pixels[padding + row * scale + sy][padding + ci * (charW + gap) * scale + col * scale + sx] = 0;
+          }
+        }
+      }
+    }
+  }
+
+  const sig = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8; // bit depth
+  ihdr[9] = 0; // color type: grayscale
+
+  const raw = Buffer.alloc((width + 1) * height);
+  for (let y = 0; y < height; y++) {
+    raw[y * (width + 1)] = 0; // filter type: none
+    for (let x = 0; x < width; x++) raw[y * (width + 1) + 1 + x] = pixels[y][x];
+  }
+  const idatData = zlib.deflateSync(raw);
+
+  return Buffer.concat([sig, pngChunk("IHDR", ihdr), pngChunk("IDAT", idatData), pngChunk("IEND", Buffer.alloc(0))]);
 }
 
 const PUBLIC_IP = async () => "93.184.216.34"; // example.com's real (public) IP — a stand-in resolver for tests
@@ -158,10 +247,10 @@ describe("WebFetchTool", () => {
     expect(result.error).toMatch(/404/);
   });
 
-  it("rejects a non-text, non-PDF content-type instead of trying to parse binary content", async () => {
+  it("rejects a non-text, non-PDF, non-image content-type instead of trying to parse binary content", async () => {
     const tool = new WebFetchTool({ resolveHostname: PUBLIC_IP });
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(htmlResponse("binary garbage", { contentType: "image/png" })));
-    const result = await tool.execute({ action: "fetch", args: { url: "https://example.com/file.png" } });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(htmlResponse("binary garbage", { contentType: "video/mp4" })));
+    const result = await tool.execute({ action: "fetch", args: { url: "https://example.com/file.mp4" } });
     expect(result.ok).toBe(false);
     expect(result.error).toMatch(/unsupported content-type/);
   });
@@ -206,6 +295,50 @@ describe("WebFetchTool", () => {
     const oversized = Buffer.concat([buildTestPdf("big"), Buffer.alloc(2_000_001)]);
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(pdfResponse(oversized)));
     const result = await tool.execute({ action: "fetch", args: { url: "https://example.com/huge.pdf" } });
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/too large/);
+  });
+
+  it("OCRs real text out of an image response (image/png content-type)", async () => {
+    const tool = new WebFetchTool({ resolveHostname: PUBLIC_IP });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(imageResponse(buildTestImage("TITLE"))));
+    const result = await tool.execute({ action: "fetch", args: { url: "https://example.com/screenshot" } });
+    expect(result.ok).toBe(true);
+    expect(result.output).toContain("TITLE");
+  }, 20000);
+
+  it("OCRs an image detected by a .png URL suffix with no content-type header", async () => {
+    const tool = new WebFetchTool({ resolveHostname: PUBLIC_IP });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(imageResponse(buildTestImage("TITLE"), { contentType: "" })));
+    const result = await tool.execute({ action: "fetch", args: { url: "https://example.com/screenshot.png" } });
+    expect(result.ok).toBe(true);
+    expect(result.output).toContain("TITLE");
+  }, 20000);
+
+  it("OCRs an image when a host serves it as application/octet-stream", async () => {
+    const tool = new WebFetchTool({ resolveHostname: PUBLIC_IP });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(imageResponse(buildTestImage("TITLE"), { contentType: "application/octet-stream" }))
+    );
+    const result = await tool.execute({ action: "fetch", args: { url: "https://raw.githubusercontent.com/org/repo/main/shot.png" } });
+    expect(result.ok).toBe(true);
+    expect(result.output).toContain("TITLE");
+  }, 20000);
+
+  it("returns a clear error for a corrupt/unreadable image instead of crashing the process", async () => {
+    const tool = new WebFetchTool({ resolveHostname: PUBLIC_IP });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(imageResponse(Buffer.from("not actually an image"))));
+    const result = await tool.execute({ action: "fetch", args: { url: "https://example.com/broken.png" } });
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/failed to parse image/);
+  }, 20000);
+
+  it("rejects an oversized image body even without a declared content-length", async () => {
+    const tool = new WebFetchTool({ resolveHostname: PUBLIC_IP });
+    const oversized = Buffer.concat([buildTestImage("TITLE"), Buffer.alloc(2_000_001)]);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(imageResponse(oversized)));
+    const result = await tool.execute({ action: "fetch", args: { url: "https://example.com/huge.png" } });
     expect(result.ok).toBe(false);
     expect(result.error).toMatch(/too large/);
   });

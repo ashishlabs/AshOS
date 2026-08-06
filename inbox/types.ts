@@ -2,7 +2,9 @@
  * Universal Inbox: the single capture point everything else in the
  * "Second Brain" vision (Knowledge Vault, Idea Lab, Project Workspaces)
  * feeds from — see `docs/second-brain-roadmap.md` and `docs/inbox.md`.
- * Voice/image/screenshot capture are out of scope for this stage (same
+ * An image URL is captured and OCR'd for real text content (`pdf`'s
+ * sibling in `tools/web-fetch-tool.ts`) but live voice capture and direct
+ * file/screenshot upload remain out of scope for this stage (same
  * media-pipeline gap tracked in `docs/roadmap.md`); text and URLs cover
  * the bulk of real capture volume.
  */
@@ -14,7 +16,8 @@ export type InboxSourceType =
   | "github-repo"
   | "youtube"
   | "tweet"
-  | "pdf";
+  | "pdf"
+  | "image";
 
 export type InboxStatus = "unread" | "reviewed" | "archived";
 

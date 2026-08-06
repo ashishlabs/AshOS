@@ -16,10 +16,10 @@ handling for orphaned edges (moot today since nothing deletes nodes).
 
 ---
 
-### Universal Inbox (capture/classify/store/summarize real; still no rich media)
+### Universal Inbox (capture/classify/store/summarize real; still no voice/upload)
 
 - ✔ **Done:** `capture()`/`list()`/`get()`/`archive()` fully implemented
-  and tested, deterministic regex classification into 6 source types,
+  and tested, deterministic regex classification into 7 source types,
   reuses `MemoryManager` for persistence (no new store), best-effort
   Knowledge Graph enrichment with a real `repository` node for GitHub
   links, CLI (`ash inbox add/list/show/archive`) and REST (4 routes),
@@ -30,17 +30,26 @@ handling for orphaned edges (moot today since nothing deletes nodes).
   (`tools/web-fetch-tool.ts`) best-effort fetches the linked page's
   readable text first and folds it into the summarization prompt, so
   the summary reflects what the link is actually about — not just a
-  generic inference from the URL string alone.
-- ✖ **Missing:** voice capture, image capture, a distinct "bookmark" type
-  (folded into generic "article"), a dedicated *search* tool (finding
-  URLs for a topic — `WebFetchTool` only fetches a URL it's already
-  given). Real PDF *content* extraction is **done**: `WebFetchTool` now
-  extracts text from `application/pdf` responses (and `.pdf`-suffixed
-  URLs served with a generic content-type) via `pdfjs-dist`, live-verified
-  against a real PDF on `raw.githubusercontent.com`.
+  generic inference from the URL string alone. Real PDF *content*
+  extraction and image *OCR* are both done: `WebFetchTool` extracts text
+  from `application/pdf` responses via `pdfjs-dist` and from `image/*`
+  responses via `tesseract.js` (bundled language data, no CDN fetch at
+  runtime) — both live-verified, PDF against a real file on
+  `raw.githubusercontent.com`, image via a stubbed-network real OCR pass
+  (no reachable host in this sandbox serves a guaranteed text-bearing
+  image).
+- ✖ **Missing:** voice capture, direct file/screenshot upload (Inbox only
+  ever accepts a URL or pasted text, never a raw upload), a distinct
+  "bookmark" type (folded into generic "article"), a dedicated *search*
+  tool (finding URLs for a topic — `WebFetchTool` only fetches a URL it's
+  already given). Image *description* (a photo with no text in it) is
+  also out of scope — OCR only extracts text that's actually there;
+  general vision understanding would need `AIProvider.chat()` to accept
+  image input, a breaking interface change across every provider not
+  taken here.
 - ⚠ **Should be improved:** classification is purely regex-pattern-based
-  — a URL that doesn't match one of the 5 hardcoded patterns
-  (GitHub/YouTube/Twitter-X/PDF) always falls through to generic
+  — a URL that doesn't match one of the 6 hardcoded patterns
+  (GitHub/YouTube/Twitter-X/PDF/image) always falls through to generic
   "article," even if it's structurally something else (e.g. a Reddit
   thread, a paper on arXiv).
 - 🚀 **Next implementation step:** none outstanding for this entry.

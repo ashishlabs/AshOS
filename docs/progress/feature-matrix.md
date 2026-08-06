@@ -36,7 +36,7 @@ Refactor.
 
 | Feature | Status | Completion | Quality | Notes |
 |---|---|---|---|---|
-| Universal Inbox (capture + classify + summarize) | 🟡 | 82% | High | Real capture/classify/store/archive/history (`InboxManager.history()`, `ash inbox history`, `GET /inbox/:id/history`); classification is regex, not AI; AI summarization now real, grounded in fetched page text via `WebFetchTool` for URLs — including real PDF text extraction via `pdfjs-dist`, not just the URL string; still no voice/image capture |
+| Universal Inbox (capture + classify + summarize) | 🟡 | 85% | High | Real capture/classify/store/archive/history (`InboxManager.history()`, `ash inbox history`, `GET /inbox/:id/history`); classification is regex, not AI; AI summarization now real, grounded in fetched page text via `WebFetchTool` for URLs — including real PDF text extraction via `pdfjs-dist` and image OCR via `tesseract.js`, not just the URL string; still no voice capture or direct file/screenshot upload |
 | Memory Timeline | ✅ | 90% | Medium | Dashboard-only merge view; no per-record version history |
 | Today's Focus widget | ✅ | 100% (for its scope) | High | Real composition of 3 live endpoints, polls every 15s |
 | Idea Lab | 🟡 | 60% | High | Storage/scoring/dedup/lifecycle all real; "AI evaluation"/"market analysis" are deterministic heuristic formulas, not LLM reasoning; no related-projects link |

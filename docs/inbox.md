@@ -55,7 +55,7 @@ eventBus.emit("inbox:captured", { id, sourceType })
 default" convention as the Innovation collectors' mocks and
 `codebase/indexer.ts`'s symbol extraction, so capture never blocks on
 provider/network availability. It only inspects the content for a URL and
-buckets it: `github-repo`, `youtube`, `tweet`, `pdf`, or a generic
+buckets it: `github-repo`, `youtube`, `tweet`, `pdf`, `image`, or a generic
 `article` for any other link; content with no URL is `text`. Callers can
 still pass an explicit `sourceType` (used by the `note` type, which has
 no auto-detection path) or extra `tags`.
@@ -127,9 +127,22 @@ directly.
 
 ## What's not implemented
 
-- **Voice/image/screenshot/document capture** — text and URLs only for
-  this stage. Blocked on the same media-pipeline gap `docs/roadmap.md`
-  already tracks for Video/Vision/Voice agents; see
+- **~~Image URL capture~~ Closed (OCR only).** A captured `image`-
+  classified URL (`.png`/`.jpg`/`.jpeg`/`.gif`/`.bmp`/`.webp`) is OCR'd
+  for real text content via `WebFetchTool` (`tesseract.js`, no network
+  call — the language data is bundled locally, same "vendor the data
+  file, no CDN fetch" fix as `pdfjs-dist`'s standard fonts). This is text
+  extraction, not general vision understanding: a screenshot or scanned
+  document summarizes against its actual text, but a photo with no text
+  in it correctly comes back as "no readable text content found" — true
+  image *description* would need `AIProvider.chat()` to accept image
+  input, a much larger interface change deliberately not taken here.
+- **Voice capture and direct file/screenshot upload** remain out of
+  scope — no viable offline/dependency-light speech-to-text option fits
+  this codebase's philosophy (unlike OCR, there's no local equivalent to
+  `pdfjs-dist`/`tesseract.js` to vendor), and Inbox only ever accepts a
+  URL or pasted text today, never a raw upload. Same media-pipeline gap
+  `docs/roadmap.md` tracks for Video/Vision/Voice agents; see
   `docs/second-brain-roadmap.md` Tier 3.
 - **~~No PDF/non-HTML document fetching~~ Closed.** `WebFetchTool` now
   extracts real text from `application/pdf` responses (and from a
@@ -140,8 +153,8 @@ directly.
   content, not just the pasted link text — no changes needed in
   `InboxManager` itself, since it already calls `fetchUrlContext()` for
   any `detectedUrl` regardless of `sourceType`. Live-verified against a
-  real PDF on `raw.githubusercontent.com`. Images and other binary
-  formats are still rejected by content-type.
+  real PDF on `raw.githubusercontent.com`. Non-image binary formats
+  (video, archives, ...) are still rejected by content-type.
 - **~~No automatic promotion into Knowledge Vault entities~~ Closed.** An
   inbox item can be promoted into a scored Innovation `Opportunity`
   (`ash innovation idea capture`/the dashboard's "Promote to Idea"

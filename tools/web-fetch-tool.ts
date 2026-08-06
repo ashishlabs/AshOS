@@ -1,5 +1,13 @@
 import net from "node:net";
+import path from "node:path";
+import { createWorker } from "tesseract.js";
 import type { Tool, ToolCapabilities, ToolExecuteRequest, ToolExecuteResult, ToolHealth, ToolRequirements } from "./types";
+
+// Points OCR at the traineddata bundled by `@tesseract.js-data/eng` instead of
+// tesseract.js's default behavior of fetching it from a CDN at runtime —
+// same "vendor the data file locally, no network call" fix as pdfjs-dist's
+// standard fonts.
+const OCR_LANG_PATH = path.dirname(require.resolve("@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz"));
 
 const DEFAULT_TIMEOUT_MS = 6000;
 const MAX_RESPONSE_BYTES = 2_000_000;
@@ -49,6 +57,43 @@ async function extractPdfText(buffer: Uint8Array): Promise<string> {
   return pages.join("\n").replace(/\s+/g, " ").trim();
 }
 
+function isImageResponse(contentType: string, pathname: string): boolean {
+  if (/^image\//i.test(contentType)) return true;
+  // Same generic/absent content-type fallback as isPdfResponse — some hosts serve images as application/octet-stream.
+  if ((!contentType || /application\/octet-stream/i.test(contentType)) && /\.(png|jpe?g|gif|bmp|webp)$/i.test(pathname)) return true;
+  return false;
+}
+
+/**
+ * Extracts real text from an image via OCR (`tesseract.js`) rather than
+ * describing its visual content — a deliberately bounded "ground it in
+ * real content" step like the PDF path above, not general vision
+ * understanding (which would need `AIProvider.chat()` to accept image
+ * input, a much larger interface change). Only helps text-bearing images
+ * (screenshots, scanned documents, memes with captions) — a photo with no
+ * text in it correctly comes back as "no readable text content found."
+ */
+async function extractImageText(buffer: Uint8Array): Promise<string> {
+  const worker = await createWorker("eng", 1, {
+    langPath: OCR_LANG_PATH,
+    gzip: true,
+    cacheMethod: "none",
+    // Without this, a worker-thread decode failure (e.g. a corrupt/non-image
+    // buffer) throws inside a process.nextTick callback instead of rejecting
+    // the recognize() promise, crashing the whole process — this routes it
+    // back into a normal rejection `execute()` can catch.
+    errorHandler: () => {}
+  });
+  try {
+    const {
+      data: { text }
+    } = await worker.recognize(Buffer.from(buffer));
+    return text.trim();
+  } finally {
+    await worker.terminate();
+  }
+}
+
 function stripHtml(html: string): { title?: string; text: string } {
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   const text = html
@@ -91,7 +136,9 @@ export interface WebFetchToolOptions {
  * (or a generic/absent content-type paired with a `.pdf` URL path, since
  * some hosts serve PDFs as `application/octet-stream`), which is extracted
  * via `pdfjs-dist`'s Node-compatible legacy build (dynamically imported
- * since it ships ESM-only) instead of rejected.
+ * since it ships ESM-only) instead of rejected, and `image/*` responses,
+ * whose text is OCR'd via `tesseract.js` — real text extraction, not
+ * general vision understanding (`AIProvider.chat()` has no image input).
  */
 export class WebFetchTool implements Tool {
   private resolveHostname: (hostname: string) => Promise<string>;
@@ -157,7 +204,8 @@ export class WebFetchTool implements Tool {
 
       const contentType = res.headers.get("content-type") ?? "";
       const isPdf = isPdfResponse(contentType, parsed.pathname);
-      if (contentType && !isPdf && !/text\/html|text\/plain|application\/xhtml/i.test(contentType)) {
+      const isImage = !isPdf && isImageResponse(contentType, parsed.pathname);
+      if (contentType && !isPdf && !isImage && !/text\/html|text\/plain|application\/xhtml/i.test(contentType)) {
         return { ok: false, error: `unsupported content-type: ${contentType}` };
       }
       const contentLength = Number(res.headers.get("content-length") ?? 0);
@@ -177,6 +225,21 @@ export class WebFetchTool implements Tool {
           return { ok: false, error: `failed to parse PDF: ${(error as Error).message}` };
         }
         if (!text) return { ok: false, error: "no readable text content found in PDF" };
+        return { ok: true, output: text.slice(0, MAX_TEXT_LENGTH) };
+      }
+
+      if (isImage) {
+        const arrayBuffer = await res.arrayBuffer();
+        if (arrayBuffer.byteLength > MAX_RESPONSE_BYTES) {
+          return { ok: false, error: `response too large (${arrayBuffer.byteLength} bytes)` };
+        }
+        let text: string;
+        try {
+          text = await extractImageText(new Uint8Array(arrayBuffer));
+        } catch {
+          return { ok: false, error: "failed to parse image (unreadable or corrupt image data)" };
+        }
+        if (!text) return { ok: false, error: "no readable text content found in image" };
         return { ok: true, output: text.slice(0, MAX_TEXT_LENGTH) };
       }
 

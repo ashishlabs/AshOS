@@ -127,7 +127,7 @@ Implementation: `inbox/classifier.ts`, `inbox/inbox-manager.ts`,
 | Tweets/X | ✅ (classification only) | Regex-matched, tagged `"social"` |
 | PDFs | ✅ (URL-only) | Detected by URL file extension or `application/pdf`/`application/octet-stream`+`.pdf` content-type; `WebFetchTool` now extracts real text via `pdfjs-dist` — no file upload path yet |
 | Voice | 🔴 | No audio capture, no transcription — not in the code at all |
-| Images | 🔴 | No image capture/upload — not in the code at all |
+| Images | ✅ (URL-only, OCR) | Detected by URL extension or `image/*`/`application/octet-stream`+extension content-type; `WebFetchTool` extracts real text via `tesseract.js` (bundled language data, no CDN fetch) — text-bearing images only, no general vision description; no file upload path |
 | Bookmarks | 🟡 | Not a distinct type — a bookmark is just a URL classified as `"article"` |
 | Documents (non-PDF, e.g. Word/Notion export) | 🔴 | No handling |
 

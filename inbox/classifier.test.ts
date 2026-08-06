@@ -27,6 +27,14 @@ describe("classify", () => {
     expect(classify("https://example.com/paper.pdf").sourceType).toBe("pdf");
   });
 
+  it("classifies an image URL", () => {
+    for (const ext of ["png", "jpg", "jpeg", "gif", "bmp", "webp"]) {
+      const result = classify(`https://example.com/screenshot.${ext}`);
+      expect(result.sourceType).toBe("image");
+      expect(result.tags).toContain("image");
+    }
+  });
+
   it("falls back to article for any other URL", () => {
     const result = classify("https://example.com/blog/some-post");
     expect(result.sourceType).toBe("article");

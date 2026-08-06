@@ -5,6 +5,7 @@ const GITHUB_RE = /^https?:\/\/(www\.)?github\.com\/[^/\s]+\/[^/\s]+/i;
 const YOUTUBE_RE = /^https?:\/\/(www\.)?(youtube\.com\/watch|youtu\.be\/)/i;
 const TWEET_RE = /^https?:\/\/(www\.)?(twitter\.com|x\.com)\/[^/\s]+\/status\/\d+/i;
 const PDF_RE = /\.pdf(\?\S*)?$/i;
+const IMAGE_RE = /\.(png|jpe?g|gif|bmp|webp)(\?\S*)?$/i;
 
 /**
  * Deterministic, offline content classification — same "mock/deterministic
@@ -21,5 +22,6 @@ export function classify(content: string): InboxClassification {
   if (YOUTUBE_RE.test(detectedUrl)) return { sourceType: "youtube", tags: ["video"], detectedUrl };
   if (TWEET_RE.test(detectedUrl)) return { sourceType: "tweet", tags: ["social"], detectedUrl };
   if (PDF_RE.test(detectedUrl)) return { sourceType: "pdf", tags: ["document"], detectedUrl };
+  if (IMAGE_RE.test(detectedUrl)) return { sourceType: "image", tags: ["image"], detectedUrl };
   return { sourceType: "article", tags: ["link"], detectedUrl };
 }
