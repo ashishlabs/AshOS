@@ -14,7 +14,17 @@ import type { SearchResult } from "./types";
 export interface HybridSearchOptions {
   /** Max results returned, after merging and ranking across all six stores. */
   limit?: number;
-  /** Use `MemoryManager.searchSemantic()` (embedding cosine similarity, best-effort) for the Memory slice instead of plain keyword matching. Graph/Inbox/Vault/Workspace/Learning matching is always keyword-based — none of the five computes embeddings. */
+  /**
+   * Use embedding cosine similarity instead of plain keyword matching.
+   * Memory, Inbox, Vault, Workspace, and Learning all persist through
+   * `MemoryManager.remember()` (Inbox/Vault/Workspace/Learning records are
+   * themselves Memory records, see `isSubsystemBackedRecord`), so they all
+   * already get a best-effort embedding computed and indexed today — this
+   * mode is one `MemoryManager.searchSemantic()` call, partitioned back out
+   * by tag into each source's own friendlier hit shape. Graph is the one
+   * exception: `KnowledgeGraph` nodes have no embedding storage, so Graph
+   * results stay keyword-based even in semantic mode (see `docs/search.md`).
+   */
   semantic?: boolean;
 }
 
@@ -42,11 +52,16 @@ function textScore(haystacks: string[], query: string): number | null {
  * existing lookup (`MemoryManager.query`/`searchSemantic`,
  * `KnowledgeGraph.listNodes`, `InboxManager.list`, `VaultManager.list`,
  * `WorkspaceManager.list*`, `LearningManager.list*`) and this class only
- * merges and ranks the results. Graph/Inbox/Vault/Workspace/Learning
- * matching is a deterministic substring heuristic (same "transparent
+ * merges and ranks the results. In keyword mode (the default), every
+ * source is a deterministic substring heuristic (same "transparent
  * heuristic over an LLM/embedding call wherever one is good enough"
- * convention as `codebase/indexer.ts`'s `searchIndex`); Memory matching
- * can opt into the existing semantic vector search instead.
+ * convention as `codebase/indexer.ts`'s `searchIndex`). In semantic mode
+ * (`{ semantic: true }`), Memory/Inbox/Vault/Workspace/Learning all opt
+ * into `MemoryManager.searchSemantic()`'s embedding cosine similarity —
+ * Inbox/Vault/Workspace/Learning records are themselves Memory records
+ * (see `isSubsystemBackedRecord`), so they already carry a best-effort
+ * embedding with no new indexing needed. Graph is the one source with no
+ * embedding storage today, so it stays keyword-based in both modes.
  */
 export class HybridSearch {
   constructor(
@@ -60,15 +75,16 @@ export class HybridSearch {
 
   async search(query: string, options: HybridSearchOptions = {}): Promise<SearchResult[]> {
     const limit = options.limit ?? 20;
-    const memoryHits = options.semantic ? await this.searchMemorySemantic(query, limit) : this.searchMemory(query);
-    const results = [
-      ...memoryHits,
-      ...this.searchGraph(query),
-      ...this.searchInbox(query),
-      ...this.searchVault(query),
-      ...this.searchWorkspace(query),
-      ...this.searchLearning(query)
-    ];
+    const results = options.semantic
+      ? [...(await this.searchSubsystemsSemantic(query, limit)), ...this.searchGraph(query)]
+      : [
+          ...this.searchMemory(query),
+          ...this.searchGraph(query),
+          ...this.searchInbox(query),
+          ...this.searchVault(query),
+          ...this.searchWorkspace(query),
+          ...this.searchLearning(query)
+        ];
     return results.sort((a, b) => b.score - a.score || b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
   }
 
@@ -93,18 +109,55 @@ export class HybridSearch {
       }));
   }
 
-  private async searchMemorySemantic(query: string, limit: number): Promise<SearchResult[]> {
-    const records = (await this.memory.searchSemantic(query, limit)).filter((record) => !this.isSubsystemBackedRecord(record.tags));
-    return records.map((record, index) => ({
-      source: "memory",
-      id: record.id,
-      title: record.key,
-      snippet: JSON.stringify(record.value).slice(0, 200),
-      tags: record.tags ?? [],
-      createdAt: record.createdAt,
-      // searchSemantic() returns results already ranked by cosine similarity but doesn't expose the raw score, so rank position is converted into a comparable 0-1 value instead of pretending to know the exact similarity.
-      score: Math.max(0, 1 - index / Math.max(records.length, 1))
-    }));
+  /**
+   * One `MemoryManager.searchSemantic()` call covers Memory, Inbox, Vault,
+   * Workspace, and Learning at once, since the latter four persist through
+   * `remember()` too — each hit is routed back to its own source's hit
+   * shape by the same subsystem tag `isSubsystemBackedRecord` checks,
+   * rather than by re-querying each manager. Over-fetches (`limit * 4`)
+   * because one flat cross-source ranking now has to leave enough room for
+   * all five sources' worth of candidates, not just Memory's.
+   */
+  private async searchSubsystemsSemantic(query: string, limit: number): Promise<SearchResult[]> {
+    const records = await this.memory.searchSemantic(query, Math.max(limit * 4, 40));
+    // searchSemantic() returns results already ranked by cosine similarity but doesn't expose the raw score, so rank position is converted into a comparable 0-1 value instead of pretending to know the exact similarity.
+    const scoreAt = (index: number) => Math.max(0, 1 - index / Math.max(records.length, 1));
+
+    const hits: SearchResult[] = [];
+    records.forEach((record, index) => {
+      const score = scoreAt(index);
+      const tags = record.tags ?? [];
+      if (tags.includes("inbox")) {
+        hits.push(this.inboxHit(record.value as InboxItem, score));
+      } else if (tags.includes("vault")) {
+        hits.push(this.vaultHit(record.value as VaultNote, score));
+      } else if (tags.includes("workspace-project")) {
+        hits.push(this.projectHit(record.value as Project, score));
+      } else if (tags.includes("workspace-task")) {
+        const task = record.value as ProjectTask;
+        const project = this.workspace.getProject(task.projectId);
+        if (project) hits.push(this.taskHit(task, project, score));
+      } else if (tags.includes("workspace-milestone")) {
+        const milestone = record.value as Milestone;
+        const project = this.workspace.getProject(milestone.projectId);
+        if (project) hits.push(this.milestoneHit(milestone, project, score));
+      } else if (tags.includes("learning-resource")) {
+        hits.push(this.resourceHit(record.value as LearningResource, score));
+      } else if (tags.includes("learning-flashcard")) {
+        hits.push(this.cardHit(record.value as Flashcard, score));
+      } else {
+        hits.push({
+          source: "memory",
+          id: record.id,
+          title: record.key,
+          snippet: JSON.stringify(record.value).slice(0, 200),
+          tags,
+          createdAt: record.createdAt,
+          score
+        });
+      }
+    });
+    return hits;
   }
 
   private searchGraph(query: string): SearchResult[] {

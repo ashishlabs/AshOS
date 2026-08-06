@@ -19,8 +19,13 @@ ones, and removes the single largest regression risk in the codebase.
 1. ✅ **Shipped** — AI summarization in the Inbox capture path, further
    grounded in fetched page content via a new `WebFetchTool` for
    captured URLs.
-2. Semantic search extended to the Graph and Inbox slices of
-   `HybridSearch`, not just Memory.
+2. ✅ **Shipped (partially)** — semantic search extended to the Inbox,
+   Vault, Workspace, and Learning slices of `HybridSearch` (one
+   `MemoryManager.searchSemantic()` call now covers all five non-Graph
+   sources, since the latter four already persist through `remember()`).
+   Graph remains keyword-only — closing it needs a wider decision (async
+   `KnowledgeGraph.upsertNode()` or on-demand embeddings), tracked
+   separately in `missing-features.md` item 7 and `docs/search.md`.
 3. ✅ **Shipped (partially)** — dashboard automated test suite
    (`dashboard/vitest.config.ts`, jsdom + React Testing Library, 16 tests
    in `graph-layout.test.ts` + `App.test.tsx`, run in CI). Covers the

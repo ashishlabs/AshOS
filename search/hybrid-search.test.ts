@@ -140,23 +140,83 @@ describe("HybridSearch", () => {
   });
 
   it("semantic option falls back gracefully without a provider-backed embedding and still returns matches", async () => {
-    const provider = new MockProvider();
-    const memoryWithProvider = new MemoryManager(root, { provider });
-    const inboxForProvider = new InboxManager(memoryWithProvider);
-    const vaultForProvider = new VaultManager(memoryWithProvider);
-    const workspaceForProvider = new WorkspaceManager(memoryWithProvider);
-    const learningForProvider = new LearningManager(memoryWithProvider);
-    const searchWithProvider = new HybridSearch(
-      memoryWithProvider,
-      graph,
-      inboxForProvider,
-      vaultForProvider,
-      workspaceForProvider,
-      learningForProvider
-    );
+    const results = await search.search("langgraph", { semantic: true });
+    expect(results).toEqual([]);
 
-    await memoryWithProvider.remember("project", "note-1", { text: "LangGraph orchestration notes" });
-    const results = await searchWithProvider.search("langgraph", { semantic: true });
-    expect(results.some((r) => r.source === "memory")).toBe(true);
+    await memory.remember("project", "note-1", { text: "LangGraph orchestration notes" });
+    const afterCapture = await search.search("langgraph", { semantic: true });
+    expect(afterCapture.some((r) => r.source === "memory")).toBe(true);
+  });
+
+  describe("semantic mode with a real embedding provider", () => {
+    let semanticSearch: HybridSearch;
+    let semanticMemory: MemoryManager;
+    let semanticInbox: InboxManager;
+    let semanticVault: VaultManager;
+    let semanticWorkspace: WorkspaceManager;
+    let semanticLearning: LearningManager;
+
+    beforeEach(() => {
+      const provider = new MockProvider();
+      semanticMemory = new MemoryManager(root, { provider });
+      semanticInbox = new InboxManager(semanticMemory);
+      semanticVault = new VaultManager(semanticMemory);
+      semanticWorkspace = new WorkspaceManager(semanticMemory);
+      semanticLearning = new LearningManager(semanticMemory);
+      semanticSearch = new HybridSearch(semanticMemory, graph, semanticInbox, semanticVault, semanticWorkspace, semanticLearning);
+    });
+
+    it("routes an inbox item through its own hit shape, not a raw memory hit", async () => {
+      await semanticInbox.capture("Check out LangGraph for multi-agent orchestration");
+      const results = await semanticSearch.search("langgraph", { semantic: true });
+      const hit = results.find((r) => r.source === "inbox");
+      expect(hit).toBeDefined();
+      expect(hit!.title).toContain("LangGraph");
+      expect(results.some((r) => r.source === "memory" && r.title.startsWith("inbox:"))).toBe(false);
+    });
+
+    it("routes a vault note through its own hit shape", async () => {
+      await semanticVault.create("LangGraph notes", "some content about orchestration");
+      const results = await semanticSearch.search("langgraph", { semantic: true });
+      const hit = results.find((r) => r.source === "vault");
+      expect(hit).toBeDefined();
+      expect(hit!.title).toBe("LangGraph notes");
+    });
+
+    it("routes a workspace project, task, and milestone through their own hit shapes", async () => {
+      const project = await semanticWorkspace.createProject("LangGraph rollout", "adopt langgraph internally");
+      await semanticWorkspace.addTask(project.id, "Evaluate langgraph vs alternatives");
+      await semanticWorkspace.addMilestone(project.id, "langgraph pilot complete");
+
+      const results = await semanticSearch.search("langgraph", { semantic: true });
+      const workspaceHits = results.filter((r) => r.source === "workspace");
+      expect(workspaceHits.length).toBe(3);
+      expect(workspaceHits.some((r) => r.snippet.startsWith("[task/"))).toBe(true);
+      expect(workspaceHits.some((r) => r.snippet.startsWith("[milestone/"))).toBe(true);
+    });
+
+    it("routes a learning resource and flashcard through their own hit shapes", async () => {
+      await semanticLearning.addResource("LangGraph course", "course");
+      await semanticLearning.addCard("What is LangGraph?", "An orchestration framework");
+
+      const results = await semanticSearch.search("langgraph", { semantic: true });
+      const learningHits = results.filter((r) => r.source === "learning");
+      expect(learningHits.length).toBe(2);
+      expect(learningHits.some((r) => r.snippet.startsWith("[flashcard]"))).toBe(true);
+    });
+
+    it("still matches Graph nodes by keyword even in semantic mode", async () => {
+      graph.upsertNode({ kind: "technology", label: "LangGraph" });
+      const results = await semanticSearch.search("langgraph", { semantic: true });
+      expect(results.some((r) => r.source === "graph")).toBe(true);
+    });
+
+    it("leaves an unrelated, non-subsystem memory record as a generic memory hit", async () => {
+      await semanticMemory.remember("project", "note-1", { text: "LangGraph orchestration notes" });
+      const results = await semanticSearch.search("langgraph", { semantic: true });
+      const memoryHit = results.find((r) => r.source === "memory");
+      expect(memoryHit).toBeDefined();
+      expect(memoryHit!.title).toBe("note-1");
+    });
   });
 });

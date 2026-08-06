@@ -43,9 +43,10 @@ handling for orphaned edges (moot today since nothing deletes nodes).
   "article," even if it's structurally something else (e.g. a Reddit
   thread, a paper on arXiv).
 - 🚀 **Next implementation step:** wire `ResearchAgent` to use the same
-  `WebFetchTool` (it doesn't yet — see the Research Hub entry below) and
-  extend `HybridSearch`'s semantic mode to Graph/Inbox slices, not just
-  Memory.
+  `WebFetchTool` (it doesn't yet — see the Research Hub entry below).
+  (`HybridSearch`'s semantic mode has since been extended to Inbox/Vault/
+  Workspace/Learning — see the Hybrid Search entry below; only Graph
+  remains keyword-only.)
 
 ---
 
@@ -90,23 +91,30 @@ handling for orphaned edges (moot today since nothing deletes nodes).
 
 ---
 
-### Cross-store Hybrid Search (real merge; semantic mode is Memory-only)
+### Cross-store Hybrid Search (real merge; semantic mode is Graph-only gap now)
 
-- ✔ **Done:** `HybridSearch` genuinely queries and merges Memory, Graph,
-  and Inbox in one call, with correct dedup of Inbox items appearing
-  twice (once as a raw Memory record, once via the friendlier Inbox
-  view). CLI (`ash search`) and REST (`GET /search`) both support the
-  `--semantic`/`semantic=` flag.
-- ✖ **Missing:** semantic search for Graph and Inbox results — the flag
-  only changes the Memory query's behavior; Graph/Inbox are always
-  plain-substring-matched regardless of the flag.
-- ⚠ **Should be improved:** the semantic flag's name/documentation should
-  clarify its actual (Memory-only) scope so a user isn't surprised that
-  "semantic" search still substring-matches Graph/Inbox results.
-- 🚀 **Next implementation step:** compute embeddings for Graph node
-  labels and Inbox item content (same best-effort pattern
-  `MemoryManager.remember()` already uses) so semantic mode can apply
-  uniformly across all three stores.
+- ✔ **Done:** `HybridSearch` genuinely queries and merges all six stores
+  in one call, with correct dedup of Inbox/Vault/Workspace/Learning items
+  appearing twice (once as a raw Memory record, once via each subsystem's
+  friendlier view). CLI (`ash search`) and REST (`GET /search`) both
+  support the `--semantic`/`semantic=` flag. **`{ semantic: true }` now
+  covers Memory, Inbox, Vault, Workspace, and Learning** — one
+  `MemoryManager.searchSemantic()` call, routed back into each source's
+  own hit shape by its subsystem tag, since those four already persist
+  through `remember()` and get an embedding computed at capture/create
+  time with no new indexing work needed.
+- ✖ **Missing:** semantic search for Graph results — `KnowledgeNode`s have
+  no embedding storage, so Graph stays plain-substring-matched regardless
+  of the flag.
+- ⚠ **Should be improved:** none — the semantic flag's documentation
+  (`docs/search.md`) now explicitly scopes what it covers and why Graph
+  is the one exception.
+- 🚀 **Next implementation step:** decide how to add embeddings to Graph
+  nodes — either make `KnowledgeGraph.upsertNode()` async and update its
+  ~20 synchronous call sites (`agents/base-agent.ts` plus four subsystem
+  managers), or accept a slower on-demand embedding pass at query time.
+  This is a real architectural decision, not a small addition — see
+  `docs/search.md`'s "What's not implemented" section.
 
 ---
 

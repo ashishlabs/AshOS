@@ -14,7 +14,7 @@ shipped, see `docs/knowledge-vault.md`/`docs/project-workspaces.md`/
 
 ```bash
 ash search "langgraph"
-ash search "langgraph" --semantic   # embedding similarity for the Memory slice
+ash search "langgraph" --semantic   # embedding similarity for Memory/Inbox/Vault/Workspace/Learning
 ash search "langgraph" --limit 5
 ```
 
@@ -24,33 +24,54 @@ Search tab.
 ## How it works
 
 `HybridSearch` doesn't own any storage — it queries each store's existing
-lookup, then merges and ranks:
+lookup, then merges and ranks. In **keyword mode** (the default):
 
 ```
 MemoryManager.query({ text })          — keyword: value substring match
-  or MemoryManager.searchSemantic()    — embedding cosine similarity (opt-in)
-        │
 KnowledgeGraph.listNodes()             — keyword: label/tag substring match
-        │
 InboxManager.list()                    — keyword: content/tag substring match
-        │
 VaultManager.list()                    — keyword: title/content/tag substring match
-        │
 WorkspaceManager.list*()               — keyword: name/title/description/tag substring match
-        │
 LearningManager.list*()                — keyword: title/notes/front/back/tag substring match
         │
 merge, sort by score desc (tie-break: newest first), slice to `limit`
 ```
 
-Graph/Inbox/Vault/Workspace/Learning matching is always a deterministic
-substring heuristic — same "transparent heuristic over an LLM/embedding
-call wherever one is good enough" convention as `codebase/indexer.ts`'s
-`searchIndex` — since none of the five computes embeddings. Memory
-matching can opt into the existing `MemoryManager.searchSemantic()`
-(best-effort, requires an active provider; falls back to keyword matching
-without one, per `MemoryManager`'s own documented behavior) via
-`{ semantic: true }`.
+In **semantic mode** (`{ semantic: true }`):
+
+```
+MemoryManager.searchSemantic()   — ONE embedding-similarity call, covering
+                                    Memory, Inbox, Vault, Workspace, and
+                                    Learning at once (see below), then
+                                    partitioned back into each source's own
+                                    hit shape by its subsystem tag
+        │
+KnowledgeGraph.listNodes()       — keyword: label/tag substring match (unchanged —
+                                    Graph nodes have no embedding storage yet)
+        │
+merge, sort by score desc (tie-break: newest first), slice to `limit`
+```
+
+Every keyword slice is a deterministic substring heuristic — same
+"transparent heuristic over an LLM/embedding call wherever one is good
+enough" convention as `codebase/indexer.ts`'s `searchIndex`. Semantic mode
+works for five of the six sources because Inbox/Vault/Workspace/Learning
+records are themselves `MemoryManager` records (see the section below) —
+they already get a best-effort embedding computed and indexed the moment
+they're captured/created, with no new indexing work required to search
+them semantically. **Graph is the one exception**: `KnowledgeNode`s are
+stored in their own JSON file with no embedding field, so Graph results
+stay keyword-based in both modes — closing that gap would mean either
+computing embeddings inside `KnowledgeGraph.upsertNode()` (which ~20
+call sites across `agents/base-agent.ts`, `workspace-manager.ts`,
+`vault-manager.ts`, `inbox-manager.ts`, `learning-manager.ts`, and the
+Innovation agents call synchronously today — turning it async is a wider,
+separate decision) or a lazy on-demand embedding pass at query time
+(expensive: one provider round-trip per ungraphed node per search). Both
+require an active provider; without one, `searchSemantic()` falls back to
+its own keyword matching per `MemoryManager`'s documented behavior, so
+`{ semantic: true }` never throws or returns nothing just because no
+provider is configured.
 
 The Workspace slice searches all three entity types (projects, tasks,
 milestones) and returns every match under one `"workspace"` source —
@@ -69,9 +90,12 @@ slice: exact match on title/label/content or a tag → `1.0`, prefix match
 `MemoryManager.query`'s value-substring pre-filter (not found in the key
 or tags) get a flat `0.4` — still a real hit, just a weaker one, since the
 pre-filter doesn't distinguish key/tag matches into a score itself.
-Semantic Memory hits use rank position (`searchSemantic` returns results
-already ordered by cosine similarity, but doesn't expose the raw score)
-converted into a comparable `0-1` value.
+
+Semantic hits (Memory, Inbox, Vault, Workspace, Learning) use rank
+position — one `searchSemantic()` call returns results already ordered by
+cosine similarity across all five sources at once, but doesn't expose the
+raw similarity score, so each hit's position in that ranked list is
+converted into a comparable `0-1` value instead.
 
 ## Inbox, Vault, Workspace, and Learning records never double up as Memory hits
 
@@ -85,11 +109,16 @@ and every `LearningResource`/`Flashcard` is one tagged
 `docs/inbox.md`/`docs/knowledge-vault.md`/`docs/project-workspaces.md`/
 `docs/learning-hub.md`). Without deduplication, a query matching one of
 these would return it twice: once as a raw `memory` hit (JSON dump) and
-once as a properly formatted hit from its own slice. `HybridSearch`
-excludes any Memory record tagged `"inbox"`, `"vault"`, or with any tag
-starting with `"workspace-"` or `"learning-"` from the Memory slice —
-each subsystem's own slice already surfaces it with a friendlier title
-and snippet.
+once as a properly formatted hit from its own slice. In keyword mode,
+`HybridSearch` excludes any Memory record tagged `"inbox"`, `"vault"`, or
+with any tag starting with `"workspace-"` or `"learning-"` from the
+Memory slice, since each subsystem's own keyword slice already surfaces
+it with a friendlier title and snippet. In semantic mode there's only one
+underlying query (`MemoryManager.searchSemantic()`), so the same tags are
+used the other way around — to *route* each hit to its own hit shape
+(`inboxHit`/`vaultHit`/`projectHit`/`taskHit`/`milestoneHit`/
+`resourceHit`/`cardHit`) instead of excluding it; an untagged record falls
+through to the generic Memory shape either way.
 
 ## REST API
 
@@ -103,6 +132,11 @@ and snippet.
 
 ## What's not implemented
 
+- **Graph has no semantic search** — `KnowledgeNode`s carry no embedding,
+  so `{ semantic: true }` still matches Graph by label/tag substring, the
+  same as keyword mode. See "How it works" above for why closing this
+  needs a wider decision (an async `upsertNode`, or a slower on-demand
+  embedding pass) rather than a small addition.
 - **Innovation Intelligence isn't searched** — only the general,
   project-wide `AshOS.knowledgeGraph` is queried, not Innovation's own
   namespaced graph (`.ashos/innovation/graph.json`) or its

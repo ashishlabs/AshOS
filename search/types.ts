@@ -8,6 +8,6 @@ export interface SearchResult {
   snippet: string;
   tags: string[];
   createdAt: string;
-  /** 0-1, deterministic heuristic relevance — not ML-ranked, same "transparent heuristic over an LLM/embedding call wherever one is good enough" convention as `codebase/indexer.ts`'s `searchIndex`. Semantic memory hits (`semantic: true`) are the one exception, ranked by `MemoryManager.searchSemantic()`'s cosine similarity instead. */
+  /** 0-1, deterministic heuristic relevance — not ML-ranked, same "transparent heuristic over an LLM/embedding call wherever one is good enough" convention as `codebase/indexer.ts`'s `searchIndex`. Semantic-mode hits (`semantic: true`) for every source except Graph are the exception, ranked by `MemoryManager.searchSemantic()`'s embedding cosine similarity instead — Graph has no embedding storage, so it stays keyword-scored even in semantic mode. */
   score: number;
 }

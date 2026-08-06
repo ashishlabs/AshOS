@@ -167,7 +167,7 @@ Hub territory (Section 8, still not started).
 | AI summaries | 🔴 None on Vault notes themselves — a promoted note's `content` is the Inbox item's *original* text, not its `InboxItem.summary` |
 | Revision history | 🔴 None — Memory records are overwritten on update, no version chain (title is immutable by design; content/tags/links are overwrite-on-edit) |
 | Flashcards | 🔴 None — out of scope for Vault, tracked separately as Learning Hub (Section 8) |
-| Search | ✅ `HybridSearch`'s Vault slice (Section 14) — title/content/tag substring matching, same heuristic as every other non-semantic slice |
+| Search | ✅ `HybridSearch`'s Vault slice (Section 14) — title/content/tag substring matching in keyword mode; also has real semantic search now (`{ semantic: true }`), since Vault notes persist through `MemoryManager.remember()` and already carry a best-effort embedding |
 | Knowledge graph integration | ✅ Every note becomes a `note` node (new `KnowledgeNodeKind`) on the general `KnowledgeGraph`; links become `relates-to` edges |
 
 ---
@@ -381,10 +381,10 @@ Implementation: `search/hybrid-search.ts` (`HybridSearch`), `ash search`,
 
 | Requirement | Status | Notes |
 |---|---|---|
-| Keyword search | ✅ | `textScore()` — exact/prefix/substring matching, applied uniformly across Memory, Graph, and Inbox |
-| Semantic search | 🟡 | Real, but **Memory-only** — `--semantic` flag routes to `MemoryManager.searchSemantic()` (embeddings cosine similarity). Graph and Inbox results are always keyword-matched, never semantic, even in semantic mode |
-| Hybrid search | ✅ | This is exactly what `HybridSearch` does — merges and ranks results across Memory + Graph + Inbox in one call |
-| Vector search | 🟡 | Exists (`memory/vector-store.ts`, brute-force cosine similarity), but only backs the Memory slice, and quality depends entirely on the active provider's embeddings (the default `mock` provider produces a deterministic, content-free vector — semantic search is not meaningful until a real provider is configured) |
+| Keyword search | ✅ | `textScore()` — exact/prefix/substring matching, applied uniformly across all six stores (Memory, Graph, Inbox, Vault, Workspace, Learning) |
+| Semantic search | 🟡 | Real for **5 of 6 stores** — `--semantic` routes to one `MemoryManager.searchSemantic()` call covering Memory, Inbox, Vault, Workspace, and Learning (the latter four persist through `remember()`, so they already carry a best-effort embedding with no new indexing needed), partitioned back into each source's own hit shape by its subsystem tag. **Graph is the one exception**: `KnowledgeNode`s have no embedding storage, so Graph stays keyword-matched even in semantic mode — closing it means either an async `KnowledgeGraph.upsertNode()` (touching ~20 synchronous call sites) or an on-demand embedding pass at query time, a real architectural decision rather than a small addition |
+| Hybrid search | ✅ | This is exactly what `HybridSearch` does — merges and ranks results across all six stores in one call |
+| Vector search | 🟡 | Exists (`memory/vector-store.ts`, brute-force cosine similarity), backs Memory/Inbox/Vault/Workspace/Learning (not Graph), and quality depends entirely on the active provider's embeddings (the default `mock` provider produces a deterministic, content-free vector — semantic search is not meaningful until a real provider is configured) |
 | Natural language search | 🔴 | No query understanding/parsing — a query is either literal-keyword-matched or embedded verbatim. No question-answering layer |
 | Performance | 🟡 | `VectorStore` is brute-force (O(n) cosine similarity per query, `memory/vector-store.ts`) — fine at current scale, will not scale to large memory stores without an actual index |
 

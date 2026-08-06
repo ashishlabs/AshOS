@@ -66,12 +66,19 @@ brief plus the existing North Star roadmap.
    Chat) still have no coverage — a smaller, bounded backlog rather than
    the "zero tests anywhere" gap this item originally named.
 
-7. **Semantic search for Graph and Inbox slices**, not just Memory.
-   `HybridSearch`'s `--semantic` flag only affects the Memory query today;
-   Graph, Inbox, Vault, Workspace, and Learning results are always plain
-   substring matching, even in "semantic" mode — a user enabling semantic
-   search would reasonably
-   expect it to apply everywhere.
+7. **~~Semantic search for Graph and Inbox slices~~ Mostly closed.**
+   `HybridSearch`'s `{ semantic: true }` now covers Memory, Inbox, Vault,
+   Workspace, and Learning — one `MemoryManager.searchSemantic()` call,
+   since the latter four already persist through `remember()` and get a
+   best-effort embedding computed and indexed at capture/create time with
+   no new work required; the hit is then routed back into its own
+   source's friendlier shape by its subsystem tag instead of the generic
+   Memory one. **Graph is still keyword-only** in both modes:
+   `KnowledgeNode`s have no embedding storage, and adding it means either
+   an async `KnowledgeGraph.upsertNode()` (touching ~20 synchronous call
+   sites across `agents/base-agent.ts` and four subsystem managers) or a
+   slower on-demand embedding pass at query time — a real, separate
+   architectural decision, not a small addition. See `docs/search.md`.
 
 ## Medium
 
