@@ -55,10 +55,13 @@ ones, and removes the single largest regression risk in the codebase.
    by kind, click to highlight a node's connections.
 7. CLI/REST surface for the Scheduler (`ash schedule ...`,
    `/scheduler*`) — thin wrapper, `Scheduler` class is already complete.
-8. 🟡 **Half shipped** — `WebFetchTool` exists and grounds Inbox link
-   summaries in real page content; `ResearchAgent` itself still isn't
-   wired to use it, and there's no dedicated *search* (topic → URLs)
-   tool, only *fetch* (URL → text).
+8. ✅ **Shipped, except one piece** — `WebFetchTool` exists and grounds
+   both Inbox link summaries and `ResearchAgent` output in real page
+   content when the task description contains a URL (live-verified
+   against a real reachable host). Still open: there's no dedicated
+   *search* (topic → URLs) tool, only *fetch* (URL → text), so
+   `ResearchAgent` can research a URL you give it but can't discover one
+   for an arbitrary topic on its own.
 
 ## Phase 3 — now fully shipped
 

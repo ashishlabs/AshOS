@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -16,8 +16,20 @@ import { ToolRegistry } from "../tools/registry";
 import { FsTool } from "../tools/fs-tool";
 import { ShellTool } from "../tools/shell-tool";
 import { GitTool } from "../tools/git-tool";
+import { WebFetchTool } from "../tools/web-fetch-tool";
 import { MockProvider } from "../providers/mock-provider";
 import type { AgentContext } from "./types";
+
+function htmlResponse(html: string, opts: { status?: number } = {}) {
+  return {
+    ok: (opts.status ?? 200) < 400,
+    status: opts.status ?? 200,
+    headers: { get: (key: string) => (key.toLowerCase() === "content-type" ? "text/html; charset=utf-8" : null) },
+    text: async () => html
+  };
+}
+
+const PUBLIC_IP = async () => "93.184.216.34"; // example.com's real (public) IP — a stand-in resolver for tests
 
 describe("Agents", () => {
   let cwd: string;
@@ -34,6 +46,7 @@ describe("Agents", () => {
 
   afterEach(() => {
     fs.rmSync(cwd, { recursive: true, force: true });
+    vi.unstubAllGlobals();
   });
 
   it("CodeAgent writes generated content to a file", async () => {
@@ -62,6 +75,45 @@ describe("Agents", () => {
     const result = await agent.execute({ id: "t4", description: "AshOS architecture" }, context);
     expect(result.ok).toBe(true);
     expect(result.output).toContain("mock");
+  });
+
+  it("ResearchAgent grounds the summary in a URL's fetched content via the web-fetch tool", async () => {
+    context.tools.register(new WebFetchTool({ resolveHostname: PUBLIC_IP }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        htmlResponse("<html><head><title>AshOS Docs</title></head><body><p>AshOS is a local-first AI operating system.</p></body></html>")
+      )
+    );
+
+    const agent = new ResearchAgent();
+    const result = await agent.execute({ id: "t4b", description: "Summarize https://example.com/about" }, context);
+
+    expect(result.ok).toBe(true);
+    expect(result.output).toContain("AshOS is a local-first AI operating system.");
+  });
+
+  it("ResearchAgent falls back to model knowledge when the URL fetch fails", async () => {
+    context.tools.register(new WebFetchTool({ resolveHostname: PUBLIC_IP }));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(htmlResponse("", { status: 500 })));
+
+    const agent = new ResearchAgent();
+    const result = await agent.execute({ id: "t4c", description: "Summarize https://example.com/about" }, context);
+
+    expect(result.ok).toBe(true);
+    expect(result.output).toContain("no web search tool available");
+  });
+
+  it("ResearchAgent doesn't attempt a fetch when the description has no URL, even with web-fetch registered", async () => {
+    context.tools.register(new WebFetchTool({ resolveHostname: PUBLIC_IP }));
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const agent = new ResearchAgent();
+    const result = await agent.execute({ id: "t4d", description: "AshOS architecture" }, context);
+
+    expect(result.ok).toBe(true);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("ReviewerAgent reviews a task description directly when no file is given", async () => {

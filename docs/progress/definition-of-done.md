@@ -42,11 +42,11 @@ handling for orphaned edges (moot today since nothing deletes nodes).
   (GitHub/YouTube/Twitter-X/PDF) always falls through to generic
   "article," even if it's structurally something else (e.g. a Reddit
   thread, a paper on arXiv).
-- 🚀 **Next implementation step:** wire `ResearchAgent` to use the same
-  `WebFetchTool` (it doesn't yet — see the Research Hub entry below).
-  (`HybridSearch`'s semantic mode has since been extended to Inbox/Vault/
-  Workspace/Learning — see the Hybrid Search entry below; only Graph
-  remains keyword-only.)
+- 🚀 **Next implementation step:** none outstanding for this entry.
+  (`ResearchAgent` is now wired to `WebFetchTool` too — see the Research
+  Hub entry below. `HybridSearch`'s semantic mode has since been extended
+  to Inbox/Vault/Workspace/Learning — see the Hybrid Search entry below;
+  only Graph remains keyword-only.)
 
 ---
 
@@ -147,10 +147,16 @@ handling for orphaned edges (moot today since nothing deletes nodes).
 
 - ✔ **Done:** GitHub/HN/Reddit/arXiv collectors, event normalization and
   dedup, Daily Brief narrative, technology radar classification — all
-  real, tested code.
+  real, tested code. `ResearchAgent` (`agents/research-agent.ts`) now
+  grounds its summary in a URL's actual fetched text via `WebFetchTool`
+  when the task description contains one — same pattern as the Inbox
+  summarizer — live-verified against a real reachable host (`api.github.com`
+  in this sandbox; a non-allowlisted host fails closed and falls back to
+  model knowledge, exactly as designed).
 - ✖ **Missing:** project linking (same missing-Project-entity gap as
-  Idea Lab); a generic web-search/fetch tool for arbitrary topics beyond
-  the AI/dev ecosystem the collectors are scoped to.
+  Idea Lab); a dedicated *search* tool (topic → URLs) — `ResearchAgent`
+  can only research a URL it's already given, not discover one for an
+  arbitrary topic on its own.
 - ⚠ **Should be improved:** only the GitHub collector is proven reachable
   from this project's own development sandbox — HN/Reddit/arXiv should
   be verified live from an unrestricted environment before being relied

@@ -38,7 +38,7 @@ subsystem's own detailed design.
 | 5 | Multi-Agent Collaboration | ✅ Done | 21 agents registered today (Generic/Code/Research/Git/Testing/GitHubTrending/Reflection/CodebaseAnalyst + Reviewer/Security Auditor/DevOps/UI Designer/Architect + 8 Innovation agents). Only Video Creator remains unnamed — deliberately deferred with the rest of Creative Studio (#13), blocked on media-generation provider infrastructure this codebase doesn't have. |
 | 6 | Local-First AI | ✅ Done | Local providers exist, and `ModelRouter` (Stage 2, shipped) now defaults routine work to a configured cheap/local model and escalates only when a task is tagged (or defaults to) a higher tier. Off by default — see `docs/model-router.md`. |
 | 7 | Innovation Engine | ✅ Done | GitHub/HN/Reddit/arXiv/Hugging Face collectors, event dedup, knowledge graph, opportunity scoring, Daily Brief, and a Markdown news digest are all shipped. Only Product Hunt (explicitly named) is missing, same collector pattern as the rest. |
-| 8 | Autonomous Research | 🟡 Partial | A `WebFetchTool` now exists (`tools/web-fetch-tool.ts`, Tier 2 item 7) and is used by the Inbox's summarizer, but `ResearchAgent` itself hasn't been wired to call it yet — it still reasons from the model alone. The Innovation collectors prove the multi-source pattern works; it's just scoped to AI-ecosystem signals, not arbitrary topics. |
+| 8 | Autonomous Research | 🟡 Partial | A `WebFetchTool` now exists (`tools/web-fetch-tool.ts`, Tier 2 item 7) and `ResearchAgent` is wired to it — a task description containing a URL gets grounded in that page's actual fetched text, same pattern as the Inbox summarizer, live-verified against a real reachable host. Still missing: a dedicated `WebSearchTool` (topic → URLs) — `ResearchAgent` can only research a URL you already give it, not discover ones for an arbitrary topic on its own. The Innovation collectors prove the multi-source pattern works; it's just scoped to AI-ecosystem signals, not arbitrary topics. |
 | 9 | Build Software End-to-End | 🟡 Partial | `ashos.run(goal)` already does research→plan→code→test→git for one pass. Design, deploy, monitor, and iterate are all missing. **Overlaps with the removed Evolution Engine** — see below. |
 | 10 | Continuous Learning | ❌ Missing | `BuilderProfileStore` learns narrowly for Innovation category weights only; nothing learns from general task outcomes. **Overlaps with the removed Evolution Engine.** |
 | 11 | Workflow Automation | ✅ Infra done | `WorkflowEngine` + `Scheduler` fully support this — "daily AI news" is literally the digest already built. Needs more workflow definitions + a couple of new tools (email, calendar) for the other named examples. |
@@ -84,7 +84,7 @@ much new architecture it requires.
 ### Tier 2 — new agents/tools, moderate effort, no new architecture
 
 6. ✅ Named specialist agents — **shipped**: `agents/reviewer-agent.ts` (capability `review`), `security-auditor-agent.ts` (`security-audit`), `devops-agent.ts` (`devops`), `ui-designer-agent.ts` (`ui-design`), `architect-agent.ts` (`architecture`) — each a role-specific system prompt over `context.provider.chat()`, following `CodeAgent`'s shape (optional `task.input.file` to read for context or write the produced artifact), reachable via the Planner, a workflow step, or `AshOS.runAgent()`. Closes #5 except Video Creator (Tier 3, Creative Studio).
-7. 🟡 `WebFetchTool` — **shipped** (`tools/web-fetch-tool.ts`, capability `web-fetch`): fetches a URL and extracts readable text, http(s)-only with private/loopback/link-local addresses blocked, no redirects, timeout + size caps. Used by the Inbox's AI summarizer (`docs/inbox.md`) and available to any agent via `context.tools.get("web-fetch")`. Remaining: no dedicated `WebSearchTool` (finding URLs, not just fetching a known one) and `ResearchAgent` itself hasn't been updated to call it — still reasons model-only. Closes half of #8.
+7. ✅ `WebFetchTool` — **shipped** (`tools/web-fetch-tool.ts`, capability `web-fetch`): fetches a URL and extracts readable text, http(s)-only with private/loopback/link-local addresses blocked, no redirects, timeout + size caps. Used by the Inbox's AI summarizer (`docs/inbox.md`) and `ResearchAgent` (`agents/research-agent.ts` — grounds a summary in a URL's fetched text when the task description contains one, same pattern as Inbox), and available to any other agent via `context.tools.get("web-fetch")`. Remaining: no dedicated `WebSearchTool` (finding URLs for a topic, not just fetching a known one) — closes #8 down to just that.
 8. MCP client support — one standardized integration point instead of hand-building Docker/browser/etc. one at a time. Biggest lever for #2.
 9. Kanban view over the existing task graph (UI only, backend already exists).
 10. Product Hunt collector (same pattern as the five collectors already shipped). Closes the last piece of #7.
@@ -110,8 +110,8 @@ up after Tier 1 lands.
 - Stage 5 (Verification Gate) — **shipped**.
 
 - Tier 2 item 6 (Named specialist agents) — **shipped**.
+- Tier 2 item 7 (`ResearchAgent` wired to `WebFetchTool`) — **shipped**.
 
-All five Tier 1 stages plus Tier 2 item #6 are now shipped, closing v2 to
-~100%. Remaining Tier 2 items (MCP client, Kanban view, Product Hunt
-collector, and wiring `ResearchAgent` to `WebFetchTool`) are not yet
-scheduled as tasks.
+All five Tier 1 stages plus Tier 2 items #6 and #7 are now shipped,
+closing v2 to ~100%. Remaining Tier 2 items (MCP client, Kanban view,
+Product Hunt collector) are not yet scheduled as tasks.

@@ -82,13 +82,16 @@ brief plus the existing North Star roadmap.
 
 ## Medium
 
-8. **~~A generic web-search/fetch tool.~~ Partially closed.** `WebFetchTool`
+8. **~~A generic web-search/fetch tool.~~ Mostly closed.** `WebFetchTool`
    (`tools/web-fetch-tool.ts`, capability `web-fetch`) now exists and is
-   used by the Inbox's AI summarizer to ground a captured link's summary
-   in the page's actual text. Still open: it's a *fetch* tool (given a
-   URL, get its text), not a *search* tool (given a topic, find URLs) —
-   and `ResearchAgent` itself hasn't been updated to call it, so
-   "Autonomous Research" (North Star goal #8) still reasons model-only.
+   used by both the Inbox's AI summarizer and `ResearchAgent`
+   (`agents/research-agent.ts`) to ground a summary in a URL's actual
+   fetched text — live-verified against a real reachable host. Still
+   open: it's a *fetch* tool (given a URL, get its text), not a *search*
+   tool (given a topic, find URLs) — `ResearchAgent` can research a URL
+   you hand it, but still can't discover one for an arbitrary topic on
+   its own, so "Autonomous Research" (North Star goal #8) is real but not
+   fully autonomous yet.
 
 9. **CLI/REST surface for the Scheduler.** It's real, working
    infrastructure, but only reachable by writing SDK code — there's no
