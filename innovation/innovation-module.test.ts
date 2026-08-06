@@ -85,9 +85,9 @@ describe("InnovationModule", () => {
     expect(brief.topOpportunities).toHaveLength(0);
   });
 
-  it("registers one real collector per known live source (github/hn/reddit/arxiv/huggingface)", () => {
+  it("registers one real collector per known live source (github/hn/reddit/arxiv/huggingface/product-hunt)", () => {
     const ids = module_.liveCollectors.map((c) => c.id).sort();
-    expect(ids).toEqual(["arxiv-live", "github-live", "hn-live", "huggingface-live", "reddit-live"]);
+    expect(ids).toEqual(["arxiv-live", "github-live", "hn-live", "huggingface-live", "product-hunt-live", "reddit-live"]);
   });
 
   it("runLiveDiscovery isolates a failing collector so the others still ingest", async () => {

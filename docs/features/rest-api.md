@@ -1,6 +1,6 @@
 # Feature: REST API
 
-**Status:** ✅ Complete (43 routes)
+**Status:** ✅ Complete (79 routes; re-counted, includes `/scheduler*` added since this was last 43)
 
 ## 1. What is this feature?
 

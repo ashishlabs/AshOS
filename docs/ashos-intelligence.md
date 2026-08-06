@@ -581,7 +581,7 @@ table including non-Intelligence routes):
 | GET | `/innovation/brief` | Daily Innovation Brief |
 | GET | `/innovation/profile` | Builder Profile |
 | GET | `/innovation/collectors` | registered (offline) collectors |
-| GET | `/innovation/live-collectors` | the five real, opt-in collectors |
+| GET | `/innovation/live-collectors` | the six real, opt-in collectors |
 | POST | `/innovation/digest` | `{sources?}` — run live discovery, return `{markdown, path, result}` |
 | GET | `/innovation/graph` | knowledge graph stats |
 | GET | `/innovation/events[/:id]` | canonical deduplicated events |
@@ -670,10 +670,21 @@ Everything else (`RepositoryProfileStore`, `RadarStore`,
   allowlists `api.github.com`, so only `github-live` is live-verified
   here — the other four are real, tested code awaiting an unrestricted
   environment.
+- **M1.6 — Product Hunt collector [shipped]**: a sixth real, opt-in
+  collector (`innovation/collectors/product-hunt-collector.ts`,
+  `product-hunt-live`, `market` domain), parsing Product Hunt's public RSS
+  feed (`producthunt.com/feed?category=...`) rather than its official
+  GraphQL v2 API, which requires an authenticated developer token this
+  codebase doesn't ask a user for. Same per-category loop + dedup shape,
+  mocked-`fetch` unit tests, and `liveCollectors` wiring as the other five;
+  also blocked by this sandbox's `api.github.com`-only network policy
+  (confirmed via a direct `curl` returning the same `403` signature as
+  the other four), so likewise real, tested code awaiting an unrestricted
+  environment.
 - **M2 — More real collectors**: Papers With Code, package registries
-  (npm/PyPI), Product Hunt — each following the exact same `Collector`
-  pattern, gated by actual network reachability wherever AshOS runs
-  (verify before building, as GitHub/HN/Reddit/arXiv/Hugging Face were
+  (npm/PyPI) — each following the exact same `Collector` pattern, gated
+  by actual network reachability wherever AshOS runs (verify before
+  building, as GitHub/HN/Reddit/arXiv/Hugging Face/Product Hunt were
   here).
 - **M3 — Specialized research agents**: Research Paper Analyst, Startup
   Analyst, Benchmark Analyst, Documentation Analyst, API Change Analyst,

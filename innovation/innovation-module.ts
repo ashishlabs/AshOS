@@ -12,6 +12,7 @@ import { createHnCollector } from "./collectors/hn-collector";
 import { createRedditCollector } from "./collectors/reddit-collector";
 import { createArxivCollector } from "./collectors/arxiv-collector";
 import { createHuggingFaceCollector } from "./collectors/huggingface-collector";
+import { createProductHuntCollector } from "./collectors/product-hunt-collector";
 import { createDefaultIntelligenceAgents } from "./agents/index";
 import { RepositoryAnalystAgent } from "./agents/repository-analyst-agent";
 import { TechnologyRadarAgent } from "./agents/technology-radar-agent";
@@ -100,7 +101,8 @@ export class InnovationModule {
     createHnCollector(),
     createRedditCollector(),
     createArxivCollector(),
-    createHuggingFaceCollector()
+    createHuggingFaceCollector(),
+    createProductHuntCollector()
   ];
 
   /** @deprecated kept for backward compatibility — use `liveCollectors` (or `runLiveDiscovery(["github-live"])`) instead. */

@@ -141,8 +141,15 @@ brief plus the existing North Star roadmap.
     Knowledge Vault shipped, so "what did this note used to say" is an
     actual question a user can ask today with no way to answer it.
 
-16. **Product Hunt collector** for Innovation Intelligence — same pattern
-    as the five collectors already shipped, just not built yet.
+16. **~~Product Hunt collector~~ Closed.** `innovation/collectors/product-hunt-collector.ts`
+    (`product-hunt-live`, `market` domain) parses Product Hunt's public RSS
+    feed — its official GraphQL v2 API requires an authenticated developer
+    token this codebase doesn't ask a user for. Same per-category loop +
+    dedup shape, mocked-`fetch` tests, and `liveCollectors` wiring as the
+    five collectors already shipped. Like Hacker News/Reddit/arXiv/Hugging
+    Face, this sandbox's `api.github.com`-only network policy blocks it
+    (confirmed via a direct `curl`), so it's real, tested code awaiting an
+    unrestricted environment to prove itself live.
 
 17. **Accessibility depth** (only 10 `aria-*` attributes across a
     2,775-line, 15-tab dashboard — both numbers grown from 7/1,745/11 at

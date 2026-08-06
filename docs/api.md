@@ -39,7 +39,7 @@ Start it with `npm run api`.
 | GET | `/innovation/brief` | — | Generates today's Daily Innovation Brief on demand. |
 | GET | `/innovation/profile?limit=` | — | Top Builder Profile categories by learned weight. |
 | GET | `/innovation/collectors` | — | Registered (offline-by-default) collectors (`id`, `domain`, `description`). Does not include the opt-in `liveCollectors` — see below. |
-| GET | `/innovation/live-collectors` | — | The five real, opt-in collectors (GitHub, Hacker News, Reddit, arXiv, Hugging Face) — never swept by a default discovery cycle, only run via `live: true` / `/innovation/digest`. |
+| GET | `/innovation/live-collectors` | — | The six real, opt-in collectors (GitHub, Hacker News, Reddit, arXiv, Hugging Face, Product Hunt) — never swept by a default discovery cycle, only run via `live: true` / `/innovation/digest`. |
 | POST | `/innovation/digest` | `{ sources? }` | Runs `runLiveDiscovery()` across every (or a selected subset of, by collector id) live collector and returns `{ markdown, path, result }` — a Markdown "today's AI news" report, also saved to `.ashos/innovation/digests/<date>.md`. `409` if a digest run is already in progress. |
 | GET | `/innovation/graph` | — | Knowledge graph stats (`nodeCount`, `edgeCount`, `byKind`). |
 | GET | `/innovation/events?category=&limit=` | — | Canonical, deduplicated `IntelligenceEvent`s, optionally filtered by category. |

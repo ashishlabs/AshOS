@@ -11,12 +11,13 @@ summarizing what's most worth building next.
 This is also the foundation of **AshOS Intelligence** — the broader
 "continuously monitor the AI ecosystem and decide what's worth building
 next" capability described in `docs/ashos-intelligence.md`. This document
-covers what's actually implemented today: event normalization/dedup, five
-real (opt-in) collectors — GitHub, Hacker News, Reddit, arXiv, and Hugging
-Face — a daily Markdown news digest built from them, Repository
-Intelligence, and a Technology Radar, all built as extensions of the
-pipeline below rather than a parallel system. `docs/ashos-intelligence.md`
-covers the full 20-part architecture and the roadmap for the rest of it.
+covers what's actually implemented today: event normalization/dedup, six
+real (opt-in) collectors — GitHub, Hacker News, Reddit, arXiv, Hugging
+Face, and Product Hunt — a daily Markdown news digest built from them,
+Repository Intelligence, and a Technology Radar, all built as extensions
+of the pipeline below rather than a parallel system.
+`docs/ashos-intelligence.md` covers the full 20-part architecture and the
+roadmap for the rest of it.
 
 It follows the same architectural pattern as the rest of AshOS: everything
 is a registry (`CollectorRegistry`), everything is provider-agnostic (the
@@ -114,7 +115,7 @@ either built-in (`InnovationModule`) or via a plugin
 (`host.innovation.collectors`, `kernel/types.ts`'s `PluginHost`). No engine
 code changes needed.
 
-Five real collectors ship today, all under `innovation/collectors/`, all
+Six real collectors ship today, all under `innovation/collectors/`, all
 following the exact same shape:
 
 | Collector (`id`) | Domain | Source | Signal `kind` |
@@ -124,6 +125,14 @@ following the exact same shape:
 | `reddit-collector.ts` (`reddit-live`) | `community` | Reddit public JSON listings, per subreddit | `discussion` |
 | `arxiv-collector.ts` (`arxiv-live`) | `research` | arXiv Atom API, per category | `paper` |
 | `huggingface-collector.ts` (`huggingface-live`) | `research` | Hugging Face models API, trending | `model-release` |
+| `product-hunt-collector.ts` (`product-hunt-live`) | `market` | Product Hunt public RSS feed, per category | `product-launch` |
+
+Product Hunt's official API (GraphQL v2) requires an authenticated
+developer token, which this codebase doesn't ask a user for — the RSS
+feed (`producthunt.com/feed?category=...`) is the one genuinely public,
+unauthenticated surface, parsed with the same small hand-rolled
+`<item>`-block regex extractor `arxiv-collector.ts` uses for Atom, rather
+than an XML dependency.
 
 Every one of them is deliberately **not** registered on the shared
 `CollectorRegistry` that `IntelligenceAgent`s sweep automatically — doing so
@@ -138,19 +147,20 @@ just opt-in. This is the "offline by default, real via explicit opt-in"
 convention the rest of AshOS follows (see `CLAUDE.md`). `runLiveDiscovery`
 isolates each collector in its own try/catch, so one source being
 rate-limited or network-blocked never stops the others from being
-ingested — `ash innovation collectors` lists all five with an "(opt-in via
+ingested — `ash innovation collectors` lists all six with an "(opt-in via
 --live)" annotation, and `liveGithubCollector` remains as a deprecated
 backward-compatible getter over `liveCollectors`.
 
 **A note on this environment specifically**: only `api.github.com` is
 allowlisted by this sandbox's network policy — Hacker News, Reddit, arXiv,
-and Hugging Face are all blocked here (verified via the proxy's
-`connect_rejected` diagnostics), so in *this* environment only
-`github-live` actually returns data; the other four return zero signals
-gracefully (not an error — see `runLiveDiscovery`'s per-collector
-isolation) rather than crashing. All five are fully unit-tested with
-mocked `fetch` and will work as soon as AshOS runs somewhere with normal
-outbound internet access.
+Hugging Face, and `producthunt.com` are all blocked here (verified for
+Product Hunt via a direct `curl` returning a `403 CONNECT tunnel failed`
+from the proxy, same signature as the other four), so in *this*
+environment only `github-live` actually returns data; the other five
+return zero signals gracefully (not an error — see `runLiveDiscovery`'s
+per-collector isolation) rather than crashing. All six are fully
+unit-tested with mocked `fetch` and will work as soon as AshOS runs
+somewhere with normal outbound internet access.
 
 ## Event Normalization & Deduplication
 
@@ -360,8 +370,9 @@ closest thing to literally "today's AI news" AshOS produces. It calls
 `InnovationModule.generateDigest()`, which:
 
 1. Runs `runLiveDiscovery()` across every (or a selected subset of)
-   `liveCollectors` — the same real GitHub/HN/Reddit/arXiv/Hugging Face
-   sources described above — ingesting every signal through the normal
+   `liveCollectors` — the same real GitHub/HN/Reddit/arXiv/Hugging
+   Face/Product Hunt sources described above — ingesting every signal
+   through the normal
    pipeline (events, graph, profile, opportunities) exactly like any other
    discovery cycle.
 2. Passes the raw per-source results to `buildMarkdownDigest()`
@@ -447,15 +458,16 @@ See `docs/cli.md`. Summary: `ash innovation discover [--live]|digest
 
 ## What's not implemented (see `docs/roadmap.md` and `docs/ashos-intelligence.md`)
 
-- **Most domains are still mock-only.** Five real, opt-in collectors ship
-  today (GitHub, Hacker News, Reddit, arXiv, Hugging Face — see
-  "Collectors" above), but market, workflow, and competitor domains — plus
-  other real sources named in the AshOS Intelligence spec (Papers With
-  Code, package registries, YouTube, X, company blogs) — still ship only
-  deterministic mocks. This environment's network sandbox only allowlists
-  `api.github.com` today, so only `github-live` actually returns data
-  here; the other four are real, tested code waiting on an unrestricted
-  environment to prove themselves live. Each follows the same `Collector`
+- **Most domains are still mock-only.** Six real, opt-in collectors ship
+  today (GitHub, Hacker News, Reddit, arXiv, Hugging Face, Product Hunt —
+  see "Collectors" above — Product Hunt notably now closes the market
+  domain's one named real source), but workflow and competitor domains —
+  plus other real sources named in the AshOS Intelligence spec (Papers
+  With Code, package registries, YouTube, X, company blogs) — still ship
+  only deterministic mocks. This environment's network sandbox only
+  allowlists `api.github.com` today, so only `github-live` actually
+  returns data here; the other five are real, tested code waiting on an
+  unrestricted environment to prove themselves live. Each follows the same `Collector`
   interface, so adding the rest is the same pattern again.
 - **Specialized research agents beyond Repository Analyst and Technology
   Radar aren't built yet** — Research Paper Analyst, Startup Analyst,

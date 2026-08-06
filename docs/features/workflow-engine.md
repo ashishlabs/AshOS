@@ -1,6 +1,6 @@
 # Feature: Workflow Engine
 
-**Status:** ✅ Complete (infrastructure); needs a CLI/UI author to be built
+**Status:** ✅ Complete — CLI (`ash workflow run`), REST, and SDK entry points all real; needs a visual/UI author to be built
 
 ## 1. What is this feature?
 
@@ -40,8 +40,12 @@ Workflows are JSON files — see `examples/workflows/research-and-build.json`:
 }
 ```
 
-**Run it via REST API** (there's no `ash workflow run` CLI command yet —
-this is the only current entry point outside writing your own script):
+**Run it from the CLI** (the most direct path — no server, no script):
+```bash
+ash workflow run examples/workflows/research-and-build.json
+```
+
+**Run it via REST API:**
 ```bash
 curl -X POST http://localhost:4700/workflow \
   -H "content-type: application/json" \
@@ -70,10 +74,6 @@ pipeline you can trigger from CI:
 
 ## 5. Tips & limitations
 
-- **No CLI command exists yet** for running a workflow file directly
-  (`ash workflow run <file>` isn't implemented) — today you need the
-  REST API or the SDK. This is a straightforward gap to close if you
-  need terminal-only usage.
 - **No visual/drag-and-drop workflow builder** — you write the JSON by
   hand (see `docs/roadmap.md`).
 - Steps run through the same `DagExecutor` as the Planner — dependent

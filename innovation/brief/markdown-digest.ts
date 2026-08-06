@@ -6,7 +6,8 @@ const SOURCE_LABELS: Record<string, string> = {
   "hn-live": "Hacker News",
   "reddit-live": "Reddit",
   "arxiv-live": "arXiv",
-  "huggingface-live": "Hugging Face"
+  "huggingface-live": "Hugging Face",
+  "product-hunt-live": "Product Hunt"
 };
 
 export interface DigestInput {

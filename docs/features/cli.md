@@ -1,6 +1,6 @@
 # Feature: CLI (`ash`)
 
-**Status:** ✅ Complete (11 command groups)
+**Status:** ✅ Complete (21 command groups; re-counted — includes `schedule` and `workflow`, added since this was last 11)
 
 ## 1. What is this feature?
 

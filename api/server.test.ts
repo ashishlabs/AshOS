@@ -353,7 +353,7 @@ describe("AshOS API", () => {
     const res = await fetch(`${baseUrl}/innovation/live-collectors`);
     const list = (await res.json()) as { id: string }[];
     const ids = list.map((c) => c.id).sort();
-    expect(ids).toEqual(["arxiv-live", "github-live", "hn-live", "huggingface-live", "reddit-live"]);
+    expect(ids).toEqual(["arxiv-live", "github-live", "hn-live", "huggingface-live", "product-hunt-live", "reddit-live"]);
   });
 
   it("POST /innovation/digest runs live discovery and returns the generated markdown + path", async () => {

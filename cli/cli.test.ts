@@ -280,7 +280,7 @@ describe("CLI commands", () => {
     await program.parseAsync(["node", "ash", "innovation", "collectors"]);
 
     const output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
-    for (const id of ["github-live", "hn-live", "reddit-live", "arxiv-live", "huggingface-live"]) {
+    for (const id of ["github-live", "hn-live", "reddit-live", "arxiv-live", "huggingface-live", "product-hunt-live"]) {
       expect(output).toContain(id);
     }
     expect(output).toContain("opt-in via --live");

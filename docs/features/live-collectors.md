@@ -4,11 +4,12 @@
 
 ## 1. What is this feature?
 
-Five real, opt-in collectors — GitHub, Hacker News, Reddit, arXiv, and
-Hugging Face — pull actual live data (not mocked), which AshOS turns
-into a deterministic Markdown "here's what happened in AI/tech today"
-digest. Unlike the default `ash innovation discover` (which uses safe
-offline mock data), this makes real outbound network calls.
+Six real, opt-in collectors — GitHub, Hacker News, Reddit, arXiv,
+Hugging Face, and Product Hunt — pull actual live data (not mocked),
+which AshOS turns into a deterministic Markdown "here's what happened in
+AI/tech today" digest. Unlike the default `ash innovation discover`
+(which uses safe offline mock data), this makes real outbound network
+calls.
 
 **Business value:** a genuinely useful, zero-effort daily news summary —
 run it once a day (manually or via the [Scheduler](./scheduler.md)) and
@@ -64,8 +65,12 @@ others, since each collector is isolated.
   `ash innovation digest`) precisely because of that.
 - **Only the GitHub collector has been verified live** in this
   project's own sandboxed development environment (network policy only
-  allowlists `api.github.com`) — Hacker News, Reddit, arXiv, and
-  Hugging Face are real, tested-against-mocked-fetch code that should
-  work, but haven't been proven against the live internet from here.
-  Try them yourself in an unrestricted environment.
+  allowlists `api.github.com`) — Hacker News, Reddit, arXiv, Hugging
+  Face, and Product Hunt are real, tested-against-mocked-fetch code that
+  should work, but haven't been proven against the live internet from
+  here. Try them yourself in an unrestricted environment.
+- **Product Hunt is RSS-based, not the official API** — Product Hunt's
+  GraphQL v2 API requires an authenticated developer token, which this
+  codebase doesn't ask a user for. The public RSS feed
+  (`producthunt.com/feed?category=...`) needs no auth.
 - Only the Daily cadence exists — no Weekly/Monthly report generation yet.
