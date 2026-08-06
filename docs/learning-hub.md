@@ -106,19 +106,21 @@ filtering.
 | GET | `/learning/resources?status=&type=` | — | List resources, optionally filtered. |
 | GET | `/learning/resources/:id` | — | Fetch one resource; `404` if unknown. |
 | POST | `/learning/resources/:id/status` | `{ status }` | Update a resource's status; `404` if unknown. |
+| GET | `/learning/resources/:id/history` | — | Prior versions of the resource, newest first. See `docs/knowledge-vault.md`'s "Revision history" section. |
 | POST | `/learning/cards` | `{ front, back, tags? }` | Add a flashcard, due immediately; `201`, `400` if `front`/`back` are missing. |
 | GET | `/learning/cards?due=true` | — | List flashcards, optionally filtered to only those due now. |
 | GET | `/learning/cards/:id` | — | Fetch one flashcard; `404` if unknown. |
 | POST | `/learning/cards/:id/review` | `{ grade }` | Grade a review (`"again"`/`"hard"`/`"good"`/`"easy"`) and reschedule via SM-2; `404` if unknown. |
+| GET | `/learning/cards/:id/history` | — | Prior versions of the flashcard, newest first — grows by one entry per review. |
 
 ## CLI
 
 `ash learn resource add <title> --type <type> [--url] [--tags]`,
 `ash learn resource list [--status] [--type]`, `ash learn resource show <id>`,
-`ash learn resource status <id> <status>`,
+`ash learn resource status <id> <status>`, `ash learn resource history <id>`,
 `ash learn card add <front> <back> [--tags]`,
 `ash learn card list [--due]`, `ash learn card show <id>`,
-`ash learn card review <id> <grade>`.
+`ash learn card review <id> <grade>`, `ash learn card history <id>`.
 
 ## What's not implemented
 

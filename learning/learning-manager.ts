@@ -101,6 +101,11 @@ export class LearningManager {
     return resource;
   }
 
+  /** Every prior version of this resource, newest first — same `MemoryManager.revisions()` wrapper `VaultManager.history()` established. */
+  resourceHistory(id: string): LearningResource[] {
+    return this.memory.revisions("project", resourceKey(id)).map((r) => r.value as LearningResource);
+  }
+
   // ---------------------------------------------------------------------
   // Flashcards
   // ---------------------------------------------------------------------
@@ -162,6 +167,11 @@ export class LearningManager {
     await this.persistCard(card);
     this.options.eventBus?.emit("learning:flashcard-reviewed", { id, grade, dueDate: card.dueDate });
     return card;
+  }
+
+  /** Every prior version of this flashcard, newest first — grows by one entry per review, same "no pruning yet" caveat as every other revision history. */
+  cardHistory(id: string): Flashcard[] {
+    return this.memory.revisions("project", cardKey(id)).map((r) => r.value as Flashcard);
   }
 
   private async persistResource(resource: LearningResource): Promise<void> {

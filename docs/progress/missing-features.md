@@ -135,21 +135,24 @@ brief plus the existing North Star roadmap.
     Real gap against the vision's "AI Layer" section, but low urgency —
     nothing currently depends on it.
 
-15. **~~Per-record revision history~~ Mostly closed.**
-    `MemoryManager.remember()` now snapshots a record's old value into
+15. **~~Per-record revision history~~ Closed** (except Knowledge Graph
+    nodes, a deliberate exception — see below). `MemoryManager.remember()`
+    now snapshots a record's old value into
     `.ashos/memory/{project,global}-revisions.json` immediately before an
     overwrite, exposed via `memory.revisions(scope, key)` — since
     Inbox/Vault/Workspace/Learning records are themselves Memory records,
     they all get this for free, same "extend the shared primitive once"
-    pattern semantic search used. **Knowledge Vault has the one dedicated
-    wrapper today** (`VaultManager.history(id)`, `ash vault history <id>`,
-    `GET /vault/:id/history`) — the pillar that explicitly motivated this
-    feature — while Inbox/Workspace/Learning would need the same small,
-    bounded wrapper added to get an equally convenient API (the
-    underlying tracking already works for them). **Knowledge Graph nodes
+    pattern semantic search used. **Every one of the five now has its own
+    dedicated wrapper and CLI/REST surface**: `VaultManager.history(id)`
+    (`ash vault history`), `InboxManager.history(id)` (`ash inbox
+    history`), `WorkspaceManager.projectHistory()`/`taskHistory()`/
+    `milestoneHistory()` (`ash project history`/`task history`/`milestone
+    history`), and `LearningManager.resourceHistory()`/`cardHistory()`
+    (`ash learn resource history`/`card history`). **Knowledge Graph nodes
     are the one exception**: they're stored separately from
     `MemoryManager` (own JSON file, no revision tracking), so this doesn't
-    apply to them — same boundary the semantic-search extension hit.
+    apply to them — same boundary the semantic-search extension hit. No
+    dashboard UI for any of the five yet — CLI/REST only.
 
 16. **~~Product Hunt collector~~ Closed.** `innovation/collectors/product-hunt-collector.ts`
     (`product-hunt-live`, `market` domain) parses Product Hunt's public RSS

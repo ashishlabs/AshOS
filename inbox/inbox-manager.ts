@@ -94,6 +94,11 @@ export class InboxManager {
     return this.updateStatus(id, "archived");
   }
 
+  /** Every prior version of this item, newest first — same `MemoryManager.revisions()` wrapper `VaultManager.history()` established. */
+  history(id: string): InboxItem[] {
+    return this.memory.revisions("project", key(id)).map((r) => r.value as InboxItem);
+  }
+
   /** Best-effort — never let a slow/unreachable/misconfigured provider (or fetch) block capture. */
   private async summarize(content: string, detectedUrl?: string): Promise<string | undefined> {
     if (!this.options.provider) return undefined;

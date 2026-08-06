@@ -406,6 +406,10 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     }
   });
 
+  app.get("/inbox/:id/history", (req, res) => {
+    res.json(ashos.inbox.history(req.params.id));
+  });
+
   app.post("/vault", async (req, res) => {
     const { title, content, tags, links, inboxId } = req.body ?? {};
     if (isNonEmptyString(inboxId)) {
@@ -523,6 +527,10 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     res.json(ashos.workspace.progress(req.params.id));
   });
 
+  app.get("/workspace/projects/:id/history", (req, res) => {
+    res.json(ashos.workspace.projectHistory(req.params.id));
+  });
+
   app.post("/workspace/projects/:id/tasks", async (req, res) => {
     const { title, description } = req.body ?? {};
     if (!isNonEmptyString(title)) {
@@ -556,6 +564,10 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     }
   });
 
+  app.get("/workspace/tasks/:id/history", (req, res) => {
+    res.json(ashos.workspace.taskHistory(req.params.id));
+  });
+
   app.post("/workspace/projects/:id/milestones", async (req, res) => {
     const { title, dueDate } = req.body ?? {};
     if (!isNonEmptyString(title)) {
@@ -587,6 +599,10 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     } catch (error) {
       res.status(404).json({ error: (error as Error).message });
     }
+  });
+
+  app.get("/workspace/milestones/:id/history", (req, res) => {
+    res.json(ashos.workspace.milestoneHistory(req.params.id));
   });
 
   app.post("/learning/resources", async (req, res) => {
@@ -632,6 +648,10 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     }
   });
 
+  app.get("/learning/resources/:id/history", (req, res) => {
+    res.json(ashos.learning.resourceHistory(req.params.id));
+  });
+
   app.post("/learning/cards", async (req, res) => {
     const { front, back, tags } = req.body ?? {};
     if (!isNonEmptyString(front) || !isNonEmptyString(back)) {
@@ -672,6 +692,10 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     } catch (error) {
       res.status(404).json({ error: (error as Error).message });
     }
+  });
+
+  app.get("/learning/cards/:id/history", (req, res) => {
+    res.json(ashos.learning.cardHistory(req.params.id));
   });
 
   app.get("/search", async (req, res) => {

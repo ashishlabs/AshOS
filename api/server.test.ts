@@ -580,6 +580,24 @@ describe("AshOS API", () => {
     expect(filtered.every((i) => i.status === "archived")).toBe(true);
   });
 
+  it("GET /inbox/:id/history is empty until an item is updated, then reflects the prior version", async () => {
+    const captureRes = await fetch(`${baseUrl}/inbox`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content: "history me via api" })
+    });
+    const item = (await captureRes.json()) as { id: string };
+
+    const before = (await (await fetch(`${baseUrl}/inbox/${item.id}/history`)).json()) as unknown[];
+    expect(before).toEqual([]);
+
+    await fetch(`${baseUrl}/inbox/${item.id}/archive`, { method: "POST" });
+
+    const after = (await (await fetch(`${baseUrl}/inbox/${item.id}/history`)).json()) as { status: string }[];
+    expect(after).toHaveLength(1);
+    expect(after[0].status).toBe("unread");
+  });
+
   it("POST /vault 400s without title/content or inboxId", async () => {
     const res = await fetch(`${baseUrl}/vault`, {
       method: "POST",
@@ -753,6 +771,11 @@ describe("AshOS API", () => {
 
     const missingRes = await fetch(`${baseUrl}/workspace/projects/does-not-exist/archive`, { method: "POST" });
     expect(missingRes.status).toBe(404);
+
+    const historyRes = await fetch(`${baseUrl}/workspace/projects/${project.id}/history`);
+    const history = (await historyRes.json()) as { status: string }[];
+    expect(history).toHaveLength(1);
+    expect(history[0].status).toBe("active");
   });
 
   it("workspace tasks: create, list, update status, and drive project progress", async () => {
@@ -796,6 +819,11 @@ describe("AshOS API", () => {
       body: JSON.stringify({ status: "done" })
     });
     expect(missingStatusRes.status).toBe(404);
+
+    const historyRes = await fetch(`${baseUrl}/workspace/tasks/${task.id}/history`);
+    const history = (await historyRes.json()) as { status: string }[];
+    expect(history).toHaveLength(1);
+    expect(history[0].status).toBe("todo");
   });
 
   it("POST /workspace/projects/:id/tasks 404s for an unknown project", async () => {
@@ -836,6 +864,11 @@ describe("AshOS API", () => {
     });
     expect(statusRes.status).toBe(200);
     expect(((await statusRes.json()) as { status: string }).status).toBe("done");
+
+    const historyRes = await fetch(`${baseUrl}/workspace/milestones/${milestone.id}/history`);
+    const history = (await historyRes.json()) as { status: string }[];
+    expect(history).toHaveLength(1);
+    expect(history[0].status).toBe("pending");
   });
 
   it("POST /learning/resources 400s without title/type", async () => {
@@ -893,6 +926,11 @@ describe("AshOS API", () => {
       body: JSON.stringify({ status: "completed" })
     });
     expect(missingRes.status).toBe(404);
+
+    const historyRes = await fetch(`${baseUrl}/learning/resources/${resource.id}/history`);
+    const history = (await historyRes.json()) as { status: string }[];
+    expect(history).toHaveLength(1);
+    expect(history[0].status).toBe("to-learn");
   });
 
   it("POST /learning/cards 400s without front/back", async () => {
@@ -941,6 +979,11 @@ describe("AshOS API", () => {
       body: JSON.stringify({ grade: "good" })
     });
     expect(missingReviewRes.status).toBe(404);
+
+    const historyRes = await fetch(`${baseUrl}/learning/cards/${card.id}/history`);
+    const history = (await historyRes.json()) as { reviewCount: number }[];
+    expect(history).toHaveLength(1);
+    expect(history[0].reviewCount).toBe(0);
   });
 
   it("GET /learning/cards/:id 404s for an unknown id", async () => {

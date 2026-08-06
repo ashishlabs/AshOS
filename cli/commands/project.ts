@@ -2,6 +2,17 @@ import { Command } from "commander";
 import { AshOS } from "../../sdk/ashos";
 import type { MilestoneStatus, ProjectStatus, ProjectTaskStatus } from "../../workspace/types";
 
+function printHistory(versions: unknown[]): void {
+  if (versions.length === 0) {
+    console.log("No prior versions — this hasn't changed since it was created.");
+    return;
+  }
+  versions.forEach((version, i) => {
+    console.log(`--- version ${versions.length - i} of ${versions.length} (superseded) ---`);
+    console.log(JSON.stringify(version, null, 2));
+  });
+}
+
 export function registerProjectCommand(program: Command): void {
   const cmd = program.command("project").description("Project Workspaces: a real, persisted Project/Task/Milestone data model");
 
@@ -75,6 +86,14 @@ export function registerProjectCommand(program: Command): void {
       console.log(`${percent}% complete (${doneTasks}/${totalTasks} tasks done)`);
     });
 
+  cmd
+    .command("history <id>")
+    .description("Show prior versions of a project, newest first")
+    .action((id: string) => {
+      const ashos = new AshOS();
+      printHistory(ashos.workspace.projectHistory(id));
+    });
+
   const task = cmd.command("task").description("Tasks belonging to a project");
 
   task
@@ -120,6 +139,14 @@ export function registerProjectCommand(program: Command): void {
       }
     });
 
+  task
+    .command("history <taskId>")
+    .description("Show prior versions of a task, newest first")
+    .action((taskId: string) => {
+      const ashos = new AshOS();
+      printHistory(ashos.workspace.taskHistory(taskId));
+    });
+
   const milestone = cmd.command("milestone").description("Milestones belonging to a project");
 
   milestone
@@ -163,5 +190,13 @@ export function registerProjectCommand(program: Command): void {
         console.error((error as Error).message);
         process.exitCode = 1;
       }
+    });
+
+  milestone
+    .command("history <milestoneId>")
+    .description("Show prior versions of a milestone, newest first")
+    .action((milestoneId: string) => {
+      const ashos = new AshOS();
+      printHistory(ashos.workspace.milestoneHistory(milestoneId));
     });
 }

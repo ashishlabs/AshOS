@@ -60,4 +60,20 @@ export function registerInboxCommand(program: Command): void {
         process.exitCode = 1;
       }
     });
+
+  cmd
+    .command("history <id>")
+    .description("Show prior versions of an inbox item, newest first")
+    .action((id: string) => {
+      const ashos = new AshOS();
+      const versions = ashos.inbox.history(id);
+      if (versions.length === 0) {
+        console.log("No prior versions — this item hasn't changed since it was captured.");
+        return;
+      }
+      versions.forEach((version, i) => {
+        console.log(`--- version ${versions.length - i} of ${versions.length} (superseded) ---`);
+        console.log(JSON.stringify(version, null, 2));
+      });
+    });
 }

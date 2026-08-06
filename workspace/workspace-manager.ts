@@ -107,6 +107,11 @@ export class WorkspaceManager {
     return this.updateProjectStatus(id, "archived");
   }
 
+  /** Every prior version of this project, newest first — same `MemoryManager.revisions()` wrapper `VaultManager.history()` established. */
+  projectHistory(id: string): Project[] {
+    return this.memory.revisions("project", projectKey(id)).map((r) => r.value as Project);
+  }
+
   /** Computed on the fly from `listTasks()` — not stored state. */
   progress(projectId: string): ProjectProgress {
     const tasks = this.listTasks(projectId);
@@ -163,6 +168,11 @@ export class WorkspaceManager {
     return task;
   }
 
+  /** Every prior version of this task, newest first. */
+  taskHistory(id: string): ProjectTask[] {
+    return this.memory.revisions("project", taskKey(id)).map((r) => r.value as ProjectTask);
+  }
+
   // ---------------------------------------------------------------------
   // Milestones
   // ---------------------------------------------------------------------
@@ -210,6 +220,11 @@ export class WorkspaceManager {
     await this.persistMilestone(milestone);
     this.options.eventBus?.emit("workspace:milestone-updated", { id, projectId: milestone.projectId, status });
     return milestone;
+  }
+
+  /** Every prior version of this milestone, newest first. */
+  milestoneHistory(id: string): Milestone[] {
+    return this.memory.revisions("project", milestoneKey(id)).map((r) => r.value as Milestone);
   }
 
   // ---------------------------------------------------------------------

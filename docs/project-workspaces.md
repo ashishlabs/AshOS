@@ -138,24 +138,30 @@ captures).
 | GET | `/workspace/projects/:id` | — | Fetch one project; `404` if unknown. |
 | POST | `/workspace/projects/:id/archive` | — | Mark a project archived; `404` if unknown. |
 | GET | `/workspace/projects/:id/progress` | — | `{ totalTasks, doneTasks, percent }`; `404` if the project is unknown. |
+| GET | `/workspace/projects/:id/history` | — | Prior versions of the project, newest first. See `docs/knowledge-vault.md`'s "Revision history" section. |
 | POST | `/workspace/projects/:id/tasks` | `{ title, description? }` | Add a task to the project; `201`, `404` if the project is unknown, `400` if `title` is missing/empty. |
 | GET | `/workspace/projects/:id/tasks?status=` | — | List tasks for the project, optionally filtered by status. |
 | POST | `/workspace/tasks/:id/status` | `{ status }` | Update a task's status; `404` if unknown. |
+| GET | `/workspace/tasks/:id/history` | — | Prior versions of the task, newest first. |
 | POST | `/workspace/projects/:id/milestones` | `{ title, dueDate? }` | Add a milestone to the project; `201`, `404` if the project is unknown. |
 | GET | `/workspace/projects/:id/milestones?status=` | — | List milestones for the project, optionally filtered by status. |
 | POST | `/workspace/milestones/:id/status` | `{ status }` | Update a milestone's status; `404` if unknown. |
+| GET | `/workspace/milestones/:id/history` | — | Prior versions of the milestone, newest first. |
 
 ## CLI
 
 `ash project create <name> [--description] [--tags]`,
 `ash project list [--status]`, `ash project show <id>`,
 `ash project archive <id>`, `ash project progress <id>`,
+`ash project history <id>`,
 `ash project task add <projectId> <title...> [--description]`,
 `ash project task list <projectId> [--status]`,
 `ash project task status <taskId> <status>`,
+`ash project task history <taskId>`,
 `ash project milestone add <projectId> <title...> [--due]`,
 `ash project milestone list <projectId> [--status]`,
-`ash project milestone status <milestoneId> <status>`.
+`ash project milestone status <milestoneId> <status>`,
+`ash project milestone history <milestoneId>`.
 
 ## What's not implemented
 

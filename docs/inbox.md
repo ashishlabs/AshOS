@@ -118,11 +118,12 @@ directly.
 | GET | `/inbox?status=` | — | List items, optionally filtered by status. |
 | GET | `/inbox/:id` | — | Fetch one item; `404` if unknown. |
 | POST | `/inbox/:id/archive` | — | Mark an item archived; `404` if unknown. |
+| GET | `/inbox/:id/history` | — | Prior versions of `:id`, newest first — `[]` if it's never been updated since capture. See `docs/knowledge-vault.md`'s "Revision history" section for how this works (the same `MemoryManager.revisions()` mechanism, just wrapped by `InboxManager` instead of `VaultManager`). |
 
 ## CLI
 
 `ash inbox add <content...> [--tags]`, `ash inbox list [--status]`,
-`ash inbox show <id>`, `ash inbox archive <id>`.
+`ash inbox show <id>`, `ash inbox archive <id>`, `ash inbox history <id>`.
 
 ## What's not implemented
 

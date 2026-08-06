@@ -66,6 +66,16 @@ describe("WorkspaceManager", () => {
       await expect(workspace.updateProjectStatus("does-not-exist", "completed")).rejects.toThrow(/not found/);
     });
 
+    it("projectHistory() is empty until updated, then reflects the prior version", async () => {
+      const project = await workspace.createProject("Archive me");
+      expect(workspace.projectHistory(project.id)).toEqual([]);
+
+      await workspace.archiveProject(project.id);
+      const history = workspace.projectHistory(project.id);
+      expect(history).toHaveLength(1);
+      expect(history[0].status).toBe("active");
+    });
+
     it("best-effort enriches the knowledge graph with a project node", async () => {
       await workspace.createProject("Website redesign", "desc", { tags: ["marketing"] });
       const nodes = graph.listNodes({ kind: "project" });
@@ -122,6 +132,17 @@ describe("WorkspaceManager", () => {
       await expect(workspace.updateTaskStatus("does-not-exist", "done")).rejects.toThrow(/not found/);
     });
 
+    it("taskHistory() reflects the prior version after a status update", async () => {
+      const project = await workspace.createProject("A project");
+      const task = await workspace.addTask(project.id, "Do it");
+      expect(workspace.taskHistory(task.id)).toEqual([]);
+
+      await workspace.updateTaskStatus(task.id, "done");
+      const history = workspace.taskHistory(task.id);
+      expect(history).toHaveLength(1);
+      expect(history[0].status).toBe("todo");
+    });
+
     it("best-effort enriches the knowledge graph with a todo node linked to its project", async () => {
       const project = await workspace.createProject("Website redesign");
       await workspace.addTask(project.id, "Write docs");
@@ -163,6 +184,17 @@ describe("WorkspaceManager", () => {
       const milestone = await workspace.addMilestone(project.id, "Launch");
       const done = await workspace.updateMilestoneStatus(milestone.id, "done");
       expect(done.status).toBe("done");
+    });
+
+    it("milestoneHistory() reflects the prior version after a status update", async () => {
+      const project = await workspace.createProject("A project");
+      const milestone = await workspace.addMilestone(project.id, "Launch");
+      expect(workspace.milestoneHistory(milestone.id)).toEqual([]);
+
+      await workspace.updateMilestoneStatus(milestone.id, "done");
+      const history = workspace.milestoneHistory(milestone.id);
+      expect(history).toHaveLength(1);
+      expect(history[0].status).toBe("pending");
     });
 
     it("best-effort enriches the knowledge graph with a milestone node linked to its project", async () => {

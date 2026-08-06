@@ -85,6 +85,17 @@ describe("InboxManager", () => {
     await expect(inbox.updateStatus("does-not-exist", "reviewed")).rejects.toThrow(/not found/);
   });
 
+  it("history() is empty until an item is updated, then reflects the prior version", async () => {
+    const item = await inbox.capture("archive me");
+    expect(inbox.history(item.id)).toEqual([]);
+
+    await inbox.archive(item.id);
+    const history = inbox.history(item.id);
+    expect(history).toHaveLength(1);
+    expect(history[0].status).toBe("unread");
+    expect(inbox.get(item.id)?.status).toBe("archived");
+  });
+
   it("emits inbox:captured and inbox:updated events", async () => {
     const captured: string[] = [];
     eventBus.on("inbox:captured", () => captured.push("captured"));

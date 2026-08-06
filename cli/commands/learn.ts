@@ -3,6 +3,17 @@ import { AshOS } from "../../sdk/ashos";
 import type { ReviewGrade } from "../../learning/srs";
 import type { LearningResourceStatus, LearningResourceType } from "../../learning/types";
 
+function printHistory(versions: unknown[]): void {
+  if (versions.length === 0) {
+    console.log("No prior versions — this hasn't changed since it was created.");
+    return;
+  }
+  versions.forEach((version, i) => {
+    console.log(`--- version ${versions.length - i} of ${versions.length} (superseded) ---`);
+    console.log(JSON.stringify(version, null, 2));
+  });
+}
+
 export function registerLearnCommand(program: Command): void {
   const cmd = program.command("learn").description("Learning Hub: tracked courses/books/videos/articles, plus spaced-repetition flashcards");
 
@@ -67,6 +78,14 @@ export function registerLearnCommand(program: Command): void {
       }
     });
 
+  resource
+    .command("history <id>")
+    .description("Show prior versions of a resource, newest first")
+    .action((id: string) => {
+      const ashos = new AshOS();
+      printHistory(ashos.learning.resourceHistory(id));
+    });
+
   const card = cmd.command("card").description("Flashcards reviewed via the SuperMemo-2 spaced repetition algorithm");
 
   card
@@ -120,5 +139,13 @@ export function registerLearnCommand(program: Command): void {
         console.error((error as Error).message);
         process.exitCode = 1;
       }
+    });
+
+  card
+    .command("history <id>")
+    .description("Show prior versions of a flashcard, newest first")
+    .action((id: string) => {
+      const ashos = new AshOS();
+      printHistory(ashos.learning.cardHistory(id));
     });
 }

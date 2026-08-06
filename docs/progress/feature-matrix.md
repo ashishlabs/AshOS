@@ -35,15 +35,15 @@ Refactor.
 
 | Feature | Status | Completion | Quality | Notes |
 |---|---|---|---|---|
-| Universal Inbox (capture + classify + summarize) | 🟡 | 75% | High | Real capture/classify/store/archive; classification is regex, not AI; AI summarization now real, grounded in fetched page text via `WebFetchTool` for URLs; still no voice/image/document support |
+| Universal Inbox (capture + classify + summarize) | 🟡 | 78% | High | Real capture/classify/store/archive/history (`InboxManager.history()`, `ash inbox history`, `GET /inbox/:id/history`); classification is regex, not AI; AI summarization now real, grounded in fetched page text via `WebFetchTool` for URLs; still no voice/image/document support |
 | Memory Timeline | ✅ | 90% | Medium | Dashboard-only merge view; no per-record version history |
 | Today's Focus widget | ✅ | 100% (for its scope) | High | Real composition of 3 live endpoints, polls every 15s |
 | Idea Lab | 🟡 | 60% | High | Storage/scoring/dedup/lifecycle all real; "AI evaluation"/"market analysis" are deterministic heuristic formulas, not LLM reasoning; no related-projects link |
 | Reflection Agent | ✅ | 90% | High | Real daily/weekly/monthly narrative with graceful offline fallback |
 | Cross-store Hybrid Search | 🟡 | 90% | High | Real merge across Memory/Graph/Inbox/Vault/Workspace/Learning (six stores); semantic mode now covers 5 of 6 (Memory/Inbox/Vault/Workspace/Learning, one `searchSemantic()` call routed by subsystem tag) — only Graph stays keyword-only, since `KnowledgeNode`s have no embedding storage |
 | Knowledge Vault | ✅ | 90% | High | `vault/` package — pages (`VaultNote`), tags, backlinks, related-notes links, revision history (`history()`/`ash vault history`/`GET /vault/:id/history`), Hybrid Search + Knowledge Graph integration all real; flashcards remain absent (they belong to Learning Hub, not Vault) |
-| Project Workspace | ✅ | 75% | High | `workspace/` package — Project/Task/Milestone entities, CRUD via CLI/REST, a dashboard Projects tab, and computed progress tracking all real; Roadmap/Architecture-docs/Definition-of-Done/Risk-tracking as data models and AI recommendations remain deliberately out of scope |
-| Learning Hub | ✅ | 65% | High | `learning/` package — tracked courses/books/videos/articles and flashcards reviewed via a real SuperMemo-2 spaced repetition implementation (`learning/srs.ts`), independently unit tested; Learning paths, Quizzes, and AI recommendations remain deliberately out of scope |
+| Project Workspace | ✅ | 78% | High | `workspace/` package — Project/Task/Milestone entities, CRUD via CLI/REST, revision history for all three (`ash project history`/`task history`/`milestone history`), a dashboard Projects tab, and computed progress tracking all real; Roadmap/Architecture-docs/Definition-of-Done/Risk-tracking as data models and AI recommendations remain deliberately out of scope |
+| Learning Hub | ✅ | 68% | High | `learning/` package — tracked courses/books/videos/articles and flashcards reviewed via a real SuperMemo-2 spaced repetition implementation (`learning/srs.ts`), independently unit tested, plus revision history for both (`ash learn resource history`/`card history`); Learning paths, Quizzes, and AI recommendations remain deliberately out of scope |
 | AI recommendations (dashboard-wide) | 🔴 | 0% | — | No recommendation engine exists in any subsystem |
 | AI documentation generation | 🔴 | 0% | — | No agent/capability produces documentation |
 | AI roadmap generation | 🔴 | 0% | — | All roadmap docs in this repo are hand-written |

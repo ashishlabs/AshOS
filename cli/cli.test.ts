@@ -433,6 +433,12 @@ describe("CLI commands", () => {
     await program.parseAsync(["node", "ash", "inbox", "list", "--status", "archived"]);
     output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
     expect(output).toContain("[archived]");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "inbox", "history", id]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("version 1 of 1");
+    expect(output).toContain(`"status": "unread"`);
   });
 
   it("inbox show reports an error for an unknown id", async () => {
@@ -601,6 +607,12 @@ describe("CLI commands", () => {
     await program.parseAsync(["node", "ash", "project", "list", "--status", "archived"]);
     output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
     expect(output).toContain("[archived]");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "project", "history", id]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("version 1 of 1");
+    expect(output).toContain(`"status": "active"`);
   });
 
   it("project show reports an error for an unknown id", async () => {
@@ -646,6 +658,12 @@ describe("CLI commands", () => {
     await program.parseAsync(["node", "ash", "project", "progress", projectId]);
     output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
     expect(output).toContain("100% complete (1/1 tasks done)");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "project", "task", "history", taskId]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("version 1 of 1");
+    expect(output).toContain(`"status": "todo"`);
   });
 
   it("project task add reports an error for an unknown project", async () => {
@@ -683,6 +701,12 @@ describe("CLI commands", () => {
     await program.parseAsync(["node", "ash", "project", "milestone", "status", milestoneId, "done"]);
     output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
     expect(output).toContain("is now [done]");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "project", "milestone", "history", milestoneId]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("version 1 of 1");
+    expect(output).toContain(`"status": "pending"`);
   });
 
   it("learn resource list reports empty, then add/list/show/status round-trip", async () => {
@@ -715,6 +739,12 @@ describe("CLI commands", () => {
     await program.parseAsync(["node", "ash", "learn", "resource", "status", id, "completed"]);
     output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
     expect(output).toContain("is now [completed]");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "learn", "resource", "history", id]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("version 1 of 1");
+    expect(output).toContain(`"status": "to-learn"`);
   });
 
   it("learn resource show reports an error for an unknown id", async () => {
@@ -754,6 +784,12 @@ describe("CLI commands", () => {
     await program.parseAsync(["node", "ash", "learn", "card", "list", "--due"]);
     output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
     expect(output).toContain("No cards due for review");
+
+    logSpy.mockClear();
+    await program.parseAsync(["node", "ash", "learn", "card", "history", id]);
+    output = logSpy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("version 1 of 1");
+    expect(output).toContain(`"reviewCount": 0`);
   });
 
   it("learn card review reports an error for an unknown id", async () => {

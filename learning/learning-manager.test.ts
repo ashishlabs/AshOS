@@ -66,6 +66,16 @@ describe("LearningManager", () => {
       await expect(learning.updateResourceStatus("does-not-exist", "completed")).rejects.toThrow(/not found/);
     });
 
+    it("resourceHistory() reflects the prior version after a status update", async () => {
+      const resource = await learning.addResource("A course", "course");
+      expect(learning.resourceHistory(resource.id)).toEqual([]);
+
+      await learning.updateResourceStatus(resource.id, "in-progress");
+      const history = learning.resourceHistory(resource.id);
+      expect(history).toHaveLength(1);
+      expect(history[0].status).toBe("to-learn");
+    });
+
     it("best-effort enriches the knowledge graph with a learning-resource node", async () => {
       await learning.addResource("Deep Learning Specialization", "course", { tags: ["ml"] });
       const nodes = graph.listNodes({ kind: "learning-resource" });
@@ -125,6 +135,19 @@ describe("LearningManager", () => {
       const reviewed = await learning.reviewCard(card.id, "again");
       expect(reviewed.repetitions).toBe(0);
       expect(reviewed.interval).toBe(1);
+    });
+
+    it("cardHistory() accumulates one entry per review, newest first", async () => {
+      const card = await learning.addCard("front", "back");
+      expect(learning.cardHistory(card.id)).toEqual([]);
+
+      await learning.reviewCard(card.id, "good");
+      await learning.reviewCard(card.id, "easy");
+
+      const history = learning.cardHistory(card.id);
+      expect(history).toHaveLength(2);
+      expect(history[0].reviewCount).toBe(1);
+      expect(history[1].reviewCount).toBe(0);
     });
 
     it("a card reviewed as 'good' is no longer due immediately after", async () => {

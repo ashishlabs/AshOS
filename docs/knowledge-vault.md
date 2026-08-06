@@ -87,11 +87,13 @@ same scope+key, and `MemoryManager` itself now snapshots a record's old
 value into `.ashos/memory/project-revisions.json` immediately before
 overwriting it — the same "extend the shared primitive once, every
 subsystem on top of it gets it for free" pattern semantic search used
-(see `docs/search.md`). This means
-Inbox/Workspace/Learning records get the exact same capability for free
-via `memory.revisions("project", <their own key format>)`, even though
-only Vault has a dedicated `history()` wrapper and CLI/REST surface today
-— see "What's not implemented" below.
+(see `docs/search.md`). Inbox/Workspace/Learning records get the exact
+same capability via `memory.revisions("project", <their own key
+format>)`, and each now has its own dedicated `history()` wrapper too
+(`InboxManager.history()`, `WorkspaceManager.projectHistory()`/
+`taskHistory()`/`milestoneHistory()`, `LearningManager.resourceHistory()`/
+`cardHistory()`) — see `docs/inbox.md`, `docs/project-workspaces.md`, and
+`docs/learning-hub.md` for their CLI/REST surfaces.
 
 A revision holds the full old value (e.g. a complete past `VaultNote`,
 including its `content`/`tags`/`links`/`status` at that point in time),
@@ -155,14 +157,18 @@ directly.
   associated with a project informally (a shared tag, or a manual
   `ash vault link`/graph edge) — there's no `note.projectId` field or
   equivalent first-class relationship yet.
-- **No revision history CLI/REST/UI for Inbox, Workspace, or Learning** —
-  `MemoryManager.revisions()` already tracks it for them too (they're
-  Memory records the same way Vault notes are), but only Vault got a
-  dedicated `history()` wrapper and `ash vault history`/`GET
-  /vault/:id/history` surface, since it was the pillar that explicitly
-  motivated this feature ("what did this note used to say"). Adding the
-  same thin wrapper to the other managers is a small, bounded follow-up,
-  not a new capability.
+- **~~No revision history CLI/REST/UI for Inbox, Workspace, or
+  Learning~~ Closed.** Vault was the pillar that explicitly motivated
+  this feature ("what did this note used to say"), but the same thin
+  `history()` wrapper now exists for all of them too: `InboxManager.history()`
+  (`ash inbox history`/`GET /inbox/:id/history`), `WorkspaceManager.projectHistory()`/
+  `taskHistory()`/`milestoneHistory()` (`ash project history`/`ash project
+  task history`/`ash project milestone history`, `GET /workspace/projects/:id/history`/
+  `/workspace/tasks/:id/history`/`/workspace/milestones/:id/history`), and
+  `LearningManager.resourceHistory()`/`cardHistory()` (`ash learn resource
+  history`/`ash learn card history`, `GET /learning/resources/:id/history`/
+  `/learning/cards/:id/history`). No UI yet on any of the five managers —
+  CLI/REST only.
 - **No revision limit or pruning** — every overwrite adds one more entry
   to `.ashos/memory/project-revisions.json`/`global-revisions.json`
   forever; fine at Second Brain's current scale, a real concern if a
