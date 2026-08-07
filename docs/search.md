@@ -130,6 +130,47 @@ through to the generic Memory shape either way.
 
 `ash search <query> [--limit] [--semantic]`.
 
+## Cited-answer QA (`AskAgent`)
+
+`HybridSearch` deliberately stops at a ranked list of hits — it never
+writes prose. `AskAgent` (`agents/ask-agent.ts`, capability `ask`/`qa`) is
+the synthesis layer on top: it runs the same search this file describes,
+then hands the active provider a numbered set of the top-ranked excerpts
+and a system prompt instructing it to answer using only those excerpts,
+citing which one(s) it drew on inline (`[1]`, `[2][3]`). This is AshOS's
+own answer to "point an LLM at your captured notes and have it answer
+questions with sources" — the one piece of that pattern worth building
+natively, without pulling in a second-brain tool, a vector-DB plugin, or
+an MCP server to get it.
+
+It defaults to **semantic** search (`{ semantic: true }`), the opposite of
+`HybridSearch`'s own keyword-first default — a natural-language question
+rarely shares literal words with the record that answers it, so keyword
+matching would starve the answer of its best source. Pass
+`{ semantic: false }` to force keyword mode (e.g. when the question really
+is just a literal term to look up). Constructs its own `MemoryManager`
+(passing `context.provider` explicitly — `MemoryManager`'s embedding
+provider is a separate option from `AgentContext.provider`, not inherited
+from it) and `HybridSearch` fresh per call, the same convention
+`ReflectionAgent` uses, since `AgentContext` has no shared `HybridSearch`
+instance to inject.
+
+If nothing in the knowledge base matches, it says so plainly
+("Nothing captured about that yet.") instead of asking the provider to
+answer from outside knowledge — the whole point is an answer grounded in
+what's actually been captured.
+
+### REST API
+
+| Method | Path | Body | Description |
+|---|---|---|---|
+| POST | `/ask` | `{ question, limit?, semantic? }` | Cited answer over the top-ranked excerpts for `question`. `400` if `question` is missing. |
+
+### CLI
+
+`ash ask <question...> [--limit <n>] [--no-semantic]` — prints the answer,
+then a `Sources:` list of `[n] (source) title` citations.
+
 ## What's not implemented
 
 - **Graph has no semantic search** — `KnowledgeNode`s carry no embedding,

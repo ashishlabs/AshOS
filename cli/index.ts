@@ -21,6 +21,7 @@ import { registerLearnCommand } from "./commands/learn";
 import { registerReflectCommand } from "./commands/reflect";
 import { registerDocsCommand } from "./commands/docs";
 import { registerSearchCommand } from "./commands/search";
+import { registerAskCommand } from "./commands/ask";
 import { registerWorkflowCommand } from "./commands/workflow";
 import { registerScheduleCommand } from "./commands/schedule";
 
@@ -47,6 +48,7 @@ registerLearnCommand(program);
 registerReflectCommand(program);
 registerDocsCommand(program);
 registerSearchCommand(program);
+registerAskCommand(program);
 registerWorkflowCommand(program);
 registerScheduleCommand(program);
 

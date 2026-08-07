@@ -745,6 +745,20 @@ export function createServer(ashos: AshOS = new AshOS()): Express {
     }
   });
 
+  app.post("/ask", async (req, res) => {
+    const { question, limit, semantic } = req.body ?? {};
+    if (!isNonEmptyString(question)) {
+      res.status(400).json({ error: "'question' is required" });
+      return;
+    }
+    try {
+      const result = await ashos.runAgent("ask", { description: question, input: { question, limit, semantic } });
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
   app.post("/docs/generate", async (req, res) => {
     const { file, dir, outputFile } = req.body ?? {};
     if (!file && !dir) {
